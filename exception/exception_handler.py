@@ -3,15 +3,10 @@ from fastapi.responses import JSONResponse
 from fastapi import Request
 from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
 
-
-class CustomException(Exception):
-    def __init__(self, code: str, status_code: int, message: str):
-        self.code = code
-        self.status_code = status_code
-        self.message = message
+from exception.base_exception import CustomException
 
 
-def custom_validation_error_handler(request: Request, exc: RequestValidationError):
+async def custom_validation_error_handler(request: Request, exc: RequestValidationError):
     errors = []
     for err in exc.errors():
         field = ".".join(str(loc) for loc in err["loc"])
@@ -24,7 +19,17 @@ def custom_validation_error_handler(request: Request, exc: RequestValidationErro
     return JSONResponse(
         status_code=HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Validation Failed",
+            "code":"VALIDATION_FAILED",
+            "message": "Validation Failed",
             "errors": errors
         }
+    )
+
+async def custom_exception_handler(request: Request, exc: CustomException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": exc.code,
+            "message": exc.message,
+        },
     )

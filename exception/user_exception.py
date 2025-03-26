@@ -1,4 +1,4 @@
-from exception.base_exceptions import CustomException
+from exception.base_exception import CustomException
 
 
 class UserNotFoundException(CustomException):
