@@ -1,22 +1,14 @@
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from starlette.responses import JSONResponse
-
-from exception.base import CustomException
+from exception.base_exceptions import CustomException, custom_validation_error_handler
 from router import user_router
 
 app = FastAPI()
 
+app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
+
 app.include_router(user_router.router)
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
-
 
 
 @app.exception_handler(CustomException)
