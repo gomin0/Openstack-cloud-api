@@ -12,7 +12,7 @@ class Project(Base):
     __tablename__ = "project"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
-    uuid: Mapped[str] = mapped_column("uuid", CHAR(32), nullable=False)
+    openstack_id: Mapped[str] = mapped_column("openstack_id", CHAR(32), nullable=False)
     domain_id: Mapped[str] = mapped_column("domain_id", BigInteger, ForeignKey("domain.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     status: Mapped[str] = mapped_column(
@@ -22,5 +22,6 @@ class Project(Base):
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
+    deleted_at: Mapped[datetime] | None = mapped_column("deleted_at", DateTime, nullable=True)
 
     domain: Mapped[Domain] = relationship("Domain", lazy="select")
