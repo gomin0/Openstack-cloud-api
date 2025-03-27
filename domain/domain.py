@@ -1,18 +1,23 @@
+import uuid
 from datetime import datetime
 
-from sqlalchemy import String, DateTime
+from sqlalchemy import String, DateTime, Enum, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column
 
+from domain.status import Status
 from infrastructure.database import Base
 
 
 class Domain(Base):
     __tablename__ = "domain"
 
-    id: Mapped[str] = mapped_column("id", String(255), nullable=False, primary_key=True)
+    id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column("uuid", CHAR(32), unique=True, nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
+    status: Mapped[Status] = mapped_column(
+        "status", Enum(Status), nullable=False, default=Status.ACTIVE
+    )
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True, default=None)
