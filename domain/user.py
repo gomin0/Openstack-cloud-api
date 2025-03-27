@@ -14,6 +14,7 @@ class User(Base):
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
     uuid: Mapped[str] = mapped_column("uuid", CHAR(32), unique=True, nullable=False)
     domain_id: Mapped[str] = mapped_column("domain_id", BigInteger, ForeignKey("domain.id"), nullable=False)
+    account_id: Mapped[str] = mapped_column("account_id", String(20), nullable=False)
     name: Mapped[str] = mapped_column("name", String(15), nullable=False)
     password: Mapped[str] = mapped_column("password", String(255), nullable=False)
     status: Mapped[Status] = mapped_column(
