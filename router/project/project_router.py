@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, Path
 
-from domain.enum import OrderOption
+from domain.enum import SortOrder
 from domain.project.enum import ProjectSortOption
 from router.project.request import ProjectUpdateRequest
 from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
@@ -20,7 +20,7 @@ async def get_projects(
     name: str | None = Query(default=None),
     name_like: str | None = Query(default=None),
     sort_by: ProjectSortOption = Query(default=ProjectSortOption.CREATED_AT),
-    order: OrderOption = Query(default=OrderOption.ASC),
+    order: SortOrder = Query(default=SortOrder.ASC),
 ) -> ProjectListResponse:
     raise NotImplementedError()
 

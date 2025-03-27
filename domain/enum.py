@@ -1,6 +1,6 @@
 from enum import Enum
 
 
-class OrderOption(Enum):
-    ASC = "acs"
+class SortOrder(Enum):
+    ASC = "asc"
     DESC = "desc"

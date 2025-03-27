@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
+from domain.enum import SortOrder
+from domain.user.enum import UserSortOption
 from router.user.request import SignUpRequest, CreateUserRequest, UpdateUserRequest
 from router.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
 
@@ -10,7 +12,13 @@ router = APIRouter(prefix="/users", tags=["user"])
     path="", status_code=200,
     summary="유저 목록 조회"
 )
-def find_users() -> UserDetailsResponse:
+def find_users(
+    user_id: str | None = Query(None),
+    account_id: str | None = Query(None),
+    name: str | None = Query(None),
+    sort_by: UserSortOption = Query(UserSortOption.CREATED_AT),
+    sort_order: SortOrder = Query(SortOrder.ASC),
+) -> UserDetailsResponse:
     raise NotImplementedError()
 
 
