@@ -1,7 +1,7 @@
-from typing import Literal
-
 from fastapi import APIRouter, Query, Path
 
+from domain.enum import OrderOption
+from domain.project.enum import ProjectSortOption
 from router.project.request import ProjectUpdateRequest
 from router.project.response import ProjectListResponse, ProjectResponse
 
@@ -19,8 +19,8 @@ async def get_projects(
     ids: list[int] = Query(default=None, description="ID 검색"),
     name: str | None = Query(default=None),
     name_like: str | None = Query(default=None),
-    sort_by: Literal["name", "created_at"] = Query(default="created_at"),
-    order: Literal["asc", "desc"] = Query(default="asc")
+    sort_by: ProjectSortOption = Query(default=ProjectSortOption.CREATED_AT),
+    order: OrderOption = Query(default=OrderOption.ASC),
 ) -> ProjectListResponse:
     raise NotImplementedError()
 
