@@ -16,11 +16,11 @@ router = APIRouter(prefix="/project", tags=["project"])
     }
 )
 async def get_projects(
-        ids: list[int] = Query(default=None, description="ID 검색"),
-        name: str | None = Query(default=None),
-        name_like: str | None = Query(default=None),
-        sort_by: Literal["name", "created_at"] = Query(default="created_at"),
-        order: Literal["asc", "desc"] = Query(default="asc")
+    ids: list[int] = Query(default=None, description="ID 검색"),
+    name: str | None = Query(default=None),
+    name_like: str | None = Query(default=None),
+    sort_by: Literal["name", "created_at"] = Query(default="created_at"),
+    order: Literal["asc", "desc"] = Query(default="asc")
 ) -> ProjectListResponse:
     raise NotImplementedError()
 
@@ -33,7 +33,7 @@ async def get_projects(
     }
 )
 async def get_project(
-        project_id: int = Path(description="프로젝트 ID")
+    project_id: int = Path(description="프로젝트 ID")
 ) -> ProjectResponse:
     raise NotImplementedError()
 
@@ -48,8 +48,8 @@ async def get_project(
     }
 )
 async def update_project(
-        request: ProjectUpdateRequest,
-        project_id: int = Path(description="프로젝트 ID")
+    request: ProjectUpdateRequest,
+    project_id: int = Path(description="프로젝트 ID")
 ) -> ProjectResponse:
     raise NotImplementedError()
 
@@ -63,8 +63,8 @@ async def update_project(
     }
 )
 async def assign_account_to_project(
-        project_id: int = Path(description="프로젝트 ID"),
-        user_id: int = Path(description="계정 ID")
+    project_id: int = Path(description="프로젝트 ID"),
+    user_id: int = Path(description="계정 ID")
 ) -> None:
     raise NotImplementedError()
 
@@ -78,7 +78,7 @@ async def assign_account_to_project(
     }
 )
 async def remove_account_from_project(
-        project_id: int = Path(description="프로젝트 ID"),
-        user_id: int = Path(description="계정 ID")
+    project_id: int = Path(description="프로젝트 ID"),
+    user_id: int = Path(description="계정 ID")
 ) -> None:
     raise NotImplementedError()
