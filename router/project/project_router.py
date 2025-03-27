@@ -3,7 +3,7 @@ from fastapi import APIRouter, Query, Path
 from domain.enum import OrderOption
 from domain.project.enum import ProjectSortOption
 from router.project.request import ProjectUpdateRequest
-from router.project.response import ProjectListResponse, ProjectResponse
+from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
 
 router = APIRouter(prefix="/project", tags=["project"])
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/project", tags=["project"])
     }
 )
 async def get_projects(
-    ids: list[int] = Query(default=None, description="ID 검색"),
+    ids: list[int] | None = Query(default=None, description="ID 검색"),
     name: str | None = Query(default=None),
     name_like: str | None = Query(default=None),
     sort_by: ProjectSortOption = Query(default=ProjectSortOption.CREATED_AT),
@@ -34,7 +34,7 @@ async def get_projects(
 )
 async def get_project(
     project_id: int = Path(description="프로젝트 ID")
-) -> ProjectResponse:
+) -> ProjectDetailResponse:
     raise NotImplementedError()
 
 
@@ -42,8 +42,8 @@ async def get_project(
     "/{project_id}",
     summary="프로젝트 변경", status_code=200,
     responses={
-        409: {"description": "이름이 중복된 경우"},
         404: {"description": "해당 ID의 프로젝트가 없는 경우"},
+        409: {"description": "이름이 중복된 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}
     }
 )

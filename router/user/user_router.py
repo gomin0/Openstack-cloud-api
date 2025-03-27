@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from router.user.request import SignUpRequest, CreateUserRequest, UpdateUserRequest
-from router.user.response import UserListResponse, UserResponse
+from router.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
 
 router = APIRouter(prefix="/users", tags=["user"])
 
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/users", tags=["user"])
     path="", status_code=200,
     summary="유저 목록 조회"
 )
-def find_users() -> UserListResponse:
+def find_users() -> UserDetailsResponse:
     raise NotImplementedError()
 
 
@@ -21,7 +21,7 @@ def find_users() -> UserListResponse:
         404: {"description": "user_id에 해당하는 유저를 찾을 수 없는 경우"}
     }
 )
-def get_user(user_id: int) -> UserResponse:
+def get_user(user_id: int) -> UserDetailResponse:
     raise NotImplementedError()
 
 
