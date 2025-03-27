@@ -1,19 +1,26 @@
 from datetime import datetime
 
-from sqlalchemy import String, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, DateTime, ForeignKey, Enum, BigInteger, CHAR
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from domain.domain import Domain
+from domain.status import Status
 from infrastructure.database import Base
 
 
 class Project(Base):
     __tablename__ = "project"
 
-    id: Mapped[str] = mapped_column("id", String(255), nullable=False, primary_key=True)
-    domain_id: Mapped[str] = mapped_column(ForeignKey("domain.id"), nullable=False)
+    id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
+    uuid: Mapped[str] = mapped_column("uuid", CHAR(32), unique=True, nullable=False)
+    domain_id: Mapped[str] = mapped_column("domain_id", BigInteger, ForeignKey("domain.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
+    status: Mapped[Status] = mapped_column(
+        "status", Enum(Status), nullable=False, default=Status.ACTIVE
+    )
     created_at: Mapped[datetime] = mapped_column("created_at", DateTime, nullable=False, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True, default=None)
+
+    domain: Mapped["Domain"] = relationship("Domain", lazy="select")
