@@ -3,8 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Query
 
 from router.project.request import ProjectUpdateRequest
-from router.project.response import ProjectListResponse, ProjectResponse, ProjectAccountAssignResponse, \
-    ProjectAccountRemoveResponse
+from router.project.response import ProjectListResponse, ProjectResponse
 
 router = APIRouter(prefix="/project", tags=["project"])
 
@@ -52,26 +51,24 @@ async def update_project(request: ProjectUpdateRequest) -> ProjectResponse:
 
 
 @router.post(
-    "/{project_id}/users/{user_id}/roles/{role_id}",
-    response_model=ProjectAccountAssignResponse,
+    "/{project_id}/users/{user_id}",
     summary="프로젝트에 계정 소속",
     responses={
-        404: {"description": "프로젝트, 계정 또는 role이 없는 경우"},
+        404: {"description": "프로젝트, 계정이 없는 경우"},
         409: {"description": "이미 소속된 경우"}
     }
 )
-async def assign_account_to_project() -> ProjectAccountAssignResponse:
+async def assign_account_to_project():
     raise NotImplementedError()
 
 
 @router.delete(
-    "/{project_id}/users/{user_id/roles/{role_id}",
-    response_model=ProjectAccountRemoveResponse,
+    "/{project_id}/users/{user_id}",
     summary="프로젝트에서 계정 제외",
     responses={
-        404: {"description": "프로젝트, 계정 또는 role이 없는 경우"},
+        404: {"description": "프로젝트, 계정이 없는 경우"},
         409: {"description": "해당 계정이 이 프로젝트에 소속되어 있지 않은 경우"}
     }
 )
-async def remove_account_from_project() -> ProjectAccountRemoveResponse:
+async def remove_account_from_project():
     raise NotImplementedError()
