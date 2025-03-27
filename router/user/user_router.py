@@ -60,3 +60,13 @@ def create_user(request: CreateUserRequest) -> UserResponse:
 def update_user(user_id: int, request: UpdateUserRequest) -> UserResponse:
     raise NotImplementedError()
 
+
+@router.delete(
+    path="/{user_id}", status_code=204,
+    summary="유저 삭제",
+    responses={
+        409: {"description": "마지막 남은 계정을 삭제하려고 하는 경우"}
+    }
+)
+def delete_user(user_id: int) -> None:
+    raise NotImplementedError()
