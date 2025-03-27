@@ -26,3 +26,11 @@ class ProjectResponse(BaseModel):
 
 class ProjectListResponse(BaseModel):
     projects: List[ProjectResponse] = Field(description="프로젝트 목록")
+
+
+class ProjectAccountAssignResponse(BaseModel):
+    message: str = Field(description="결과 메시지", examples=["프로젝트에 계정 소속 완료"])
+
+
+class ProjectAccountRemoveResponse(BaseModel):
+    message: str = Field(description="결과 메시지", examples=["프로젝트에 계정 제외 완료"])
