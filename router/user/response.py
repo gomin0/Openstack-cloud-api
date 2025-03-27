@@ -12,3 +12,7 @@ class UserResponse(BaseModel):
     created_at: datetime = Field(description="생성일")
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(default=None, description="삭제일")
+
+
+class UserListResponse(BaseModel):
+    users: list[UserResponse]
