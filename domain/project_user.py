@@ -1,9 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import String, DateTime, BigInteger, ForeignKey, Enum, CHAR
+from sqlalchemy import DateTime, BigInteger, ForeignKey, CHAR
 from sqlalchemy.orm import Mapped, mapped_column
 
-from domain.status import Status
 from infrastructure.database import Base
 
 
