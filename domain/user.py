@@ -25,4 +25,4 @@ class User(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
 
-    domain: Mapped["Domain"] = relationship("Domain", lazy="select")
+    domain: Mapped[Domain] = relationship("Domain", lazy="select")
