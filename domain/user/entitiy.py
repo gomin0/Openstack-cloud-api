@@ -24,6 +24,6 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    deleted_at: Mapped[datetime] | None = mapped_column("deleted_at", DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
     domain: Mapped[Domain] = relationship("Domain", lazy="select")
