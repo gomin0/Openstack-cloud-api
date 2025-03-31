@@ -13,18 +13,16 @@ from router.user.user_router import router as user_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.include_router(user_router)
-    app.include_router(auth_router)
-    app.include_router(project_router)
-
-    app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
-    app.add_exception_handler(CustomException, custom_exception_handler)
-
     init_async_client()
-
     yield
-
     await close_async_client()
 
 
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(user_router)
+app.include_router(auth_router)
+app.include_router(project_router)
+
+app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
+app.add_exception_handler(CustomException, custom_exception_handler)
