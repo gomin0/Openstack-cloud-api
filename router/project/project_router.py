@@ -5,7 +5,7 @@ from domain.project.enum import ProjectSortOption
 from router.project.request import ProjectUpdateRequest
 from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
 
-router = APIRouter(prefix="/project", tags=["project"])
+router = APIRouter(prefix="/projects", tags=["project"])
 
 
 @router.get(
