@@ -3,8 +3,8 @@ from datetime import datetime
 from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from domain.domain import Domain
-from domain.entity_status import EntityStatus
+from domain.domain.entity import Domain
+from domain.enum import EntityStatus
 from infrastructure.database import Base
 
 

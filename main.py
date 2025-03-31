@@ -6,9 +6,9 @@ from fastapi.exceptions import RequestValidationError
 from exception.base_exception import CustomException
 from exception.exception_handler import custom_validation_error_handler, custom_exception_handler
 from infrastructure.async_client import init_async_client, close_async_client
-from router.auth.auth_router import router as auth_router
-from router.project.project_router import router as project_router
-from router.user.user_router import router as user_router
+from router.auth.router import router as auth_router
+from router.project.router import router as project_router
+from router.user.router import router as user_router
 
 
 @asynccontextmanager
