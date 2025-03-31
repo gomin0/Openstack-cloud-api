@@ -6,7 +6,7 @@ from router.auth.response import LoginResponse
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.get(
+@router.post(
     path="/login", status_code=200,
     responses={
         401: {"description": "인증 정보가 잘못된 경우"},
