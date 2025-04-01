@@ -1,3 +1,5 @@
+import inspect
+from functools import wraps
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
@@ -18,10 +20,53 @@ AsyncSessionLocal: sessionmaker[AsyncSession] = sessionmaker(
     class_=AsyncSession,
     autocommit=False,
     autoflush=False,
+    expire_on_commit=False,
 )
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession]:
     async with AsyncSessionLocal() as session:
-        async with session.begin():
-            yield session
+        yield session
+
+
+def transactional():
+    """
+    비동기 함수(`async def`)에 붙여 사용한다.
+
+    `@transactional`은 parameter에 있는 임의의 `AsyncSession` 객체를 사용하여 트랜잭션을 관리한다.
+
+    `@transactional()` decorator가 붙은 함수는 시작 시 트랜잭션이 명시적으로 시작(begin)되며,
+    함수 종료 시 자동으로 commit or rollback 된다.
+
+    :author woody ju.jeong@gabia.com
+    :raise ValueError: `AsyncSession` type의 parameter가 없거나 None인 경우
+    """
+
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            func_signature = inspect.signature(func)
+            bound_args = func_signature.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+
+            session = None
+            for name, value in bound_args.arguments.items():
+                if isinstance(value, AsyncSession):
+                    session = value
+                    break
+
+            if session is None:
+                raise ValueError("transactional decorator 사용을 위해서는 함수에 AsyncSession type의 parameter가 존재해야 합니다.")
+
+            try:
+                await session.begin()
+                result = await func(*args, **kwargs)
+                await session.commit()
+                return result
+            except Exception:
+                await session.rollback()
+                raise
+
+        return wrapper
+
+    return decorator
