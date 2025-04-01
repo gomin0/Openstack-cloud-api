@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Query, Path
+from fastapi import APIRouter, Query, Path, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.project_service import ProjectService
 from domain.enum import SortOrder
+from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
+from infrastructure.database import get_db_session
 from router.project.request import ProjectUpdateRequest
 from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
 
@@ -21,8 +25,13 @@ async def get_projects(
     name_like: str | None = Query(default=None),
     sort_by: ProjectSortOption = Query(default=ProjectSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
+    project_service: ProjectService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> ProjectListResponse:
-    raise NotImplementedError()
+    projects = await project_service.find_projects(session, ids, name, name_like, sort_by, order)
+    return ProjectListResponse(
+        projects=[ProjectDetailResponse.model_validate(project) for project in projects]
+    )
 
 
 @router.get(
@@ -33,9 +42,12 @@ async def get_projects(
     }
 )
 async def get_project(
-    project_id: int = Path(description="프로젝트 ID")
+    project_id: int = Path(description="프로젝트 ID"),
+    project_service: ProjectService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> ProjectDetailResponse:
-    raise NotImplementedError()
+    project: Project = await project_service.get_project(session, project_id=project_id)
+    return ProjectDetailResponse.model_validate(project)
 
 
 @router.put(
