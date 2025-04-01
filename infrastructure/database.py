@@ -1,12 +1,11 @@
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from common.envs import get_envs
 
 envs = get_envs()
-Base = declarative_base()
 
 DATABASE_URL = (
     "mysql+aiomysql://"

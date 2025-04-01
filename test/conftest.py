@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from starlette.testclient import TestClient
 from testcontainers.mysql import MySqlContainer
 
-from infrastructure.database import Base
+from domain.entity import Base
 from infrastructure.database import get_db_session
 from main import app
 

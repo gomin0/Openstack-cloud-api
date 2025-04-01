@@ -4,8 +4,8 @@ from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.domain.entity import Domain
+from domain.entity import Base
 from domain.enum import EntityStatus
-from infrastructure.database import Base
 
 
 class User(Base):
