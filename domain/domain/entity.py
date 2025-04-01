@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import String, DateTime, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column
 
-from domain.entity_status import EntityStatus
+from domain.enum import EntityStatus
 from infrastructure.database import Base
 
 
@@ -20,4 +20,4 @@ class Domain(Base):
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
-    deleted_at: Mapped[datetime] | None = mapped_column("deleted_at", DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)

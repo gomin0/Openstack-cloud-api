@@ -1,0 +1,19 @@
+from pydantic import BaseModel, Field
+
+
+class SignUpRequest(BaseModel):
+    account_id: str = Field(max_length=20, description="로그인 id", examples=["example1234"])
+    password: str = Field(description="비밀번호", examples=["1q2w3e4r"])
+    name: str = Field(max_length=15, description="이름", examples=["woody"])
+
+
+class CreateUserRequest(BaseModel):
+    account_id: str = Field(max_length=20, description="로그인 id", examples=["example1234"])
+    password: str = Field(description="비밀번호", examples=["1q2w3e4r"])
+    name: str = Field(max_length=15, description="이름", examples=["woody"])
+    project_id: int | None = Field(default=None, description="기본 소속 프로젝트의 id", examples=["1"])
+
+
+class UpdateUserRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=15, description="이름", examples=["woody"])
+    password: str | None = Field(default=None, description="비밀번호", examples=["1q2w3e4r"])
