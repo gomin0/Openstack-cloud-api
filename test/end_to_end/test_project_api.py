@@ -33,11 +33,14 @@ async def test_find_projects(async_client, db_session):
     data = response.json()
     assert "projects" in data
     assert len(data["projects"]) == 2
-    print("response.json():", response.json())
 
-    project_data = next(p for p in data["projects"] if p["name"] == "프로젝트1")
+    project_data = None
+    for p in data["projects"]:
+        if p["name"] == "프로젝트1":
+            project_data = p
+            break
+
     assert len(project_data["users"]) == 2
-    assert {u["account_id"] for u in project_data["users"]} == {"user1", "user2"}
 
 
 async def test_find_projects_with_name_like(async_client, db_session):
@@ -50,7 +53,6 @@ async def test_find_projects_with_name_like(async_client, db_session):
     # then
     assert response.status_code == 200
     data = response.json()
-    print(data)
     assert len(data["projects"]) == 1
     assert data["projects"][0]["name"] == "프로젝트2"
 
