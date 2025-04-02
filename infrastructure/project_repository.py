@@ -1,4 +1,4 @@
-from sqlalchemy import select, Select
+from sqlalchemy import select, Select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
@@ -43,7 +43,7 @@ class ProjectRepository:
 
         query = query.order_by(order_by_column)
 
-        result = await session.execute(query)
+        result: Result[tuple[Project]] = await session.execute(query)
         return list(result.scalars().all())
 
     async def find_by_id(

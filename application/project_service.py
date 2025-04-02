@@ -45,7 +45,7 @@ class ProjectService:
         project_id: int,
         with_relations: bool = False,
     ) -> Project:
-        project: Project = await self.project_repository.find_by_id(
+        project: Project | None = await self.project_repository.find_by_id(
             session=session,
             project_id=project_id,
             with_relations=with_relations
