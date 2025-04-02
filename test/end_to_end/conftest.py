@@ -10,14 +10,14 @@ from infrastructure.database import get_db_session
 from main import app
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def mysql_container():
     with MySqlContainer("mysql:8.0") as container:
         container.start()
         yield container
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def async_engine(mysql_container):
     async_db_url: str = mysql_container.get_connection_url().replace("mysql://", "mysql+aiomysql://")
     engine = create_async_engine(url=async_db_url, echo=True)
@@ -27,7 +27,7 @@ async def async_engine(mysql_container):
     await engine.dispose()
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture(scope="session")
 async def async_session_maker(async_engine):
     yield sessionmaker(
         bind=async_engine,
@@ -39,10 +39,18 @@ async def async_session_maker(async_engine):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def async_db_session(async_session_maker):
+async def db_session(async_session_maker):
     async with async_session_maker() as session:
         yield session
         await session.rollback()
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def clean_data_before_test(db_session):
+    for table in reversed(Base.metadata.sorted_tables):
+        await db_session.execute(table.delete())
+    await db_session.commit()
+    yield
 
 
 @pytest_asyncio.fixture(scope="function")
