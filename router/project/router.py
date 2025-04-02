@@ -28,7 +28,7 @@ async def find_projects(
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session)
 ) -> ProjectListResponse:
-    projects = await project_service.find_projects(session, ids, name, name_like, sort_by, order)
+    projects: list[Project] = await project_service.find_projects(session, ids, name, name_like, sort_by, order)
     return ProjectListResponse(
         projects=[ProjectDetailResponse.model_validate(project) for project in projects]
     )
