@@ -28,8 +28,14 @@ async def find_projects(
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session)
 ) -> ProjectListResponse:
-    projects: list[Project] = await project_service.find_projects(session, ids, name, name_like, sort_by, order,
-                                                                  with_relations=True)
+    projects: list[Project] = await project_service.find_projects(
+        session=session,
+        ids=ids,
+        name=name,
+        name_like=name_like,
+        sort_by=sort_by,
+        order=order,
+        with_relations=True)
     return ProjectListResponse(
         projects=[ProjectDetailResponse.model_validate(project) for project in projects]
     )
@@ -47,7 +53,10 @@ async def get_project(
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session)
 ) -> ProjectDetailResponse:
-    project: Project = await project_service.get_project(session, project_id=project_id, with_relations=True)
+    project: Project = await project_service.get_project(
+        session=session,
+        project_id=project_id,
+        with_relations=True)
     return ProjectDetailResponse.model_validate(project)
 
 
