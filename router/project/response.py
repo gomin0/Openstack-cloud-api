@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
 class ProjectResponse(BaseModel):
     id: int = Field(description="프로젝트 id", examples=[1])
     openstack_id: str = Field(description="프로젝트 uuid", examples=["779b35a7173444e387a7f34134a56e31"])
+    name: str = Field(description="프로젝트 이름")
     domain_id: int = Field(description="프로젝트가 속한 도메인 정보")
     created_at: datetime = Field(description="생성일")
     updated_at: datetime = Field(description="수정일")
@@ -39,6 +40,7 @@ class ProjectResponse(BaseModel):
 class ProjectDetailResponse(BaseModel):
     id: int = Field(description="프로젝트 id", examples=[1])
     openstack_id: str = Field(description="프로젝트 uuid", examples=["779b35a7173444e387a7f34134a56e31"])
+    name: str = Field(description="프로젝트 이름")
     domain: DomainResponse = Field(description="프로젝트가 속한 도메인 정보")
     accounts: list[UserResponse] = Field(alias="users", description="프로젝트에 속한 계정 목록")
     created_at: datetime = Field(description="생성일")
