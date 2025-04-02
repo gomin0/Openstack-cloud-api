@@ -19,7 +19,7 @@ router = APIRouter(prefix="/projects", tags=["project"])
         422: {"description": "쿼리 파라미터 값이나 형식이 잘못된 경우"}
     }
 )
-async def get_projects(
+async def find_projects(
     ids: list[int] | None = Query(default=None, description="ID 검색"),
     name: str | None = Query(default=None),
     name_like: str | None = Query(default=None),
