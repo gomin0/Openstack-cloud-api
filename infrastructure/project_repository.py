@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, Select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
@@ -18,7 +18,7 @@ class ProjectRepository:
         order: SortOrder = SortOrder.ASC,
         joined: bool = False
     ) -> list[Project]:
-        query = select(Project)
+        query: Select[tuple[Project]] = select(Project)
 
         if joined:
             query = query.options(
@@ -52,7 +52,7 @@ class ProjectRepository:
         project_id: int,
         joined: bool = False
     ) -> Project | None:
-        query = select(Project).where(Project.id == project_id)
+        query: Select[tuple[Project]] = select(Project).where(Project.id == project_id)
 
         if joined:
             query = query.options(
