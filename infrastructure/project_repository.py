@@ -16,11 +16,11 @@ class ProjectRepository:
         name_like: str | None = None,
         sort_by: ProjectSortOption = ProjectSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
-        joined: bool = False
+        with_relations: bool = False
     ) -> list[Project]:
         query: Select[tuple[Project]] = select(Project)
 
-        if joined:
+        if with_relations:
             query = query.options(
                 joinedload(Project.domain),
                 selectinload(Project.linked_users).selectinload(ProjectUser.user)
@@ -50,11 +50,11 @@ class ProjectRepository:
         self,
         session: AsyncSession,
         project_id: int,
-        joined: bool = False
+        with_relations: bool = False
     ) -> Project | None:
         query: Select[tuple[Project]] = select(Project).where(Project.id == project_id)
 
-        if joined:
+        if with_relations:
             query = query.options(
                 joinedload(Project.domain),
                 selectinload(Project.linked_users).selectinload(ProjectUser.user)

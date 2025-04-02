@@ -25,9 +25,17 @@ class ProjectService:
         name_like: str | None = None,
         sort_by: ProjectSortOption = ProjectSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
+        with_relations: bool = False,
     ) -> list[Project]:
-        projects: list[Project] = await self.project_repository.find_all(session, ids, name, name_like, sort_by, order,
-                                                                         joined=True)
+        projects: list[Project] = await self.project_repository.find_all(
+            session=session,
+            ids=ids,
+            name=name,
+            name_like=name_like,
+            sort_by=sort_by,
+            order=order,
+            with_relations=with_relations
+        )
         return projects
 
     @transactional()
@@ -35,8 +43,13 @@ class ProjectService:
         self,
         session: AsyncSession,
         project_id: int,
+        with_relations: bool = False,
     ) -> Project:
-        project: Project = await self.project_repository.find_by_id(session, project_id, joined=True)
+        project: Project = await self.project_repository.find_by_id(
+            session=session,
+            project_id=project_id,
+            with_relations=with_relations
+        )
 
         if not project:
             raise ProjectNotFoundException()
