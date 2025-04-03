@@ -17,12 +17,21 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
         session=mock_session,
         name_like="a",
         sort_by=ProjectSortOption.NAME,
-        order=SortOrder.ASC
+        order=SortOrder.ASC,
+        with_relations=True
     )
 
     # then
     assert result == [project1, project2]
-    mock_project_repository.find_all.assert_called_once()
+    mock_project_repository.find_all.assert_called_once_with(
+        session=mock_session,
+        ids=None,
+        name=None,
+        name_like="a",
+        sort_by=ProjectSortOption.NAME,
+        order=SortOrder.ASC,
+        with_relations=True
+    )
 
 
 async def test_get_project(mock_session, mock_project_repository, project_service):
@@ -32,14 +41,18 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
     mock_project_repository.find_by_id.return_value = project
 
     # when
-    result = await project_service.get_project(session=mock_session, project_id=1)
+    result = await project_service.get_project(
+        session=mock_session,
+        project_id=1,
+        with_relations=True
+    )
 
     # then
     assert result == project
     mock_project_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         project_id=1,
-        with_relations=False
+        with_relations=True
     )
 
 
@@ -49,4 +62,14 @@ async def test_get_project_fail_not_found(mock_session, mock_project_repository,
 
     # when & then
     with pytest.raises(ProjectNotFoundException):
-        await project_service.get_project(session=mock_session, project_id=999)
+        await project_service.get_project(
+            session=mock_session,
+            project_id=999,
+            with_relations=True
+        )
+
+    mock_project_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        project_id=999,
+        with_relations=True
+    )
