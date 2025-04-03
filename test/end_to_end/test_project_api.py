@@ -86,7 +86,7 @@ async def test_get_project(async_client, db_session):
     assert data["users"][0]["name"] == "ted"
 
 
-async def test_get_project_not_found(async_client):
+async def test_get_project_fail_not_found(async_client):
     # given
     project_id = 999999
 
