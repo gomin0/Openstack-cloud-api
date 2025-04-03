@@ -60,5 +60,5 @@ class ProjectRepository:
                 selectinload(Project.linked_users).selectinload(ProjectUser.user)
             )
 
-        result = await session.execute(query)
+        result: Result[tuple[Project]] = await session.execute(query)
         return result.scalar_one_or_none()
