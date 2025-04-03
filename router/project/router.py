@@ -35,7 +35,8 @@ async def find_projects(
         name_like=name_like,
         sort_by=sort_by,
         order=order,
-        with_relations=True)
+        with_relations=True
+    )
     return ProjectListResponse(
         projects=[ProjectDetailResponse.model_validate(project) for project in projects]
     )
@@ -56,7 +57,8 @@ async def get_project(
     project: Project = await project_service.get_project(
         session=session,
         project_id=project_id,
-        with_relations=True)
+        with_relations=True
+    )
     return ProjectDetailResponse.model_validate(project)
 
 
