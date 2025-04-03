@@ -36,6 +36,8 @@ class ProjectResponse(BaseModel):
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(None, description="삭제일")
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class ProjectDetailResponse(BaseModel):
     id: int = Field(description="프로젝트 id", examples=[1])
@@ -44,8 +46,8 @@ class ProjectDetailResponse(BaseModel):
     domain: DomainResponse = Field(description="프로젝트가 속한 도메인 정보")
     accounts: list[UserResponse] = Field(alias="users", description="프로젝트에 속한 계정 목록")
     created_at: datetime = Field(description="생성일")
-    updated_at: datetime = Field(description="생성일")
-    deleted_at: datetime | None = Field(None, description="생성일")
+    updated_at: datetime = Field(description="수정일")
+    deleted_at: datetime | None = Field(None, description="삭제일")
 
     model_config = ConfigDict(from_attributes=True)
 
