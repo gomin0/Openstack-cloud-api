@@ -2,7 +2,9 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from domain.domain.entity import Domain
 from domain.project.entity import Project
+from domain.user.entitiy import User
 
 
 class DomainResponse(BaseModel):
@@ -50,7 +52,7 @@ class ProjectDetailResponse(BaseModel):
     openstack_id: str = Field(description="프로젝트 uuid", examples=["779b35a7173444e387a7f34134a56e31"])
     name: str = Field(description="프로젝트 이름")
     domain: DomainResponse = Field(description="프로젝트가 속한 도메인 정보")
-    accounts: list[UserResponse] = Field(alias="users", description="프로젝트에 속한 계정 목록")
+    accounts: list[UserResponse] = Field(description="프로젝트에 속한 계정 목록")
     created_at: datetime = Field(description="생성일")
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(None, description="삭제일")
@@ -59,12 +61,14 @@ class ProjectDetailResponse(BaseModel):
 
     @classmethod
     async def from_entity(cls, project: Project) -> "ProjectDetailResponse":
+        users: list[User] = await project.users
+        domain: list[Domain] = await project.domain
         return cls(
             id=project.id,
             openstack_id=project.openstack_id,
             name=project.name,
-            domain=DomainResponse.model_validate(project._domain),
-            users=[UserResponse.model_validate(link._user) for link in project._linked_users],
+            domain=DomainResponse.model_validate(domain),
+            accounts=[UserResponse.model_validate(user) for user in users],
             created_at=project.created_at,
             updated_at=project.updated_at,
             deleted_at=project.deleted_at,
