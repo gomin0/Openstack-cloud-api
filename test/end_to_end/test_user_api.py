@@ -39,19 +39,19 @@ async def test_find_users(async_client, db_session):
         if u["name"] == "사용자1":
             user_data = u
             break
-
     assert len(user_data["projects"]) == 2
 
 
 async def test_find_users_with_account_id(async_client, db_session):
     # given
     await find_users_setup(db_session)
+    user_id = "user1"
 
     # when
-    response = await async_client.get("/users?account_id=user1")
+    response = await async_client.get(f"/users?account_id={user_id}")
 
     # then
     assert response.status_code == 200
     data = response.json()
     assert len(data["users"]) == 1
-    assert data["users"][0]["account_id"] == "user1"
+    assert data["users"][0]["account_id"] == user_id
