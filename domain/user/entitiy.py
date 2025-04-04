@@ -28,4 +28,4 @@ class User(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
-    domain: Mapped[Domain] = relationship("Domain", lazy="select")
+    _domain: Mapped[Domain] = relationship("Domain", lazy="select")

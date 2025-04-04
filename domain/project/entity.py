@@ -18,7 +18,7 @@ class Project(Base):
     domain_id: Mapped[int] = mapped_column("domain_id", BigInteger, ForeignKey("domain.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     status: Mapped[str] = mapped_column(
-        "status", String(15), nullable=False, default=EntityStatus.ACTIVE
+        "status", String(15), nullable=False, default=EntityStatus.ACTIVE.value
     )
     created_at: Mapped[datetime] = mapped_column(
         "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
