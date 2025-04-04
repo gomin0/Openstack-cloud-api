@@ -38,7 +38,7 @@ class UserRepository:
             UserSortOption.CREATED_AT: User.created_at,
             UserSortOption.ACCOUNT_ID: User.account_id,
             UserSortOption.NAME: User.name
-        }.get(sort_by, User.created_at)
+        }.get(sort_by)
 
         if sort_order == SortOrder.DESC:
             order_by_column = order_by_column.desc()
