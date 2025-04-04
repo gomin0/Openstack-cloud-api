@@ -1,4 +1,4 @@
-from sqlalchemy import select, Select, Result
+from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -12,7 +12,7 @@ class UserRepository:
     async def find_all(
         self,
         session: AsyncSession,
-        openstack_id: str | None = None,
+        user_id: int | None = None,
         account_id: str | None = None,
         name: None | str = None,
         sort_by: UserSortOption = UserSortOption.CREATED_AT,
@@ -27,11 +27,10 @@ class UserRepository:
                 selectinload(User._linked_projects).selectinload(ProjectUser._project)
             )
 
-        if openstack_id:
-            query = query.where(User.openstack_id == openstack_id)
+        if user_id:
+            query = query.where(User.id == user_id)
         if account_id:
             query = query.where(User.account_id == account_id)
-
         if name:
             query = query.where(User.name == name)
 
@@ -46,5 +45,5 @@ class UserRepository:
 
         query = query.order_by(order_by_column)
 
-        result: Result[tuple[User]] = await session.execute(query)
-        return list(result.scalars().all())
+        result: ScalarResult[User] = await session.scalars(query)
+        return list(result.all())

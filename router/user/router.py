@@ -17,7 +17,7 @@ router = APIRouter(prefix="/users", tags=["user"])
     summary="유저 목록 조회"
 )
 async def find_users(
-    openstack_id: str | None = Query(None),
+    user_id: int | None = Query(None),
     account_id: str | None = Query(None),
     name: str | None = Query(None),
     sort_by: UserSortOption = Query(UserSortOption.CREATED_AT),
@@ -27,7 +27,7 @@ async def find_users(
 ) -> UserDetailsResponse:
     users: list[User] = await user_service.find_users(
         session=session,
-        openstack_id=openstack_id,
+        user_id=user_id,
         account_id=account_id,
         name=name,
         sort_by=sort_by,

@@ -19,7 +19,7 @@ class UserService:
     async def find_users(
         self,
         session: AsyncSession,
-        openstack_id: str | None = None,
+        user_id: int | None = None,
         account_id: str | None = None,
         name: str | None = None,
         sort_by: UserSortOption = UserSortOption.CREATED_AT,
@@ -28,7 +28,7 @@ class UserService:
     ) -> list[User]:
         users: list[User] = await self.user_repository.find_all(
             session=session,
-            openstack_id=openstack_id,
+            user_id=user_id,
             account_id=account_id,
             name=name,
             sort_by=sort_by,
