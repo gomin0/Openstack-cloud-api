@@ -38,7 +38,7 @@ async def find_projects(
         with_relations=True
     )
     return ProjectListResponse(
-        projects=[ProjectDetailResponse.model_validate(project) for project in projects]
+        projects=[await ProjectDetailResponse.from_entity(project) for project in projects]
     )
 
 
@@ -59,7 +59,7 @@ async def get_project(
         project_id=project_id,
         with_relations=True
     )
-    return ProjectDetailResponse.model_validate(project)
+    return await ProjectDetailResponse.from_entity(project)
 
 
 @router.put(

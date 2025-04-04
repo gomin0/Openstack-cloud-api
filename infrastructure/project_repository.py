@@ -22,8 +22,8 @@ class ProjectRepository:
 
         if with_relations:
             query = query.options(
-                joinedload(Project.domain),
-                selectinload(Project.linked_users).selectinload(ProjectUser.user)
+                joinedload(Project._domain),
+                selectinload(Project._linked_users).selectinload(ProjectUser._user)
             )
 
         if ids:
@@ -56,8 +56,8 @@ class ProjectRepository:
 
         if with_relations:
             query = query.options(
-                joinedload(Project.domain),
-                selectinload(Project.linked_users).selectinload(ProjectUser.user)
+                joinedload(Project._domain),
+                selectinload(Project._linked_users).selectinload(ProjectUser._user)
             )
 
         result: Result[tuple[Project]] = await session.execute(query)

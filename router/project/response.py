@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from domain.project.entity import Project
+
 
 class DomainResponse(BaseModel):
     id: int = Field(description="도메인 ID", examples=[1])
@@ -38,6 +40,10 @@ class ProjectResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @classmethod
+    async def from_entity(cls, project: Project) -> "ProjectResponse":
+        return cls.model_validate(project)
+
 
 class ProjectDetailResponse(BaseModel):
     id: int = Field(description="프로젝트 id", examples=[1])
@@ -50,6 +56,19 @@ class ProjectDetailResponse(BaseModel):
     deleted_at: datetime | None = Field(None, description="삭제일")
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    async def from_entity(cls, project: Project) -> "ProjectDetailResponse":
+        return cls(
+            id=project.id,
+            openstack_id=project.openstack_id,
+            name=project.name,
+            domain=DomainResponse.model_validate(project._domain),
+            users=[UserResponse.model_validate(link._user) for link in project._linked_users],
+            created_at=project.created_at,
+            updated_at=project.updated_at,
+            deleted_at=project.deleted_at,
+        )
 
 
 class ProjectListResponse(BaseModel):
