@@ -17,6 +17,10 @@ class DomainResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @classmethod
+    def from_entity(cls, domain: Domain) -> "DomainResponse":
+        return cls.model_validate(domain)
+
 
 class UserResponse(BaseModel):
     id: int = Field(description="id", examples=["1"])
@@ -29,6 +33,10 @@ class UserResponse(BaseModel):
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserResponse":
+        return cls.model_validate(user)
 
 
 class ProjectResponse(BaseModel):
@@ -43,7 +51,7 @@ class ProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    async def from_entity(cls, project: Project) -> "ProjectResponse":
+    def from_entity(cls, project: Project) -> "ProjectResponse":
         return cls.model_validate(project)
 
 
@@ -62,13 +70,13 @@ class ProjectDetailResponse(BaseModel):
     @classmethod
     async def from_entity(cls, project: Project) -> "ProjectDetailResponse":
         users: list[User] = await project.users
-        domain: list[Domain] = await project.domain
+        domain: Domain = await project.domain
         return cls(
             id=project.id,
             openstack_id=project.openstack_id,
             name=project.name,
-            domain=DomainResponse.model_validate(domain),
-            accounts=[UserResponse.model_validate(user) for user in users],
+            domain=DomainResponse.from_entity(domain),
+            accounts=[UserResponse.from_entity(user) for user in users],
             created_at=project.created_at,
             updated_at=project.updated_at,
             deleted_at=project.deleted_at,
