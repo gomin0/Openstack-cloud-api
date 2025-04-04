@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Query, Path
+from fastapi import APIRouter, Query, Path, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.project_service import ProjectService
 from domain.enum import SortOrder
+from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
+from infrastructure.database import get_db_session
 from router.project.request import ProjectUpdateRequest
 from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
 
@@ -15,14 +19,27 @@ router = APIRouter(prefix="/projects", tags=["project"])
         422: {"description": "쿼리 파라미터 값이나 형식이 잘못된 경우"}
     }
 )
-async def get_projects(
+async def find_projects(
     ids: list[int] | None = Query(default=None, description="ID 검색"),
     name: str | None = Query(default=None),
     name_like: str | None = Query(default=None),
     sort_by: ProjectSortOption = Query(default=ProjectSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
+    project_service: ProjectService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> ProjectListResponse:
-    raise NotImplementedError()
+    projects: list[Project] = await project_service.find_projects(
+        session=session,
+        ids=ids,
+        name=name,
+        name_like=name_like,
+        sort_by=sort_by,
+        order=order,
+        with_relations=True
+    )
+    return ProjectListResponse(
+        projects=[ProjectDetailResponse.model_validate(project) for project in projects]
+    )
 
 
 @router.get(
@@ -33,9 +50,16 @@ async def get_projects(
     }
 )
 async def get_project(
-    project_id: int = Path(description="프로젝트 ID")
+    project_id: int = Path(description="프로젝트 ID"),
+    project_service: ProjectService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> ProjectDetailResponse:
-    raise NotImplementedError()
+    project: Project = await project_service.get_project(
+        session=session,
+        project_id=project_id,
+        with_relations=True
+    )
+    return ProjectDetailResponse.model_validate(project)
 
 
 @router.put(
