@@ -20,13 +20,13 @@ def mock_project_repository():
 
 
 @pytest.fixture(scope='function')
-def project_service(mock_project_repository):
-    return ProjectService(project_repository=mock_project_repository)
+def mock_user_repository():
+    return AsyncMock()
 
 
 @pytest.fixture(scope='function')
-def mock_user_repository():
-    return AsyncMock()
+def project_service(mock_project_repository):
+    return ProjectService(project_repository=mock_project_repository)
 
 
 @pytest.fixture(scope='function')

@@ -23,7 +23,7 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
     assert result == [user1, user2]
     mock_user_repository.find_all.assert_called_once_with(
         session=mock_session,
-        openstack_id=None,
+        user_id=None,
         account_id=account_id,
         name=None,
         sort_by=UserSortOption.ACCOUNT_ID,
