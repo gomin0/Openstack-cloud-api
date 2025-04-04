@@ -50,9 +50,9 @@ class UserRepository:
 
     async def find_by_id(
         self,
-        session,
-        user_id,
-        with_relations
+        session: AsyncSession,
+        user_id: int,
+        with_relations: bool = False,
     ) -> User | None:
         query: Select[tuple[User]] = select(User).where(User.id == user_id)
 
