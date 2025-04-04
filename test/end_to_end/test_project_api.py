@@ -40,7 +40,7 @@ async def test_find_projects(async_client, db_session):
             project_data = p
             break
 
-    assert len(project_data["users"]) == 2
+    assert len(project_data["accounts"]) == 2
 
 
 async def test_find_projects_with_name_like(async_client, db_session):
@@ -82,8 +82,8 @@ async def test_get_project(async_client, db_session):
     assert data["name"] == "프로젝트"
     assert data["domain"]["id"] == domain.id
     assert data["domain"]["name"] == "도메인2"
-    assert len(data["users"]) == 1
-    assert data["users"][0]["name"] == "ted"
+    assert len(data["accounts"]) == 1
+    assert data["accounts"][0]["name"] == "ted"
 
 
 async def test_get_project_fail_not_found(async_client):
