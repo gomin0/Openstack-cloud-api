@@ -38,7 +38,6 @@ def transactional():
     `@transactional()` decorator가 붙은 함수는 시작 시 트랜잭션이 명시적으로 시작(begin)되며,
     함수 종료 시 자동으로 commit or rollback 된다.
 
-    :author woody ju.jeong@gabia.com
     :raise ValueError: `AsyncSession` type의 parameter가 없거나 None인 경우
     """
 
@@ -59,7 +58,6 @@ def transactional():
                 raise ValueError("transactional decorator 사용을 위해서는 함수에 AsyncSession type의 parameter가 존재해야 합니다.")
 
             try:
-                await session.begin()
                 result = await func(*args, **kwargs)
                 await session.commit()
                 return result
