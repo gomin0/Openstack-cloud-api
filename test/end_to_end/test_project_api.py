@@ -6,6 +6,7 @@ from domain.user.entitiy import User
 async def find_projects_setup(db_session):
     domain = Domain(openstack_id="domain123", name="도메인1")
     db_session.add_all([domain])
+    await db_session.flush()
 
     user1 = User(openstack_id="user123", domain_id=domain.id, account_id="user1", name="사용자1", password="@!#32")
     user2 = User(openstack_id="user456", domain_id=domain.id, account_id="user2", name="사용자2", password="@!@3")
@@ -62,6 +63,7 @@ async def test_get_project(async_client, db_session):
     # given
     domain = Domain(openstack_id="domainabc", name="도메인2")
     db_session.add_all([domain])
+    await db_session.flush()
 
     user = User(openstack_id="ted123", domain_id=domain.id, account_id="abc", name="ted", password="@!#32")
     project = Project(openstack_id="project12345", domain_id=domain.id, name="프로젝트")

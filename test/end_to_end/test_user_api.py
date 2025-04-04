@@ -6,6 +6,7 @@ from domain.user.entitiy import User
 async def find_users_setup(db_session):
     domain = Domain(openstack_id="domain123", name="도메인1")
     db_session.add_all([domain])
+    await db_session.flush()
 
     user1 = User(openstack_id="user123", domain_id=domain.id, account_id="user1", name="사용자1", password="@!#32")
     user2 = User(openstack_id="user1234", domain_id=domain.id, account_id="user2", name="사용자1", password="@!#32")
