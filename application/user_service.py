@@ -5,7 +5,7 @@ from domain.enum import SortOrder
 from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
 from infrastructure.database import transactional
-from infrastructure.user_repository import UserRepository
+from infrastructure.user.repository import UserRepository
 
 
 class UserService:
