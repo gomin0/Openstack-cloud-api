@@ -56,7 +56,12 @@ class ProjectUser(Base):
     )
 
     _user: Mapped[User] = relationship("User", lazy="select")
+    _project: Mapped[Project] = relationship("Project", lazy="select")
 
     @async_property
     async def user(self) -> User:
         return await self.awaitable_attrs._user
+
+    @async_property
+    async def project(self) -> Project:
+        return await self.awaitable_attrs._project
