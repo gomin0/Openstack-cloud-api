@@ -22,7 +22,7 @@ class Project(Base):
         "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now(timezone.utc)
+        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
