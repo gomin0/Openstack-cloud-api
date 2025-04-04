@@ -60,15 +60,19 @@ async def test_find_users_with_account_id(async_client, db_session):
 async def test_get_user(async_client, db_session):
     # given
     domain = Domain(openstack_id="domainabc", name="도메인2")
-    user = User(openstack_id="ted123", _domain=domain, account_id="abc", name="ted", password="@!#32")
-    project1 = Project(openstack_id="project12345", _domain=domain, name="프로젝트1")
-    project2 = Project(openstack_id="project123456", _domain=domain, name="프로젝트2")
 
-    db_session.add_all([domain, user, project1, project2])
+    db_session.add_all([domain])
     await db_session.flush()
 
-    project_user1 = ProjectUser(_user=user, project_id=project1.id, role_id="role123")
-    project_user2 = ProjectUser(_user=user, project_id=project2.id, role_id="role123")
+    user = User(openstack_id="ted123", domain_id=domain.id, account_id="abc", name="ted", password="@!#32")
+    project1 = Project(openstack_id="project12345", domain_id=domain.id, name="프로젝트1")
+    project2 = Project(openstack_id="project123456", domain_id=domain.id, name="프로젝트2")
+
+    db_session.add_all([user, project1, project2])
+    await db_session.flush()
+
+    project_user1 = ProjectUser(user_id=user.id, project_id=project1.id, role_id="role123")
+    project_user2 = ProjectUser(user_id=user.id, project_id=project2.id, role_id="role123")
 
     db_session.add_all([project_user1, project_user2])
     await db_session.flush()
