@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -18,9 +18,11 @@ class Project(Base):
     status: Mapped[str] = mapped_column(
         "status", String(15), nullable=False, default=EntityStatus.ACTIVE
     )
-    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, nullable=False, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(
+        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
@@ -34,7 +36,9 @@ class ProjectUser(Base):
     user_id: Mapped[str] = mapped_column("user_id", BigInteger, ForeignKey("user.id"), nullable=False)
     project_id: Mapped[str] = mapped_column("project_id", BigInteger, ForeignKey("project.id"), nullable=False)
     role_id: Mapped[str] = mapped_column("role_id", CHAR(32), ForeignKey("role.id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, nullable=False, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(
+        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now(timezone.utc)
     )
