@@ -1,7 +1,11 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.user_service import UserService
 from domain.enum import SortOrder
+from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
+from infrastructure.database import get_db_session
 from router.user.request import SignUpRequest, CreateUserRequest, UpdateUserRequest
 from router.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
 
@@ -12,14 +16,27 @@ router = APIRouter(prefix="/users", tags=["user"])
     path="", status_code=200,
     summary="유저 목록 조회"
 )
-def find_users(
-    user_id: str | None = Query(None),
+async def find_users(
+    user_id: int | None = Query(None),
     account_id: str | None = Query(None),
     name: str | None = Query(None),
     sort_by: UserSortOption = Query(UserSortOption.CREATED_AT),
     sort_order: SortOrder = Query(SortOrder.ASC),
+    user_service: UserService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> UserDetailsResponse:
-    raise NotImplementedError()
+    users: list[User] = await user_service.find_users(
+        session=session,
+        user_id=user_id,
+        account_id=account_id,
+        name=name,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        with_relations=True
+    )
+    return UserDetailsResponse(
+        users=[await UserDetailResponse.from_entity(user) for user in users]
+    )
 
 
 @router.get(
