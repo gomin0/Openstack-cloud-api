@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column
@@ -16,8 +16,10 @@ class Domain(Base):
     status: Mapped[str] = mapped_column(
         "status", String(15), nullable=False, default=EntityStatus.ACTIVE
     )
-    created_at: Mapped[datetime] = mapped_column("created_at", DateTime, nullable=False, default=datetime.now)
+    created_at: Mapped[datetime] = mapped_column(
+        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
+        "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
