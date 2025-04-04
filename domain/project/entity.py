@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from async_property import async_property
 from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,12 +26,17 @@ class Project(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
-    domain: Mapped[Domain] = relationship("Domain", lazy="select")
-    linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select")
+    _domain: Mapped[Domain] = relationship("Domain", lazy="select")
+    _linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select")
 
-    @property
-    def users(self) -> list[User]:
-        return [linked_user.user for linked_user in self.linked_users]
+    @async_property
+    async def domain(self) -> Domain:
+        return await self.awaitable_attrs._domain
+
+    @async_property
+    async def users(self) -> list[User]:
+        linked_users = await self.awaitable_attrs._linked_users
+        return [await link.awaitable_attrs.user for link in linked_users]
 
 
 class ProjectUser(Base):
@@ -46,3 +52,8 @@ class ProjectUser(Base):
     )
 
     user: Mapped[User] = relationship("User", lazy="select")
+    _user: Mapped[User] = relationship("User", lazy="select")
+
+    @async_property
+    async def user(self) -> User:
+        return await self.awaitable_attrs._user
