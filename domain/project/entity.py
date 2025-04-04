@@ -37,7 +37,7 @@ class Project(Base):
 
     @async_property
     async def users(self) -> list[User]:
-        linked_users = await self.awaitable_attrs._linked_users
+        linked_users: list[ProjectUser] = await self.awaitable_attrs._linked_users
         return [await link.user for link in linked_users]
 
 
