@@ -3,24 +3,24 @@ from domain.project.entity import Project, ProjectUser
 from domain.user.entitiy import User
 
 
-async def find_projects_setup(async_db_session):
+async def find_projects_setup(db_session):
     domain = Domain(openstack_id="domain123", name="도메인1")
-    async_db_session.add_all([domain])
+    db_session.add_all([domain])
 
     user1 = User(openstack_id="user123", domain_id=domain.id, account_id="user1", name="사용자1", password="@!#32")
     user2 = User(openstack_id="user456", domain_id=domain.id, account_id="user2", name="사용자2", password="@!@3")
     project1 = Project(openstack_id="project123", domain_id=domain.id, name="프로젝트1")
     project2 = Project(openstack_id="project456", domain_id=domain.id, name="프로젝트2")
 
-    async_db_session.add_all([domain, user1, user2, project1, project2])
-    await async_db_session.flush()
+    db_session.add_all([domain, user1, user2, project1, project2])
+    await db_session.flush()
 
     project_user1 = ProjectUser(user_id=user1.id, project_id=project1.id, role_id="role123")
     project_user2 = ProjectUser(user_id=user2.id, project_id=project1.id, role_id="role123")
 
-    async_db_session.add_all([project_user1, project_user2])
-    await async_db_session.flush()
-    await async_db_session.commit()
+    db_session.add_all([project_user1, project_user2])
+    await db_session.flush()
+    await db_session.commit()
 
 
 async def test_find_projects(async_client, db_session):
