@@ -1,6 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+
+from domain.domain.entity import Domain
+from domain.project.entity import Project
+from domain.user.entitiy import User
 
 
 class DomainResponse(BaseModel):
@@ -11,6 +15,12 @@ class DomainResponse(BaseModel):
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, domain: Domain) -> "DomainResponse":
+        return cls.model_validate(domain)
+
 
 class ProjectResponse(BaseModel):
     id: int = Field(description="프로젝트 id", examples=[1])
@@ -19,6 +29,12 @@ class ProjectResponse(BaseModel):
     created_at: datetime = Field(description="생성일")
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(None, description="삭제일")
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, project: Project) -> "ProjectResponse":
+        return cls.model_validate(project)
 
 
 class UserResponse(BaseModel):
@@ -31,6 +47,12 @@ class UserResponse(BaseModel):
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserResponse":
+        return cls.model_validate(user)
+
 
 class UserDetailResponse(BaseModel):
     id: int = Field(description="id", examples=["1"])
@@ -42,6 +64,24 @@ class UserDetailResponse(BaseModel):
     created_at: datetime = Field(description="생성일")
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(default=None, description="삭제일")
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    async def from_entity(cls, user: User) -> "UserDetailResponse":
+        projects: list[Project] = await user.projects
+        domain: Domain = await user.domain
+        return cls(
+            id=user.id,
+            openstack_id=user.openstack_id,
+            domain=DomainResponse.from_entity(domain),
+            projects=[ProjectResponse.from_entity(project) for project in projects],
+            account_id=user.account_id,
+            name=user.name,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            deleted_at=user.deleted_at,
+        )
 
 
 class UserDetailsResponse(BaseModel):
