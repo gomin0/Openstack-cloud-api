@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
+from async_property import async_property
 from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.domain.entity import Domain
 from domain.entity import Base
 from domain.enum import EntityStatus
+from domain.user.entitiy import User
 
 
 class Project(Base):
@@ -16,7 +18,7 @@ class Project(Base):
     domain_id: Mapped[int] = mapped_column("domain_id", BigInteger, ForeignKey("domain.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     status: Mapped[str] = mapped_column(
-        "status", String(15), nullable=False, default=EntityStatus.ACTIVE
+        "status", String(15), nullable=False, default=EntityStatus.ACTIVE.value
     )
     created_at: Mapped[datetime] = mapped_column(
         "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
@@ -26,7 +28,17 @@ class Project(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
-    domain: Mapped[Domain] = relationship("Domain", lazy="select")
+    _domain: Mapped[Domain] = relationship("Domain", lazy="select")
+    _linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select")
+
+    @async_property
+    async def domain(self) -> Domain:
+        return await self.awaitable_attrs._domain
+
+    @async_property
+    async def users(self) -> list[User]:
+        linked_users = await self.awaitable_attrs._linked_users
+        return [await link.user for link in linked_users]
 
 
 class ProjectUser(Base):
@@ -42,3 +54,9 @@ class ProjectUser(Base):
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
+
+    _user: Mapped[User] = relationship("User", lazy="select")
+
+    @async_property
+    async def user(self) -> User:
+        return await self.awaitable_attrs._user

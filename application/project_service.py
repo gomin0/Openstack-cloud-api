@@ -6,7 +6,7 @@ from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
 from exception.project_exception import ProjectNotFoundException
 from infrastructure.database import transactional
-from infrastructure.project_repository import ProjectRepository
+from infrastructure.project.repository import ProjectRepository
 
 
 class ProjectService:
