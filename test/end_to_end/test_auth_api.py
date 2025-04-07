@@ -24,6 +24,7 @@ async def test_login_success_without_project_id(client, db_session, mock_async_c
     await db_session.commit()
 
     mock_async_client.request.return_value = httpx.Response(
+        request=httpx.Request("POST", "https://keystone/v3/auth/tokens"),
         status_code=201,
         headers={
             "x-subject-token": subject_token,
@@ -32,7 +33,7 @@ async def test_login_success_without_project_id(client, db_session, mock_async_c
             "token": {
                 "expires_at": expected_keystone_token_exp.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             }
-        }
+        },
     )
 
     # when
@@ -66,6 +67,7 @@ async def test_login_success_with_project_id(client, db_session, mock_async_clie
     await db_session.commit()
 
     mock_async_client.request.return_value = httpx.Response(
+        request=httpx.Request("POST", "https://keystone/v3/auth/tokens"),
         status_code=201,
         headers={
             "x-subject-token": subject_token,

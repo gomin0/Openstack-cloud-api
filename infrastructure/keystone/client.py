@@ -23,7 +23,6 @@ class KeystoneClient(OpenStackClient):
             client=client,
             url=self._KEYSTONE_URL + "/v3/auth/tokens",
             method="POST",
-            expected_status_code=201,
             headers={"Content-Type": "application/json"},
             json={
                 "auth": {

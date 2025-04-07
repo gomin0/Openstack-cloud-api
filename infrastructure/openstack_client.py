@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from httpx import AsyncClient, Response
+from httpx import AsyncClient, Response, HTTPStatusError
 
 from exception.openstack_exception import OpenStackException
 
@@ -13,7 +13,6 @@ class OpenStackClient:
         self,
         client: AsyncClient,
         method: str,
-        expected_status_code: int,
         url: str,
         json: dict[str, Any],
         headers: dict[str, Any] | None = None,
@@ -26,7 +25,9 @@ class OpenStackClient:
             json=json,
         )
 
-        if response.status_code != expected_status_code:
+        try:
+            response.raise_for_status()
+        except HTTPStatusError:
             status_code: int = response.status_code
             try:
                 error_message: str = response.json().get("error", {}).get("message", "Unknown error")
