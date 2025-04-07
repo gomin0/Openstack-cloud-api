@@ -1,3 +1,5 @@
+import asyncio
+
 import bcrypt
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +31,8 @@ class AuthService:
         if user is None:
             raise InvalidAuthException()
 
-        is_valid_password: bool = bcrypt.checkpw(
+        is_valid_password: bool = await asyncio.to_thread(
+            bcrypt.checkpw,
             password=password.encode(self.encoding),
             hashed_password=user.password.encode(self.encoding)
         )
