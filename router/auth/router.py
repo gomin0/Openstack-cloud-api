@@ -75,6 +75,6 @@ async def login(
     )
 
     return LoginResponse(
-        user=UserResponse.model_validate(user),
+        user=UserResponse.from_entity(user),
         token=access_token,
     )

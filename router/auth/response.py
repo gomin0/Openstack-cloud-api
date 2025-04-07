@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from domain.user.entitiy import User
+
 
 class UserResponse(BaseModel):
     id: int = Field(description="id", examples=["1"])
@@ -14,6 +16,10 @@ class UserResponse(BaseModel):
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserResponse":
+        return cls.model_validate(user)
 
 
 class LoginResponse(BaseModel):
