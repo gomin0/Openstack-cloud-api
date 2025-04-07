@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class UserResponse(BaseModel):
@@ -13,6 +13,9 @@ class UserResponse(BaseModel):
     updated_at: datetime = Field(description="수정일")
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class LoginResponse(BaseModel):
     user: UserResponse = Field(description="로그인한 유저 정보")
+    token: str = Field(description="access token")

@@ -11,6 +11,14 @@ class Envs(BaseSettings):
     DATABASE_USERNAME: str
     DATABASE_PASSWORD: str
 
+    DEFAULT_DOMAIN_ID: str
+
+    JWT_SECRET: str
+    ACCESS_TOKEN_DURATION_HOURS: int
+
+    OPENSTACK_SERVER_URL: str
+    KEYSTONE_PORT: int
+
 
 @lru_cache
 def get_envs() -> Envs:

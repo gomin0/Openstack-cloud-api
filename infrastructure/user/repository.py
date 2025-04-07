@@ -67,5 +67,18 @@ class UserRepository:
                 selectinload(User._linked_projects).selectinload(ProjectUser._project)
             )
 
-        result: User | None = await session.scalar(query)
-        return result
+        return await session.scalar(query)
+
+    async def find_by_account_id(
+        self,
+        session: AsyncSession,
+        account_id: str,
+        with_relations: bool = False,
+    ) -> User | None:
+        query: Select = select(User).where(User.account_id == account_id)
+        if with_relations:
+            query = query.options(
+                joinedload(User._domain),
+                selectinload(User._linked_projects).selectinload(ProjectUser._project)
+            )
+        return await session.scalar(query)
