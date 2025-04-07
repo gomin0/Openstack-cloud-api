@@ -2,7 +2,7 @@ from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from domain.enum import SortOrder
+from domain.enum import SortOrder, EntityStatus
 from domain.project.entity import ProjectUser
 from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
@@ -17,16 +17,18 @@ class UserRepository:
         name: None | str = None,
         sort_by: UserSortOption = UserSortOption.CREATED_AT,
         sort_order: SortOrder = SortOrder.ASC,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> list[User]:
         query: Select[tuple[User]] = select(User)
 
+        if not with_deleted:
+            query = query.where(User.status == EntityStatus.ACTIVE.value)
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
                 selectinload(User._linked_projects).selectinload(ProjectUser._project)
             )
-
         if user_id:
             query = query.where(User.id == user_id)
         if account_id:
@@ -52,10 +54,13 @@ class UserRepository:
         self,
         session: AsyncSession,
         user_id: int,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> User | None:
         query: Select[tuple[User]] = select(User).where(User.id == user_id)
-
+        
+        if not with_deleted:
+            query = query.where(User.status == EntityStatus.ACTIVE.value)
         if with_relations:
             query = query.options(
                 joinedload(User._domain),

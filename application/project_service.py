@@ -25,6 +25,7 @@ class ProjectService:
         name_like: str | None = None,
         sort_by: ProjectSortOption = ProjectSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> list[Project]:
         projects: list[Project] = await self.project_repository.find_all(
@@ -34,6 +35,7 @@ class ProjectService:
             name_like=name_like,
             sort_by=sort_by,
             order=order,
+            with_deleted=with_deleted,
             with_relations=with_relations
         )
         return projects
@@ -43,11 +45,13 @@ class ProjectService:
         self,
         session: AsyncSession,
         project_id: int,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> Project:
         project: Project | None = await self.project_repository.find_by_id(
             session=session,
             project_id=project_id,
+            with_deleted=with_deleted,
             with_relations=with_relations
         )
 

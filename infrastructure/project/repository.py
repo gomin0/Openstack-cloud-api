@@ -2,7 +2,7 @@ from sqlalchemy import select, Select, Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
-from domain.enum import SortOrder
+from domain.enum import SortOrder, EntityStatus
 from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 
@@ -16,16 +16,19 @@ class ProjectRepository:
         name_like: str | None = None,
         sort_by: ProjectSortOption = ProjectSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
+        with_deleted: bool = False,
         with_relations: bool = False
     ) -> list[Project]:
         query: Select[tuple[Project]] = select(Project)
+
+        if not with_deleted:
+            query = query.where(Project.status == EntityStatus.ACTIVE.value)
 
         if with_relations:
             query = query.options(
                 joinedload(Project._domain),
                 selectinload(Project._linked_users).selectinload(ProjectUser._user)
             )
-
         if ids:
             query = query.where(Project.id.in_(ids))
         if name:
@@ -50,10 +53,13 @@ class ProjectRepository:
         self,
         session: AsyncSession,
         project_id: int,
+        with_deleted: bool = False,
         with_relations: bool = False
     ) -> Project | None:
         query: Select[tuple[Project]] = select(Project).where(Project.id == project_id)
 
+        if not with_deleted:
+            query = query.where(Project.status == EntityStatus.ACTIVE.value)
         if with_relations:
             query = query.options(
                 joinedload(Project._domain),
