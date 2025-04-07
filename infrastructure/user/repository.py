@@ -1,3 +1,5 @@
+from typing import Sequence
+
 from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -6,6 +8,7 @@ from domain.enum import SortOrder, EntityStatus
 from domain.project.entity import ProjectUser
 from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
+from exception.common_exception import MultipleEntitiesFoundException
 
 
 class UserRepository:
@@ -73,12 +76,21 @@ class UserRepository:
         self,
         session: AsyncSession,
         account_id: str,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> User | None:
         query: Select = select(User).where(User.account_id == account_id)
+
+        if not with_deleted:
+            query = query.where(User.status == EntityStatus.ACTIVE.value)
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
                 selectinload(User._linked_projects).selectinload(ProjectUser._project)
             )
-        return await session.scalar(query)
+
+        result: ScalarResult[User] = await session.scalars(query)
+        users: Sequence[User] = result.all()
+        if len(users) > 1:
+            raise MultipleEntitiesFoundException()
+        return users[0] if len(users) == 1 else None
