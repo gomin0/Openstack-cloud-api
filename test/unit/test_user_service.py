@@ -19,6 +19,7 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
         account_id=account_id,
         sort_by=UserSortOption.ACCOUNT_ID,
         sort_order=SortOrder.ASC,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -31,6 +32,7 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
         name=None,
         sort_by=UserSortOption.ACCOUNT_ID,
         sort_order=SortOrder.ASC,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -49,6 +51,7 @@ async def test_get_user(mock_session, mock_user_repository, user_service):
     result = await user_service.get_user(
         session=mock_session,
         user_id=user_id,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -57,6 +60,7 @@ async def test_get_user(mock_session, mock_user_repository, user_service):
     mock_user_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         user_id=user_id,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -71,11 +75,13 @@ async def test_get_user_fail_not_found(mock_session, mock_user_repository, user_
         await user_service.get_user(
             session=mock_session,
             user_id=user_id,
+            with_deleted=False,
             with_relations=True
         )
 
     mock_user_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         user_id=user_id,
+        with_deleted=False,
         with_relations=True
     )

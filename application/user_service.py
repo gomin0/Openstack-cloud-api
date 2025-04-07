@@ -25,6 +25,7 @@ class UserService:
         name: str | None = None,
         sort_by: UserSortOption = UserSortOption.CREATED_AT,
         sort_order: SortOrder = SortOrder.ASC,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> list[User]:
         users: list[User] = await self.user_repository.find_all(
@@ -34,6 +35,7 @@ class UserService:
             name=name,
             sort_by=sort_by,
             sort_order=sort_order,
+            with_deleted=with_deleted,
             with_relations=with_relations,
         )
         return users
@@ -43,11 +45,13 @@ class UserService:
         self,
         session: AsyncSession,
         user_id: int,
+        with_deleted: bool = False,
         with_relations: bool = False,
     ) -> User:
         user: User | None = await self.user_repository.find_by_id(
             session=session,
             user_id=user_id,
+            with_deleted=with_deleted,
             with_relations=with_relations,
         )
 
