@@ -14,7 +14,7 @@ envs = get_envs()
 
 _JWT_SECRET_KEY = envs.JWT_SECRET
 _JWT_ALGORITHM = "HS256"
-_ACCESS_TOKEN_DURATION_HOURS = envs.ACCESS_TOKEN_DURATION_HOURS
+_ACCESS_TOKEN_DURATION_MINUTES = envs.ACCESS_TOKEN_DURATION_MINUTES
 
 
 def create_access_token(
@@ -23,7 +23,7 @@ def create_access_token(
 ) -> str:
     now = datetime.now(tz=timezone.utc)
     issued_at: datetime = now
-    expires_at: datetime = now + timedelta(hours=_ACCESS_TOKEN_DURATION_HOURS)
+    expires_at: datetime = now + timedelta(minutes=_ACCESS_TOKEN_DURATION_MINUTES)
 
     buffered_exp = keystone_token.expires_at - timedelta(minutes=5)
     if expires_at > buffered_exp:

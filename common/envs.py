@@ -14,7 +14,7 @@ class Envs(BaseSettings):
     DEFAULT_DOMAIN_ID: str
 
     JWT_SECRET: str
-    ACCESS_TOKEN_DURATION_HOURS: int
+    ACCESS_TOKEN_DURATION_MINUTES: int
 
     OPENSTACK_SERVER_URL: str
     KEYSTONE_PORT: int
