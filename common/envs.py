@@ -6,10 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Envs(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    database_host: str
-    database_port: str
-    database_username: str
-    database_password: str
+    DATABASE_HOST: str
+    DATABASE_PORT: str
+    DATABASE_USERNAME: str
+    DATABASE_PASSWORD: str
 
 
 @lru_cache
