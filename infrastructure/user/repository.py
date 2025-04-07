@@ -47,3 +47,20 @@ class UserRepository:
 
         result: ScalarResult[User] = await session.scalars(query)
         return list(result.all())
+
+    async def find_by_id(
+        self,
+        session: AsyncSession,
+        user_id: int,
+        with_relations: bool = False,
+    ) -> User | None:
+        query: Select[tuple[User]] = select(User).where(User.id == user_id)
+
+        if with_relations:
+            query = query.options(
+                joinedload(User._domain),
+                selectinload(User._linked_projects).selectinload(ProjectUser._project)
+            )
+
+        result: User | None = await session.scalar(query)
+        return result

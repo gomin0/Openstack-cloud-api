@@ -46,8 +46,17 @@ async def find_users(
         404: {"description": "user_id에 해당하는 유저를 찾을 수 없는 경우"}
     }
 )
-def get_user(user_id: int) -> UserDetailResponse:
-    raise NotImplementedError()
+async def get_user(
+    user_id: int,
+    user_service: UserService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
+) -> UserDetailResponse:
+    user: User = await user_service.get_user(
+        session=session,
+        user_id=user_id,
+        with_relations=True
+    )
+    return await UserDetailResponse.from_entity(user)
 
 
 @router.post(

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from domain.enum import SortOrder
 from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
+from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
 from infrastructure.user.repository import UserRepository
 
@@ -36,3 +37,21 @@ class UserService:
             with_relations=with_relations,
         )
         return users
+
+    @transactional()
+    async def get_user(
+        self,
+        session: AsyncSession,
+        user_id: int,
+        with_relations: bool = False,
+    ) -> User:
+        user: User | None = await self.user_repository.find_by_id(
+            session=session,
+            user_id=user_id,
+            with_relations=with_relations,
+        )
+
+        if not user:
+            raise UserNotFoundException()
+
+        return user
