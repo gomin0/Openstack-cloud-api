@@ -19,6 +19,7 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
         name_like=name_like,
         sort_by=ProjectSortOption.NAME,
         order=SortOrder.ASC,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -31,6 +32,7 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
         name_like=name_like,
         sort_by=ProjectSortOption.NAME,
         order=SortOrder.ASC,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -47,6 +49,7 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
     result = await project_service.get_project(
         session=mock_session,
         project_id=project_id,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -55,6 +58,7 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
     mock_project_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         project_id=project_id,
+        with_deleted=False,
         with_relations=True
     )
 
@@ -69,11 +73,13 @@ async def test_get_project_fail_not_found(mock_session, mock_project_repository,
         await project_service.get_project(
             session=mock_session,
             project_id=project_id,
+            with_deleted=False,
             with_relations=True
         )
 
     mock_project_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         project_id=project_id,
+        with_deleted=False,
         with_relations=True
     )
