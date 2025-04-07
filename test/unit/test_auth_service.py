@@ -1,5 +1,6 @@
 import pytest
 
+from domain.project.entity import Project
 from domain.user.entitiy import User
 from exception.auth_exception import InvalidAuthException
 from test.util.factory import create_user
@@ -18,7 +19,7 @@ async def test_authenticate_user_success(mock_session, mock_user_repository, aut
     mock_user_repository.find_by_account_id.return_value = expected_result
 
     # when
-    actual_result = await auth_service.authenticate_user(
+    actual_result: tuple[User, list[Project]] = await auth_service.authenticate_user_and_load_projects(
         session=mock_session,
         account_id=account_id,
         password=password,
@@ -30,7 +31,7 @@ async def test_authenticate_user_success(mock_session, mock_user_repository, aut
         account_id=account_id,
         with_relations=True,
     )
-    assert actual_result == expected_result
+    assert actual_result[0] == expected_result
 
 
 async def test_authenticate_user_fail_using_invalid_account_id(mock_session, mock_user_repository, auth_service):
@@ -41,7 +42,7 @@ async def test_authenticate_user_fail_using_invalid_account_id(mock_session, moc
 
     # when & then
     with pytest.raises(InvalidAuthException):
-        await auth_service.authenticate_user(
+        await auth_service.authenticate_user_and_load_projects(
             session=mock_session,
             account_id=invalid_account_id,
             password=password,
@@ -67,7 +68,7 @@ async def test_authenticate_user_fail_using_invalid_password(mock_session, mock_
 
     # when & then
     with pytest.raises(InvalidAuthException):
-        await auth_service.authenticate_user(
+        await auth_service.authenticate_user_and_load_projects(
             session=mock_session,
             account_id=account_id,
             password=invalid_password,

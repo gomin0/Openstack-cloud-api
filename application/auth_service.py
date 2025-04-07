@@ -4,6 +4,7 @@ import bcrypt
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from domain.project.entity import Project
 from domain.user.entitiy import User
 from exception.auth_exception import InvalidAuthException
 from infrastructure.database import transactional
@@ -17,12 +18,12 @@ class AuthService:
         self.user_repository = user_repository
 
     @transactional()
-    async def authenticate_user(
+    async def authenticate_user_and_load_projects(
         self,
         session: AsyncSession,
         account_id: str,
         password: str,
-    ) -> User:
+    ) -> tuple[User, list[Project]]:
         user: User | None = await self.user_repository.find_by_account_id(
             session=session,
             account_id=account_id,
@@ -39,4 +40,5 @@ class AuthService:
         if not is_valid_password:
             raise InvalidAuthException()
 
-        return user
+        joined_project: list[Project] = await user.projects
+        return user, joined_project

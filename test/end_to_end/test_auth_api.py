@@ -46,6 +46,7 @@ async def test_login_success_without_project_id(client, db_session, mock_async_c
     )
 
     # then
+    mock_async_client.request.assert_called_once()
     assert response.status_code == 200
     response_body = response.json()
     assert response_body["user"]["id"] == user.id
@@ -88,6 +89,7 @@ async def test_login_success_with_project_id(client, db_session, mock_async_clie
     )
 
     # then
+    mock_async_client.request.assert_called_once()
     assert response.status_code == 200
     response_body = response.json()
     assert response_body["user"]["id"] == user.id
