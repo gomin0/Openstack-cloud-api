@@ -29,7 +29,7 @@ class Project(Base):
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
     _domain: Mapped[Domain] = relationship("Domain", lazy="select")
-    _linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select")
+    _linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select", back_populates="_project")
 
     @async_property
     async def domain(self) -> Domain:
@@ -55,8 +55,8 @@ class ProjectUser(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now, onupdate=datetime.now
     )
 
-    _user: Mapped[User] = relationship("User", lazy="select")
-    _project: Mapped[Project] = relationship("Project", lazy="select")
+    _user: Mapped[User] = relationship("User", lazy="select", back_populates="_linked_projects")
+    _project: Mapped[Project] = relationship("Project", lazy="select", back_populates="_linked_users")
 
     @async_property
     async def user(self) -> User:
