@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -6,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from testcontainers.mysql import MySqlContainer
 
 from domain.entity import Base
+from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from main import app
 
@@ -54,17 +57,23 @@ async def clean_data_before_test(db_session):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def app_test(async_session_maker):
+async def mock_async_client():
+    return AsyncMock(spec=AsyncClient)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def app_test(async_session_maker, mock_async_client):
     async def override_get_db_session():
         async with async_session_maker() as session:
             yield session
 
     app.dependency_overrides[get_db_session] = override_get_db_session
+    app.dependency_overrides[get_async_client] = lambda: mock_async_client
     yield app
 
 
 @pytest_asyncio.fixture(scope="function")
-async def async_client(app_test):
+async def client(app_test):
     async with AsyncClient(
         transport=ASGITransport(app=app_test),
         base_url="http://test",
