@@ -24,12 +24,12 @@ async def find_projects_setup(db_session):
     await db_session.commit()
 
 
-async def test_find_projects(async_client, db_session):
+async def test_find_projects(client, db_session):
     # given
     await find_projects_setup(db_session)
 
     # when
-    response = await async_client.get("/projects")
+    response = await client.get("/projects")
 
     # then
     assert response.status_code == 200
@@ -45,12 +45,12 @@ async def test_find_projects(async_client, db_session):
     assert len(project_data["accounts"]) == 2
 
 
-async def test_find_projects_with_name_like(async_client, db_session):
+async def test_find_projects_with_name_like(client, db_session):
     # given
     await find_projects_setup(db_session)
 
     # when
-    response = await async_client.get("/projects?name_like=2")
+    response = await client.get("/projects?name_like=2")
 
     # then
     assert response.status_code == 200
@@ -59,7 +59,7 @@ async def test_find_projects_with_name_like(async_client, db_session):
     assert data["projects"][0]["name"] == "프로젝트2"
 
 
-async def test_get_project(async_client, db_session):
+async def test_get_project(client, db_session):
     # given
     domain = Domain(openstack_id="domainabc", name="도메인2")
     db_session.add_all([domain])
@@ -78,7 +78,7 @@ async def test_get_project(async_client, db_session):
     await db_session.commit()
 
     # when
-    response = await async_client.get(f"/projects/{project.id}")
+    response = await client.get(f"/projects/{project.id}")
 
     # then
     assert response.status_code == 200
@@ -91,12 +91,12 @@ async def test_get_project(async_client, db_session):
     assert data["accounts"][0]["name"] == "ted"
 
 
-async def test_get_project_fail_not_found(async_client):
+async def test_get_project_fail_not_found(client):
     # given
     project_id = 999999
 
     # when
-    response = await async_client.get(f"/projects/{project_id}")
+    response = await client.get(f"/projects/{project_id}")
 
     # then
     assert response.status_code == 404

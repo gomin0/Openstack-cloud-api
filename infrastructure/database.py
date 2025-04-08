@@ -11,7 +11,7 @@ envs = get_envs()
 
 DATABASE_URL = (
     "mysql+aiomysql://"
-    f"{envs.database_username}:{envs.database_password}@{envs.database_host}:{envs.database_port}"
+    f"{envs.DATABASE_USERNAME}:{envs.DATABASE_PASSWORD}@{envs.DATABASE_HOST}:{envs.DATABASE_PORT}"
     "/cloud"
 )
 async_engine: AsyncEngine = create_async_engine(DATABASE_URL, echo=True)

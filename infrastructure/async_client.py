@@ -7,7 +7,7 @@ def init_async_client() -> None:
     global _async_client
     if _async_client is not None:
         raise RuntimeError("Async client is already initialized")
-    _async_client = AsyncClient()
+    _async_client = AsyncClient(verify=False)
 
 
 async def close_async_client() -> None:

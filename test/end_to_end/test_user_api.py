@@ -24,12 +24,12 @@ async def find_users_setup(db_session):
     await db_session.commit()
 
 
-async def test_find_users(async_client, db_session):
+async def test_find_users(client, db_session):
     # given
     await find_users_setup(db_session)
 
     # when
-    response = await async_client.get("/users")
+    response = await client.get("/users")
 
     # then
     assert response.status_code == 200
@@ -45,13 +45,13 @@ async def test_find_users(async_client, db_session):
     assert len(user_data["projects"]) == 2
 
 
-async def test_find_users_with_account_id(async_client, db_session):
+async def test_find_users_with_account_id(client, db_session):
     # given
     await find_users_setup(db_session)
     account_id = "user1"
 
     # when
-    response = await async_client.get(f"/users?account_id={account_id}")
+    response = await client.get(f"/users?account_id={account_id}")
 
     # then
     assert response.status_code == 200
@@ -60,7 +60,7 @@ async def test_find_users_with_account_id(async_client, db_session):
     assert data["users"][0]["account_id"] == account_id
 
 
-async def test_get_user(async_client, db_session):
+async def test_get_user(client, db_session):
     # given
     domain = Domain(openstack_id="domainabc", name="도메인2")
 
@@ -82,7 +82,7 @@ async def test_get_user(async_client, db_session):
     await db_session.commit()
 
     # when
-    response = await async_client.get(f"/users/{user.id}")
+    response = await client.get(f"/users/{user.id}")
 
     # then
     assert response.status_code == 200
@@ -93,12 +93,12 @@ async def test_get_user(async_client, db_session):
     assert len(data["projects"]) == 2
 
 
-async def test_get_project_fail_not_found(async_client):
+async def test_get_project_fail_not_found(client):
     # given
     user_id = 9999
 
     # when
-    response = await async_client.get(f"/users/{user_id}")
+    response = await client.get(f"/users/{user_id}")
 
     # then
     assert response.status_code == 404
