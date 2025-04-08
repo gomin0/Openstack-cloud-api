@@ -8,7 +8,6 @@ envs = get_envs()
 
 class KeystoneClient(OpenStackClient):
     _OPEN_STACK_URL: str = envs.OPENSTACK_SERVER_URL
-    _DEFAULT_DOMAIN_ID: str = envs.DEFAULT_DOMAIN_ID
     _KEYSTONE_PORT: int = envs.KEYSTONE_PORT
     _KEYSTONE_URL: str = f"{_OPEN_STACK_URL}:{_KEYSTONE_PORT}"
 
@@ -16,6 +15,7 @@ class KeystoneClient(OpenStackClient):
         self,
         client: AsyncClient,
         user_openstack_id: str,
+        domain_openstack_id: str,
         password: str,
         project_openstack_id: str,
     ) -> tuple[str, str]:
@@ -32,7 +32,7 @@ class KeystoneClient(OpenStackClient):
                             "user": {
                                 "id": user_openstack_id,
                                 "domain": {
-                                    "id": self._DEFAULT_DOMAIN_ID
+                                    "id": domain_openstack_id
                                 },
                                 "password": password,
                             }

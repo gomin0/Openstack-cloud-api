@@ -3,11 +3,14 @@ from datetime import datetime, timezone
 from fastapi import Depends
 from httpx import AsyncClient
 
+from common.envs import get_envs, Envs
 from domain.keystone.model import KeystoneToken
 from exception.auth_exception import InvalidAuthException
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectAccessDeniedException
 from infrastructure.keystone.client import KeystoneClient
+
+envs: Envs = get_envs()
 
 
 class KeystoneService:
@@ -25,6 +28,7 @@ class KeystoneService:
             keystone_token, keystone_token_exp = await self.keystone_client.authenticate_with_scoped_auth(
                 client=client,
                 user_openstack_id=user_openstack_id,
+                domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
                 password=password,
                 project_openstack_id=project_openstack_id,
             )

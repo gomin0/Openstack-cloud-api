@@ -1,5 +1,6 @@
 import pytest
 
+from common.envs import get_envs
 from domain.keystone.model import KeystoneToken
 from exception.auth_exception import InvalidAuthException
 from exception.openstack_exception import OpenStackException
@@ -26,6 +27,7 @@ async def test_issue_keystone_token_success(mock_async_client, mock_keystone_cli
     # then
     mock_keystone_client.authenticate_with_scoped_auth.assert_called_once_with(
         client=mock_async_client,
+        domain_openstack_id=get_envs().DEFAULT_DOMAIN_OPENSTACK_ID,
         user_openstack_id=user_openstack_id,
         password=password,
         project_openstack_id=project_openstack_id,
@@ -50,6 +52,7 @@ async def test_issue_keystone_token_fail_keystone_401_error(mock_async_client, m
         )
     mock_keystone_client.authenticate_with_scoped_auth.assert_called_once_with(
         client=mock_async_client,
+        domain_openstack_id=get_envs().DEFAULT_DOMAIN_OPENSTACK_ID,
         user_openstack_id=user_openstack_id,
         password=password,
         project_openstack_id=project_openstack_id,
@@ -73,6 +76,7 @@ async def test_issue_keystone_token_fail_keystone_403_error(mock_async_client, m
         )
     mock_keystone_client.authenticate_with_scoped_auth.assert_called_once_with(
         client=mock_async_client,
+        domain_openstack_id=get_envs().DEFAULT_DOMAIN_OPENSTACK_ID,
         user_openstack_id=user_openstack_id,
         password=password,
         project_openstack_id=project_openstack_id,
