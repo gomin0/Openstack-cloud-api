@@ -96,7 +96,7 @@ class KeystoneClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         domain_openstack_id: str,
-        name: str,
+        account_id: str,
         password: str,
     ) -> str:
         """
@@ -113,7 +113,7 @@ class KeystoneClient(OpenStackClient):
             json={
                 "user": {
                     "domain_id": domain_openstack_id,
-                    "name": name,
+                    "name": account_id,
                     "password": password,
                 }
             }

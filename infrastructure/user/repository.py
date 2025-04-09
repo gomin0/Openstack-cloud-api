@@ -61,7 +61,7 @@ class UserRepository:
         with_relations: bool = False,
     ) -> User | None:
         query: Select[tuple[User]] = select(User).where(User.id == user_id)
-        
+
         if not with_deleted:
             query = query.where(User.status == EntityStatus.ACTIVE.value)
         if with_relations:
@@ -102,15 +102,6 @@ class UserRepository:
     ) -> bool:
         is_not_deleted: ColumnElement = User.status == EntityStatus.ACTIVE.value
         query: Select = select(exists().where(is_not_deleted, User.account_id == account_id))
-        return await session.scalar(query)
-
-    async def exists_by_name(
-        self,
-        session: AsyncSession,
-        name: str,
-    ) -> bool:
-        is_not_deleted: ColumnElement = User.status == EntityStatus.ACTIVE.value
-        query: Select = select(exists().where(is_not_deleted, User.name == name))
         return await session.scalar(query)
 
     async def create(

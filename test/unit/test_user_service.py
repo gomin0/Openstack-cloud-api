@@ -4,7 +4,7 @@ from domain.enum import SortOrder
 from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
-from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException, UserNameDuplicateException
+from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
 from test.unit.conftest import mock_session, mock_user_repository, user_service, mock_keystone_client
 from test.util.factory import create_user
 from test.util.random import random_string
@@ -102,7 +102,6 @@ async def test_create_user_success(
     # given
     expected_result: User = create_user()
     mock_user_repository.exists_by_account_id.return_value = False
-    mock_user_repository.exists_by_name.return_value = False
     mock_keystone_client.authenticate_with_unscoped_auth.return_value = "keystone_token", "exp"
     mock_keystone_client.create_user.return_value = "openstack_id"
     mock_user_repository.create.return_value = expected_result
@@ -119,7 +118,6 @@ async def test_create_user_success(
 
     # then
     mock_user_repository.exists_by_account_id.assert_called_once()
-    mock_user_repository.exists_by_name.assert_called_once()
     mock_keystone_client.authenticate_with_unscoped_auth.assert_called_once()
     mock_keystone_client.create_user.assert_called_once()
     assert actual_result == expected_result
@@ -148,32 +146,7 @@ async def test_create_user_fail_duplicate_account_id(
     mock_user_repository.exists_by_account_id.assert_called_once()
 
 
-async def test_create_user_fail_duplicate_name(
-    user_service,
-    mock_user_repository,
-    mock_session,
-    mock_async_client,
-    mock_compensation_manager,
-):
-    # given
-    mock_user_repository.exists_by_account_id.return_value = False
-    mock_user_repository.exists_by_name.return_value = True
-
-    # when & then
-    with pytest.raises(UserNameDuplicateException):
-        await user_service.create_user(
-            compensating_tx=mock_compensation_manager,
-            session=mock_session,
-            client=mock_async_client,
-            account_id=random_string(),
-            name=random_string(),
-            password=random_string(),
-        )
-    mock_user_repository.exists_by_account_id.assert_called_once()
-    mock_user_repository.exists_by_name.assert_called_once()
-
-
-async def test_create_user_fail_raises_name_duplicate_exception_on_openstack_conflict(
+async def test_create_user_fail_raises_account_id_duplicate_exception_on_openstack_conflict(
     user_service,
     mock_user_repository,
     mock_keystone_client,
@@ -183,12 +156,11 @@ async def test_create_user_fail_raises_name_duplicate_exception_on_openstack_con
 ):
     # given
     mock_user_repository.exists_by_account_id.return_value = False
-    mock_user_repository.exists_by_name.return_value = False
     mock_keystone_client.authenticate_with_unscoped_auth.return_value = "keystone_token", "exp"
     mock_keystone_client.create_user.side_effect = OpenStackException(openstack_status_code=409)
 
     # when & then
-    with pytest.raises(UserNameDuplicateException):
+    with pytest.raises(UserAccountIdDuplicateException):
         await user_service.create_user(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
@@ -198,6 +170,5 @@ async def test_create_user_fail_raises_name_duplicate_exception_on_openstack_con
             password=random_string(),
         )
     mock_user_repository.exists_by_account_id.assert_called_once()
-    mock_user_repository.exists_by_name.assert_called_once()
     mock_keystone_client.authenticate_with_unscoped_auth.assert_called_once()
     mock_keystone_client.create_user.assert_called_once()

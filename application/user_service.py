@@ -11,7 +11,7 @@ from domain.enum import SortOrder
 from domain.user.entitiy import User
 from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
-from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException, UserNameDuplicateException
+from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
 from infrastructure.user.repository import UserRepository
@@ -86,9 +86,6 @@ class UserService:
         is_account_id_exists: bool = await self.user_repository.exists_by_account_id(session, account_id=account_id)
         if is_account_id_exists:
             raise UserAccountIdDuplicateException(account_id=account_id)
-        is_name_exists: bool = await self.user_repository.exists_by_name(session, name=name)
-        if is_name_exists:
-            raise UserNameDuplicateException(name=name)
 
         # Create user in OpenStack
         cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
@@ -97,7 +94,7 @@ class UserService:
                 client=client,
                 domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
                 keystone_token=cloud_admin_keystone_token,
-                name=name,
+                account_id=account_id,
                 password=password,
             )
             compensating_tx.add_task(
@@ -109,7 +106,7 @@ class UserService:
             )
         except OpenStackException as ex:
             if ex.openstack_status_code == 409:
-                raise UserNameDuplicateException(name=name) from ex
+                raise UserAccountIdDuplicateException(account_id=account_id) from ex
             raise ex
 
         # Create user in DB

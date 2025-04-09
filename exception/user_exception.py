@@ -26,12 +26,3 @@ class UserAccountIdDuplicateException(CustomException):
             status_code=409,
             message=f"이미 사용중인 계정 ID 입니다. account_id={account_id}"
         )
-
-
-class UserNameDuplicateException(CustomException):
-    def __init__(self, name: str):
-        super().__init__(
-            code="USER_NAME_DUPLICATE",
-            status_code=409,
-            message=f"이미 사용중인 이름입니다. name={name}"
-        )
