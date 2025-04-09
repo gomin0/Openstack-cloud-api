@@ -1,16 +1,16 @@
 import inspect
 import logging
 from contextlib import asynccontextmanager
-from typing import Callable, Awaitable, Any, AsyncGenerator
+from typing import Callable, AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
 
 class CompensationManager:
     def __init__(self):
-        self._recovery_tasks: list[Callable[[], Awaitable[None]]] = []
+        self._recovery_tasks: list[Callable] = []
 
-    def add_task(self, task: Callable[[], Any]) -> None:
+    def add_task(self, task: Callable) -> None:
         self._recovery_tasks.append(task)
 
     async def rollback(self) -> None:
