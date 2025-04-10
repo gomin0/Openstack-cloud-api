@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from sqlalchemy import select, Select, ScalarResult
+from sqlalchemy import select, Select, ScalarResult, exists, ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -61,7 +61,7 @@ class UserRepository:
         with_relations: bool = False,
     ) -> User | None:
         query: Select[tuple[User]] = select(User).where(User.id == user_id)
-        
+
         if not with_deleted:
             query = query.where(User.status == EntityStatus.ACTIVE.value)
         if with_relations:
@@ -94,3 +94,21 @@ class UserRepository:
         if len(users) > 1:
             raise MultipleEntitiesFoundException()
         return users[0] if len(users) == 1 else None
+
+    async def exists_by_account_id(
+        self,
+        session: AsyncSession,
+        account_id: str,
+    ) -> bool:
+        is_not_deleted: ColumnElement = User.status == EntityStatus.ACTIVE.value
+        query: Select = select(exists().where(is_not_deleted, User.account_id == account_id))
+        return await session.scalar(query)
+
+    async def create(
+        self,
+        session: AsyncSession,
+        user: User
+    ) -> User:
+        session.add(user)
+        await session.flush()
+        return user

@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +7,13 @@ from application.auth_service import AuthService
 from application.keystone_service import KeystoneService
 from application.project_service import ProjectService
 from application.user_service import UserService
+
+
+@pytest.fixture(scope="session")
+def mock_compensation_manager():
+    mock = Mock()
+    mock.add_task.return_value = None
+    return mock
 
 
 @pytest.fixture(scope='function')
@@ -45,8 +52,8 @@ def project_service(mock_project_repository, mock_keystone_client):
 
 
 @pytest.fixture(scope='function')
-def user_service(mock_user_repository):
-    return UserService(user_repository=mock_user_repository)
+def user_service(mock_user_repository, mock_keystone_client):
+    return UserService(user_repository=mock_user_repository, keystone_client=mock_keystone_client)
 
 
 @pytest.fixture(scope='function')

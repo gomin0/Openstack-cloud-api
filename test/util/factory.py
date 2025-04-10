@@ -7,7 +7,7 @@ from domain.domain.entity import Domain
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
 from domain.user.entitiy import User
-from test.util.random import random_string
+from test.util.random import random_string, random_int
 
 
 def create_domain(
@@ -39,8 +39,8 @@ def create_project(
 
 
 def create_user(
-    domain_id: int,
     user_id: int | None = None,
+    domain_id: int = random_int(),
     openstack_id: str = random_string(),
     account_id: str = random_string(),
     name: str = random_string(),

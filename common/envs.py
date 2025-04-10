@@ -11,6 +11,9 @@ class Envs(BaseSettings):
     DATABASE_USERNAME: str
     DATABASE_PASSWORD: str
 
+    CLOUD_ADMIN_OPENSTACK_ID: str
+    CLOUD_ADMIN_PASSWORD: str
+
     DEFAULT_DOMAIN_ID: int
     DEFAULT_DOMAIN_OPENSTACK_ID: str
 
