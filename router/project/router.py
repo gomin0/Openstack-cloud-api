@@ -98,21 +98,6 @@ async def update_project(
     return ProjectResponse.from_entity(project)
 
 
-@router.delete(
-    "/{project_id}/users/{user_id}",
-    summary="프로젝트에서 계정 제외", status_code=204,
-    responses={
-        404: {"description": "프로젝트, 계정이 없는 경우"},
-        409: {"description": "해당 계정이 이 프로젝트에 소속되어 있지 않은 경우"}
-    }
-)
-async def remove_account_from_project(
-    project_id: int = Path(description="프로젝트 ID"),
-    user_id: int = Path(description="계정 ID")
-) -> None:
-    raise NotImplementedError()
-
-
 @router.post(
     "/{project_id}/users/{user_id}",
     summary="프로젝트에 계정 소속", status_code=204,
