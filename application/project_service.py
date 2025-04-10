@@ -1,10 +1,11 @@
 import backoff
+from common.compensating_transaction import CompensationManager
 from fastapi import Depends
 from httpx import AsyncClient
+from infrastructure.project_user.repository import ProjectUserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
-from common.compensating_transaction import CompensationManager
 from domain.enum import SortOrder
 from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
@@ -14,7 +15,6 @@ from exception.project_exception import ProjectNotFoundException, ProjectNameDup
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
 from infrastructure.project.repository import ProjectRepository
-from infrastructure.project_user.repository import ProjectUserRepository
 from infrastructure.user.repository import UserRepository
 
 
@@ -96,7 +96,6 @@ class ProjectService:
             raise ProjectNotFoundException()
 
         old_name = project.name
-        print(f"oldname = {old_name}")
 
         if not await self.project_repository.exists_user(
             session=session,
