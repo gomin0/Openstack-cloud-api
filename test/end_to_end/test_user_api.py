@@ -1,6 +1,18 @@
+from datetime import datetime
+from unittest.mock import Mock
+
+from sqlalchemy import select
+
+from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.project.entity import Project, ProjectUser
 from domain.user.entitiy import User
+from router.user.request import CreateUserRequest
+from test.util.database import add_to_db
+from test.util.factory import create_domain, create_user
+from test.util.random import random_string
+
+envs: Envs = get_envs()
 
 
 async def find_users_setup(db_session):
@@ -104,3 +116,88 @@ async def test_get_project_fail_not_found(client):
     assert response.status_code == 404
     data = response.json()
     assert data["code"] == "USER_NOT_FOUND"
+
+
+async def test_create_user_success(client, db_session, mock_async_client):
+    # given
+    await add_to_db(db_session, create_domain(domain_id=envs.DEFAULT_DOMAIN_ID))
+    await db_session.commit()
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v3/auth/tokens" in url:
+            mock_response.headers = {"x-subject-token": "keystone-token"}
+            mock_response.json.return_value = {"token": {'expires_at': datetime.now()}}
+        elif method == "POST" and "/v3/users" in url:
+            mock_response.json.return_value = {"user": {"id": "user_openstack_id"}}
+        else:
+            raise ValueError("Unknown API endpoint")
+        mock_response.status_code = 201
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    request: CreateUserRequest = CreateUserRequest(
+        account_id=random_string(),
+        password=random_string(),
+        name=random_string(),
+    )
+
+    # when
+    response = await client.post(
+        url="/users",
+        headers={"Content-Type": "application/json"},
+        json=request.model_dump(),
+    )
+
+    # then
+    response_body = response.json()
+    assert response.status_code == 201
+    assert response_body["account_id"] == request.account_id
+    assert response_body["name"] == request.name
+
+    result = await db_session.scalars(select(User))
+    users = result.all()
+    assert len(users) == 1
+
+
+async def test_create_user_fail_duplicate_account_id(client, db_session, mock_async_client):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain(domain_id=envs.DEFAULT_DOMAIN_ID))
+    original_user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v3/auth/tokens" in url:
+            mock_response.headers = {"x-subject-token": "keystone-token"}
+            mock_response.json.return_value = {"token": {'expires_at': datetime.now()}}
+        elif method == "POST" and "/v3/users" in url:
+            mock_response.json.return_value = {"user": {"id": "user_openstack_id"}}
+        else:
+            raise ValueError("Unknown API endpoint")
+        mock_response.status_code = 201
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    request: CreateUserRequest = CreateUserRequest(
+        account_id=original_user.account_id,
+        password=random_string(),
+        name=random_string(),
+    )
+
+    # when
+    response = await client.post(
+        url="/users",
+        headers={"Content-Type": "application/json"},
+        json=request.model_dump(),
+    )
+
+    # then
+    assert mock_async_client.request.call_count == 0
+    response_body = response.json()
+    assert response.status_code == 409
+    assert response_body["code"] == "USER_ACCOUNT_ID_DUPLICATE"

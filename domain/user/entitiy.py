@@ -40,3 +40,20 @@ class User(Base):
     async def projects(self) -> list["Project"]:
         linked_projects: list["ProjectUser"] = await self.awaitable_attrs._linked_projects
         return [await link.project for link in linked_projects]
+
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        domain_id: int,
+        account_id: str,
+        name: str,
+        hashed_password: str,
+    ) -> "User":
+        return cls(
+            openstack_id=openstack_id,
+            domain_id=domain_id,
+            account_id=account_id,
+            name=name,
+            password=hashed_password,
+        )

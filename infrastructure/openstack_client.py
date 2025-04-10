@@ -14,7 +14,7 @@ class OpenStackClient:
         client: AsyncClient,
         method: str,
         url: str,
-        json: dict[str, Any],
+        json: dict[str, Any] | None = None,
         headers: dict[str, Any] | None = None,
     ) -> Response:
         headers = headers or {"Content-Type": "application/json"}
