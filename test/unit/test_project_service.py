@@ -194,7 +194,19 @@ async def test_update_project_fail_duplicate_name(
             new_name=new_name
         )
 
-    mock_project_repository.exists_by_name.assert_called_once_with(session=mock_session, name=new_name)
+    mock_project_repository.exists_by_name.assert_called_once_with(
+        session=mock_session,
+        name=new_name
+    )
+    mock_project_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        project_id=project_id
+    )
+    mock_project_user_repository.exists_by_user_and_project.assert_called_once_with(
+        session=mock_session,
+        user_id=123,
+        project_id=project_id
+    )
 
 
 async def test_update_project_fail_access_denied(
@@ -227,6 +239,16 @@ async def test_update_project_fail_access_denied(
             user_id=user_id
         )
 
+    mock_project_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        project_id=project_id,
+    )
+    mock_project_user_repository.exists_by_user_and_project.assert_called_once_with(
+        session=mock_session,
+        user_id=user_id,
+        project_id=project_id
+    )
+
 
 async def test_update_project_fail_openstack_403(
     mock_session,
@@ -258,6 +280,30 @@ async def test_update_project_fail_openstack_403(
             new_name=new_name
         )
 
+    mock_project_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        project_id=1
+    )
+    mock_project_user_repository.exists_by_user_and_project.assert_called_once_with(
+        session=mock_session,
+        user_id=1,
+        project_id=1
+    )
+    mock_project_repository.exists_by_name.assert_called_once_with(
+        session=mock_session,
+        name=new_name
+    )
+    mock_project_repository.update_with_optimistic_lock.assert_called_once_with(
+        session=mock_session,
+        project=project,
+    )
+    mock_keystone_client.update_project.assert_called_once_with(
+        client=mock_async_client,
+        project_openstack_id="abc",
+        name=new_name,
+        keystone_token="token"
+    )
+
 
 async def test_update_project_fail_openstack_409(
     mock_session,
@@ -288,3 +334,27 @@ async def test_update_project_fail_openstack_409(
             project_id=1,
             new_name=new_name
         )
+
+    mock_project_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        project_id=1
+    )
+    mock_project_user_repository.exists_by_user_and_project.assert_called_once_with(
+        session=mock_session,
+        user_id=1,
+        project_id=1
+    )
+    mock_project_repository.exists_by_name.assert_called_once_with(
+        session=mock_session,
+        name=new_name
+    )
+    mock_project_repository.update_with_optimistic_lock.assert_called_once_with(
+        session=mock_session,
+        project=project,
+    )
+    mock_keystone_client.update_project.assert_called_once_with(
+        client=mock_async_client,
+        project_openstack_id="abc",
+        name=new_name,
+        keystone_token="token"
+    )

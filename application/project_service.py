@@ -111,7 +111,10 @@ class ProjectService:
             raise ProjectNameDuplicatedException()
 
         project.update_name(new_name)
-        project: Project = await self.project_repository.update_with_optimistic_lock(session, project)
+        project: Project = await self.project_repository.update_with_optimistic_lock(
+            session=session,
+            project=project
+        )
 
         try:
             project_openstack_id: str = project.openstack_id

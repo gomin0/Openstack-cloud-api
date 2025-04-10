@@ -1,28 +1,5 @@
-from domain.domain.entity import Domain
-from domain.project.entity import Project, ProjectUser
-from domain.user.entitiy import User
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_project_user, create_access_token
-
-
-async def find_projects_setup(db_session):
-    domain = Domain(openstack_id="domain123", name="도메인1")
-    db_session.add_all([domain])
-    await db_session.flush()
-
-    user1 = User(openstack_id="user123", domain_id=domain.id, account_id="user1", name="사용자1", password="@!#32")
-    user2 = User(openstack_id="user456", domain_id=domain.id, account_id="user2", name="사용자2", password="@!@3")
-    project1 = Project(openstack_id="project123", domain_id=domain.id, name="프로젝트1")
-    project2 = Project(openstack_id="project456", domain_id=domain.id, name="프로젝트2")
-
-    db_session.add_all([domain, user1, user2, project1, project2])
-    await db_session.flush()
-
-    project_user1 = ProjectUser(user_id=user1.id, project_id=project1.id, role_id="role123")
-    project_user2 = ProjectUser(user_id=user2.id, project_id=project1.id, role_id="role123")
-
-    db_session.add_all([project_user1, project_user2])
-    await db_session.commit()
 
 
 async def test_find_projects(client, db_session):
@@ -94,6 +71,19 @@ async def test_get_project(client, db_session):
     assert data["domain"]["name"] == "도메인"
     assert len(data["accounts"]) == 1
     assert data["accounts"][0]["name"] == "ted"
+
+
+async def test_get_project_fail_not_found(client):
+    # given
+    project_id = 999999
+
+    # when
+    response = await client.get(f"/projects/{project_id}")
+
+    # then
+    assert response.status_code == 404
+    data = response.json()
+    assert data["code"] == "PROJECT_NOT_FOUND"
 
 
 async def test_update_project(client, db_session):
