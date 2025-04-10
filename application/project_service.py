@@ -75,7 +75,7 @@ class ProjectService:
 
         return project
 
-    @backoff.on_exception(backoff.expo, StaleDataError, max_tries=5)
+    @backoff.on_exception(backoff.expo, StaleDataError, max_tries=3)
     @transactional()
     async def update_project(
         self,
