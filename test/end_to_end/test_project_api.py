@@ -2,7 +2,7 @@ from domain.domain.entity import Domain
 from domain.project.entity import Project, ProjectUser
 from domain.user.entitiy import User
 from test.util.database import add_to_db
-from test.util.factory import create_current_token, create_domain, create_user, create_project, create_project_user
+from test.util.factory import create_domain, create_user, create_project, create_project_user, create_access_token
 
 
 async def find_projects_setup(db_session):
@@ -103,7 +103,7 @@ async def test_update_project(client, db_session):
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project_user = await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
     await db_session.commit()
-    access_token = create_current_token(user)
+    access_token = create_access_token(user_id=user.id)
 
     # when
     response = await client.put(
@@ -126,7 +126,7 @@ async def test_update_project_fail_not_found(client, db_session):
     domain = await add_to_db(db_session, create_domain())
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     await db_session.commit()
-    access_token = create_current_token(user)
+    access_token = create_access_token(user_id=user.id)
 
     # when
     response = await client.put(
@@ -150,7 +150,7 @@ async def test_update_project_fail_name_duplicated(client, db_session):
     project_user = await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project1.id))
     await db_session.commit()
 
-    access_token = create_current_token(user)
+    access_token = create_access_token(user_id=user.id)
 
     # when
     response = await client.put(
@@ -171,7 +171,7 @@ async def test_update_project_fail_access_denied(client, db_session):
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     await db_session.commit()
-    access_token = create_current_token(user)
+    access_token = create_access_token(user_id=user.id)
 
     # when
     response = await client.put(

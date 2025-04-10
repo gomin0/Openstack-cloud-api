@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 
 import bcrypt
 
-from common.auth_token_manager import create_access_token
+from common import auth_token_manager
 from domain.domain.entity import Domain
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
@@ -72,11 +72,15 @@ def create_project_user(
     )
 
 
-def create_current_token(user: User) -> str:
-    now = datetime.now(timezone.utc)
-    keystone_token = KeystoneToken(
-        token="fake-keystone-token",
-        expires_at=now + timedelta(minutes=60)
+def create_access_token(
+    user_id: int,
+    token: str = random_string(),
+    expires_at: datetime = datetime.now(timezone.utc) + timedelta(minutes=60)
+) -> str:
+    return auth_token_manager.create_access_token(
+        user_id=user_id,
+        keystone_token=KeystoneToken(
+            token=token,
+            expires_at=expires_at
+        )
     )
-    access_token = create_access_token(user_id=user.id, keystone_token=keystone_token)
-    return access_token
