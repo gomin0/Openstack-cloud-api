@@ -78,10 +78,10 @@ async def get_project(
     }
 )
 async def update_project(
+    current_user: CurrentUser = Depends(get_current_user),
     request: ProjectUpdateRequest = Body(),
     project_id: int = Path(description="프로젝트 ID"),
     project_service: ProjectService = Depends(),
-    current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
     client: AsyncClient = Depends(get_async_client)
 ) -> ProjectResponse:
