@@ -1,4 +1,4 @@
-from sqlalchemy import select, Select, Result
+from sqlalchemy import select, Select, ScalarResult, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
@@ -46,8 +46,8 @@ class ProjectRepository:
 
         query = query.order_by(order_by_column)
 
-        result: Result[tuple[Project]] = await session.execute(query)
-        return list(result.scalars().all())
+        result: ScalarResult[Project] = await session.scalars(query)
+        return list(result.all())
 
     async def find_by_id(
         self,
@@ -66,5 +66,41 @@ class ProjectRepository:
                 selectinload(Project._linked_users).selectinload(ProjectUser._user)
             )
 
-        result: Result[tuple[Project]] = await session.execute(query)
-        return result.scalar_one_or_none()
+        result: Project | None = await session.scalar(query)
+        return result
+
+    async def exists_by_name(
+        self,
+        session: AsyncSession,
+        name: str,
+    ) -> bool:
+        result: bool = await session.scalar(
+            select(
+                exists().where(
+                    Project.name == name,
+                    Project.status == EntityStatus.ACTIVE.value,
+                )
+            )
+        )
+        return result
+
+    async def update_with_optimistic_lock(
+        self,
+        session: AsyncSession,
+        project: Project,
+    ) -> Project:
+        await session.flush()
+        return project
+
+    async def exists_user(
+        self,
+        session: AsyncSession,
+        project_id: int,
+        user_id: int
+    ) -> bool:
+        stmt = select(exists().where(
+            ProjectUser.project_id == project_id,
+            ProjectUser.user_id == user_id
+        ))
+        result = await session.execute(stmt)
+        return result.scalar()
