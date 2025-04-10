@@ -1,11 +1,10 @@
 import backoff
-from common.compensating_transaction import CompensationManager
 from fastapi import Depends
 from httpx import AsyncClient
-from infrastructure.project_user.repository import ProjectUserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
+from common.compensating_transaction import CompensationManager
 from domain.enum import SortOrder
 from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
@@ -23,12 +22,10 @@ class ProjectService:
         self,
         project_repository: ProjectRepository = Depends(),
         user_repository: UserRepository = Depends(),
-        project_user_repository: ProjectUserRepository = Depends(),
         keystone_client: KeystoneClient = Depends()
     ):
         self.project_repository = project_repository
         self.user_repository = user_repository
-        self.project_user_repository = project_user_repository
         self.keystone_client = keystone_client
 
     @transactional()
