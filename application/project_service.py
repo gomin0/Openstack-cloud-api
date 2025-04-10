@@ -95,7 +95,7 @@ class ProjectService:
         if not project:
             raise ProjectNotFoundException()
 
-        old_name = project.name
+        old_name: str = project.name
 
         if not await self.project_user_repository.exists_user(
             session=session,
@@ -111,7 +111,7 @@ class ProjectService:
             raise ProjectNameDuplicatedException()
 
         project.update_name(new_name)
-        project = await self.project_repository.update_with_optimistic_lock(session, project)
+        project: Project = await self.project_repository.update_with_optimistic_lock(session, project)
 
         try:
             project_openstack_id: str = project.openstack_id
