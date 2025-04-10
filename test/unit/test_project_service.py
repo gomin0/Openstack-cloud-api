@@ -91,6 +91,7 @@ async def test_update_project(
     mock_session,
     mock_async_client,
     mock_project_repository,
+    mock_project_user_repository,
     project_service,
     mock_keystone_client,
     mock_compensation_manager,
@@ -107,7 +108,7 @@ async def test_update_project(
     project = Project(id=project_id, name=old_name, openstack_id=openstack_id, domain_id=domain_id)
 
     mock_project_repository.find_by_id.return_value = project
-    mock_project_repository.exists_user.return_value = True
+    mock_project_user_repository.exists_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
 
@@ -167,6 +168,7 @@ async def test_update_project_fail_duplicate_name(
     mock_session,
     mock_async_client,
     mock_project_repository,
+    mock_project_user_repository,
     mock_keystone_client,
     project_service,
     mock_compensation_manager
@@ -177,7 +179,7 @@ async def test_update_project_fail_duplicate_name(
     project = Project(id=project_id, name="Old", domain_id=1, openstack_id="abc")
 
     mock_project_repository.find_by_id.return_value = project
-    mock_project_repository.exists_user.return_value = True
+    mock_project_user_repository.exists_user.return_value = True
     mock_project_repository.exists_by_name.return_value = True
 
     # when & then
@@ -199,6 +201,7 @@ async def test_update_project_fail_access_denied(
     mock_session,
     mock_async_client,
     mock_project_repository,
+    mock_project_user_repository,
     project_service,
     mock_keystone_client,
     mock_compensation_manager,
@@ -210,7 +213,7 @@ async def test_update_project_fail_access_denied(
     project = Project(id=project_id, name="Old", domain_id=1, openstack_id="abc")
 
     mock_project_repository.find_by_id.return_value = project
-    mock_project_repository.exists_user.return_value = False
+    mock_project_user_repository.exists_user.return_value = False
 
     # when & then
     with pytest.raises(ProjectAccessDeniedException):
@@ -229,6 +232,7 @@ async def test_update_project_fail_openstack_403(
     mock_session,
     mock_async_client,
     mock_project_repository,
+    mock_project_user_repository,
     project_service,
     mock_keystone_client,
     mock_compensation_manager,
@@ -237,7 +241,7 @@ async def test_update_project_fail_openstack_403(
     project = Project(id=1, name="Old", domain_id=1, openstack_id="abc")
     new_name = "New"
     mock_project_repository.find_by_id.return_value = project
-    mock_project_repository.exists_user.return_value = True
+    mock_project_user_repository.exists_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
     mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=403)
@@ -259,6 +263,7 @@ async def test_update_project_fail_openstack_409(
     mock_session,
     mock_async_client,
     mock_project_repository,
+    mock_project_user_repository,
     project_service,
     mock_keystone_client,
     mock_compensation_manager
@@ -267,7 +272,7 @@ async def test_update_project_fail_openstack_409(
     project = Project(id=1, name="Old", domain_id=1, openstack_id="abc")
     new_name = "New"
     mock_project_repository.find_by_id.return_value = project
-    mock_project_repository.exists_user.return_value = True
+    mock_project_user_repository.exists_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
     mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=409)

@@ -14,6 +14,7 @@ from exception.project_exception import ProjectNotFoundException, ProjectNameDup
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
 from infrastructure.project.repository import ProjectRepository
+from infrastructure.project_user.repository import ProjectUserRepository
 from infrastructure.user.repository import UserRepository
 
 
@@ -22,10 +23,12 @@ class ProjectService:
         self,
         project_repository: ProjectRepository = Depends(),
         user_repository: UserRepository = Depends(),
+        project_user_repository: ProjectUserRepository = Depends(),
         keystone_client: KeystoneClient = Depends()
     ):
         self.project_repository = project_repository
         self.user_repository = user_repository
+        self.project_user_repository = project_user_repository
         self.keystone_client = keystone_client
 
     @transactional()
@@ -94,7 +97,7 @@ class ProjectService:
 
         old_name = project.name
 
-        if not await self.project_repository.exists_user(
+        if not await self.project_user_repository.exists_user(
             session=session,
             project_id=project_id,
             user_id=user_id,
