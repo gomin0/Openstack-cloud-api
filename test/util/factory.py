@@ -1,6 +1,10 @@
+from datetime import datetime, timezone, timedelta
+
 import bcrypt
 
+from common.auth_token_manager import create_access_token
 from domain.domain.entity import Domain
+from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
 from domain.user.entitiy import User
 from test.util.random import random_string
@@ -23,12 +27,14 @@ def create_project(
     project_id: int | None = None,
     openstack_id: str = random_string(),
     name: str = random_string(),
+    version: int = 0
 ) -> Project:
     return Project(
         id=project_id,
         domain_id=domain_id,
         openstack_id=openstack_id,
         name=name,
+        version=version
     )
 
 
@@ -64,3 +70,13 @@ def create_project_user(
         project_id=project_id,
         role_id=random_string(),
     )
+
+
+def create_current_token(user: User) -> str:
+    now = datetime.now(timezone.utc)
+    keystone_token = KeystoneToken(
+        token="fake-keystone-token",
+        expires_at=now + timedelta(minutes=60)
+    )
+    access_token = create_access_token(user_id=user.id, keystone_token=keystone_token)
+    return access_token
