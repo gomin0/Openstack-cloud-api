@@ -71,6 +71,7 @@ async def get_project(
     "/{project_id}",
     summary="프로젝트 변경", status_code=200,
     responses={
+        401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "해당 프로젝트에 대한 접근 권한이 없는 경우"},
         404: {"description": "해당 ID의 프로젝트가 없는 경우"},
         409: {"description": "이름이 중복된 경우"},
