@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Query, Path, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from application.project_service import ProjectService
 from domain.enum import SortOrder
@@ -75,7 +76,7 @@ async def update_project(
     request: ProjectUpdateRequest,
     project_id: int = Path(description="프로젝트 ID")
 ) -> ProjectResponse:
-    raise NotImplementedError()
+    raise StaleDataError()
 
 
 @router.post(
