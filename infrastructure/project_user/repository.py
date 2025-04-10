@@ -5,7 +5,7 @@ from domain.project.entity import ProjectUser
 
 
 class ProjectUserRepository:
-    async def exists_user(
+    async def exists_by_user_and_project(
         self,
         session: AsyncSession,
         project_id: int,

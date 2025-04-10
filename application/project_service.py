@@ -97,7 +97,7 @@ class ProjectService:
 
         old_name: str = project.name
 
-        if not await self.project_user_repository.exists_user(
+        if not await self.project_user_repository.exists_by_user_and_project(
             session=session,
             project_id=project_id,
             user_id=user_id,
