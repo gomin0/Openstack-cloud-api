@@ -65,3 +65,16 @@ class ProjectUser(Base):
     @async_property
     async def project(self) -> Project:
         return await self.awaitable_attrs._project
+
+    @classmethod
+    def add(
+        cls,
+        project_id: int,
+        user_id: int,
+        role_id: str
+    ) -> "ProjectUser":
+        return cls(
+            project_id=project_id,
+            user_id=user_id,
+            role_id=role_id
+        )
