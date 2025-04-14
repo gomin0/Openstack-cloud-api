@@ -21,3 +21,12 @@ class ProjectAccessDeniedException(CustomException):
             status_code=403,
             message=message
         )
+
+
+class ProjectNameDuplicatedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="PROJECT_NAME_DUPLICATED",
+            status_code=409,
+            message="이미 존재하는 프로젝트 이름입니다."
+        )

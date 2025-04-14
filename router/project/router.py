@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Query, Path, Depends
+from fastapi import APIRouter, Query, Path, Depends, Body
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.project_service import ProjectService
+from common.auth_token_manager import get_current_user
+from common.compensating_transaction import compensating_transaction
+from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
+from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.project.request import ProjectUpdateRequest
 from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
@@ -52,7 +57,7 @@ async def find_projects(
 async def get_project(
     project_id: int = Path(description="프로젝트 ID"),
     project_service: ProjectService = Depends(),
-    session: AsyncSession = Depends(get_db_session)
+    session: AsyncSession = Depends(get_db_session),
 ) -> ProjectDetailResponse:
     project: Project = await project_service.get_project(
         session=session,
@@ -66,16 +71,32 @@ async def get_project(
     "/{project_id}",
     summary="프로젝트 변경", status_code=200,
     responses={
+        401: {"description": "인증 정보가 유효하지 않은 경우"},
+        403: {"description": "해당 프로젝트에 대한 접근 권한이 없는 경우"},
         404: {"description": "해당 ID의 프로젝트가 없는 경우"},
         409: {"description": "이름이 중복된 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}
     }
 )
 async def update_project(
-    request: ProjectUpdateRequest,
-    project_id: int = Path(description="프로젝트 ID")
+    request: ProjectUpdateRequest = Body(),
+    project_id: int = Path(description="프로젝트 ID"),
+    current_user: CurrentUser = Depends(get_current_user),
+    project_service: ProjectService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client)
 ) -> ProjectResponse:
-    raise NotImplementedError()
+    async with compensating_transaction() as compensating_tx:
+        project: Project = await project_service.update_project(
+            compensating_tx=compensating_tx,
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            user_id=current_user.user_id,
+            project_id=project_id,
+            new_name=request.name
+        )
+    return ProjectResponse.from_entity(project)
 
 
 @router.post(
