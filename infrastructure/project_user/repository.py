@@ -15,6 +15,7 @@ class ProjectUserRepository:
             ProjectUser.project_id == project_id,
             ProjectUser.user_id == user_id
         ))
+
         result = await session.scalar(stmt)
         return result
 

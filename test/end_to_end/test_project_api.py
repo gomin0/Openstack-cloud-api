@@ -1,37 +1,20 @@
 from common.envs import Envs, get_envs
-from domain.domain.entity import Domain
-from domain.project.entity import Project, ProjectUser
-from domain.user.entitiy import User
 from test.util.database import add_to_db
-from test.util.factory import create_domain, create_project, create_user, create_project_user, create_access_token
+from test.util.factory import create_domain, create_user, create_project, create_project_user, create_access_token
 
 envs: Envs = get_envs()
 
 
-async def find_projects_setup(db_session):
-    domain = Domain(openstack_id="domain123", name="도메인1")
-    db_session.add_all([domain])
-    await db_session.flush()
-
-    user1 = User(openstack_id="user123", domain_id=domain.id, account_id="user1", name="사용자1", password="@!#32")
-    user2 = User(openstack_id="user456", domain_id=domain.id, account_id="user2", name="사용자2", password="@!@3")
-    project1 = Project(openstack_id="project123", domain_id=domain.id, name="프로젝트1")
-    project2 = Project(openstack_id="project456", domain_id=domain.id, name="프로젝트2")
-
-    db_session.add_all([domain, user1, user2, project1, project2])
-    await db_session.flush()
-
-    project_user1 = ProjectUser(user_id=user1.id, project_id=project1.id, role_id="role123")
-    project_user2 = ProjectUser(user_id=user2.id, project_id=project1.id, role_id="role123")
-
-    db_session.add_all([project_user1, project_user2])
-    await db_session.flush()
-    await db_session.commit()
-
-
 async def test_find_projects(client, db_session):
     # given
-    await find_projects_setup(db_session)
+    domain = await add_to_db(db_session, create_domain())
+    user1 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    user2 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트1"))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    project_user1 = await add_to_db(db_session, create_project_user(user_id=user1.id, project_id=project1.id))
+    project_user2 = await add_to_db(db_session, create_project_user(user_id=user1.id, project_id=project1.id))
+    await db_session.commit()
 
     # when
     response = await client.get("/projects")
@@ -52,7 +35,14 @@ async def test_find_projects(client, db_session):
 
 async def test_find_projects_with_name_like(client, db_session):
     # given
-    await find_projects_setup(db_session)
+    domain = await add_to_db(db_session, create_domain())
+    user1 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    user2 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트1"))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트2"))
+    project_user1 = await add_to_db(db_session, create_project_user(user_id=user1.id, project_id=project1.id))
+    project_user2 = await add_to_db(db_session, create_project_user(user_id=user1.id, project_id=project2.id))
+    await db_session.commit()
 
     # when
     response = await client.get("/projects?name_like=2")
@@ -66,20 +56,10 @@ async def test_find_projects_with_name_like(client, db_session):
 
 async def test_get_project(client, db_session):
     # given
-    domain = Domain(openstack_id="domainabc", name="도메인2")
-    db_session.add_all([domain])
-    await db_session.flush()
-
-    user = User(openstack_id="ted123", domain_id=domain.id, account_id="abc", name="ted", password="@!#32")
-    project = Project(openstack_id="project12345", domain_id=domain.id, name="프로젝트")
-
-    db_session.add_all([domain, user, project])
-    await db_session.flush()
-
-    project_user = ProjectUser(user_id=user.id, project_id=project.id, role_id="role123")
-
-    db_session.add_all([project_user])
-    await db_session.flush()
+    domain = await add_to_db(db_session, create_domain(name="도메인"))
+    user = await add_to_db(db_session, create_user(domain_id=domain.id, name="ted"))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트"))
+    project_user = await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
     await db_session.commit()
 
     # when
@@ -91,7 +71,7 @@ async def test_get_project(client, db_session):
     assert data["id"] == project.id
     assert data["name"] == "프로젝트"
     assert data["domain"]["id"] == domain.id
-    assert data["domain"]["name"] == "도메인2"
+    assert data["domain"]["name"] == "도메인"
     assert len(data["accounts"]) == 1
     assert data["accounts"][0]["name"] == "ted"
 
@@ -107,6 +87,96 @@ async def test_get_project_fail_not_found(client):
     assert response.status_code == 404
     data = response.json()
     assert data["code"] == "PROJECT_NOT_FOUND"
+
+
+async def test_update_project(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트1"))
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project_user = await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id)
+
+    # when
+    response = await client.put(
+        f"/projects/{project.id}",
+        json={"name": "New Name"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == project.id
+    assert data["name"] == "New Name"
+
+
+async def test_update_project_fail_not_found(client, db_session):
+    # given
+    project_id = 999999
+
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id)
+
+    # when
+    response = await client.put(
+        f"/projects/{project_id}",
+        json={"name": "New Name"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    data = response.json()
+    assert data["code"] == "PROJECT_NOT_FOUND"
+
+
+async def test_update_project_fail_name_duplicated(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트1"))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트2"))
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project_user = await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project1.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id)
+
+    # when
+    response = await client.put(
+        f"/projects/{project1.id}",
+        json={"name": project2.name},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    data = response.json()
+    assert data["code"] == "PROJECT_NAME_DUPLICATED"
+
+
+async def test_update_project_fail_access_denied(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id)
+
+    # when
+    response = await client.put(
+        f"/projects/{project.id}",
+        json={"name": "New Project Name"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 403
+    data = response.json()
+    assert data["code"] == "PROJECT_ACCESS_DENIED"
 
 
 async def test_assign_user_to_project(client, db_session):

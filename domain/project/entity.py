@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR
+from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.domain.entity import Domain
@@ -27,6 +27,7 @@ class Project(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+    version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
     _domain: Mapped[Domain] = relationship("Domain", lazy="select")
     _linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select", back_populates="_project")
@@ -39,6 +40,11 @@ class Project(Base):
     async def users(self) -> list[User]:
         linked_users: list[ProjectUser] = await self.awaitable_attrs._linked_users
         return [await link.user for link in linked_users]
+
+    __mapper_args__ = {"version_id_col": version}
+
+    def update_name(self, name: str) -> None:
+        self.name = name
 
 
 class ProjectUser(Base):
