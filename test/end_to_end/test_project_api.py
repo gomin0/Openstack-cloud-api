@@ -255,7 +255,6 @@ async def test_assign_user_to_project_fail_already_assigned(client, db_session):
         create_project_user(
             user_id=user2.id,
             project_id=project.id,
-            role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
         )
     )
     await db_session.commit()
