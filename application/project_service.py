@@ -183,7 +183,7 @@ class ProjectService:
         if not user:
             raise UserNotFoundException()
 
-        project_user: ProjectUser = await self.project_user_repository.find(
+        project_user: ProjectUser | None = await self.project_user_repository.find(
             session=session,
             project_id=project_id,
             user_id=user_id,
