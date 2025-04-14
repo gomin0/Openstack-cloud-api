@@ -8,8 +8,8 @@ from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
-from exception.project_exception import ProjectNotFoundException, ProjectAccessDeniedException, \
-    UserRoleAlreadyInProjectException, UserRoleNotInProjectException, ProjectNameDuplicatedException
+from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
+    ProjectAccessDeniedException, UserAlreadyInProjectException, UserNotInProjectException
 from exception.user_exception import UserNotFoundException
 
 envs: Envs = get_envs()
@@ -414,8 +414,8 @@ async def test_assign_user_success(
         call(session=mock_session, project_id=project_id, user_id=user2_id)
     ])
 
-    mock_project_user_repository.create_project_user.assert_called_once()
-    mock_keystone_client.assign_role_from_user_on_project.assert_called_once()
+    mock_project_user_repository.create.assert_called_once()
+    mock_keystone_client.assign_role_to_user_on_project.assert_called_once()
 
 
 async def test_assign_user_fail_project_not_found(
@@ -535,7 +535,7 @@ async def test_assign_user_fail_already_assigned(
     mock_project_user_repository.exists_by_project_and_user.side_effect = [True, True]
 
     # when & then
-    with pytest.raises(UserRoleAlreadyInProjectException):
+    with pytest.raises(UserAlreadyInProjectException):
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
@@ -586,7 +586,7 @@ async def test_unassign_user_success(
     )
 
     # then
-    mock_project_user_repository.remove_user_role.assert_called_once_with(
+    mock_project_user_repository.remove.assert_called_once_with(
         session=mock_session,
         project_user=project_user
     )
@@ -702,7 +702,7 @@ async def test_unassign_user_fail_user_not_in_project(
     mock_project_user_repository.find_by_project_and_user.return_value = None
 
     # when & then
-    with pytest.raises(UserRoleNotInProjectException):
+    with pytest.raises(UserNotInProjectException):
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,

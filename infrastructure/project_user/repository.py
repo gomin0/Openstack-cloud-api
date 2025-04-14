@@ -15,6 +15,7 @@ class ProjectUserRepository:
             ProjectUser.project_id == project_id,
             ProjectUser.user_id == user_id
         ))
+
         result: bool = await session.scalar(stmt)
         return result
 
@@ -32,7 +33,7 @@ class ProjectUserRepository:
         )
         return project_user
 
-    async def create_project_user(
+    async def create(
         self,
         session: AsyncSession,
         project_user: ProjectUser,
@@ -40,7 +41,7 @@ class ProjectUserRepository:
         session.add(project_user)
         await session.flush()
 
-    async def remove_user_role(
+    async def remove(
         self,
         session: AsyncSession,
         project_user: ProjectUser,

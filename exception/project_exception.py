@@ -32,7 +32,7 @@ class ProjectNameDuplicatedException(CustomException):
         )
 
 
-class UserRoleAlreadyInProjectException(CustomException):
+class UserAlreadyInProjectException(CustomException):
     def __init__(self):
         super().__init__(
             code="USER_ROLE_ALREADY_IN_PROJECT",
@@ -41,7 +41,7 @@ class UserRoleAlreadyInProjectException(CustomException):
         )
 
 
-class UserRoleNotInProjectException(CustomException):
+class UserNotInProjectException(CustomException):
     def __init__(self):
         super().__init__(
             code="USER_ROLE_NOT_IN_PROJECT",

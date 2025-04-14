@@ -157,7 +157,7 @@ class KeystoneClient(OpenStackClient):
             }
         )
 
-    async def assign_role_from_user_on_project(
+    async def assign_role_to_user_on_project(
         self,
         client: AsyncClient,
         keystone_token: str,

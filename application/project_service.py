@@ -11,8 +11,8 @@ from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
-from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
-    ProjectAccessDeniedException, UserRoleAlreadyInProjectException, UserRoleNotInProjectException
+from exception.project_exception import ProjectNotFoundException, UserAlreadyInProjectException, \
+    ProjectAccessDeniedException, ProjectNameDuplicatedException, UserNotInProjectException
 from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
@@ -183,9 +183,9 @@ class ProjectService:
             project_id=project_id,
             user_id=user_id,
         ):
-            raise UserRoleAlreadyInProjectException()
+            raise UserAlreadyInProjectException()
 
-        await self.project_user_repository.create_project_user(
+        await self.project_user_repository.create(
             session=session,
             project_user=ProjectUser(
                 project_id=project_id,
@@ -196,7 +196,7 @@ class ProjectService:
         try:
             project_openstack_id: str = project.openstack_id
             user_openstack_id: str = user.openstack_id
-            await self.keystone_client.assign_role_from_user_on_project(
+            await self.keystone_client.assign_role_to_user_on_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
@@ -255,9 +255,9 @@ class ProjectService:
             user_id=user_id,
         )
         if not project_user:
-            raise UserRoleNotInProjectException()
+            raise UserNotInProjectException()
 
-        await self.project_user_repository.remove_user_role(
+        await self.project_user_repository.remove(
             session=session,
             project_user=project_user
         )
