@@ -188,7 +188,7 @@ class ProjectService:
 
         await self.project_user_repository.add_user_role(
             session=session,
-            project_user=ProjectUser.add(
+            project_user=ProjectUser(
                 project_id=project_id,
                 user_id=user_id,
                 role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
