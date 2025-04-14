@@ -53,7 +53,6 @@ class ProjectUser(Base):
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True)
     user_id: Mapped[int] = mapped_column("user_id", BigInteger, ForeignKey("user.id"), nullable=False)
     project_id: Mapped[int] = mapped_column("project_id", BigInteger, ForeignKey("project.id"), nullable=False)
-    role_id: Mapped[str] = mapped_column("role_id", CHAR(32), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
     )
@@ -71,16 +70,3 @@ class ProjectUser(Base):
     @async_property
     async def project(self) -> Project:
         return await self.awaitable_attrs._project
-
-    @classmethod
-    def add(
-        cls,
-        project_id: int,
-        user_id: int,
-        role_id: str
-    ) -> "ProjectUser":
-        return cls(
-            project_id=project_id,
-            user_id=user_id,
-            role_id=role_id
-        )
