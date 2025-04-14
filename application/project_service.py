@@ -10,7 +10,7 @@ from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectNotFoundException, UserRoleAlreadyInProjectException, \
-    ProjectAccessDeniedException
+    ProjectAccessDeniedException, UserRoleNotInProjectException
 from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
