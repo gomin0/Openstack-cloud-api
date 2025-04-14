@@ -30,3 +30,12 @@ class UserRoleAlreadyInProjectException(CustomException):
             status_code=409,
             message="프로젝트에 이미 소속된 유저입니다."
         )
+
+
+class UserRoleNotInProjectException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="USER_ROLE_NOT_IN_PROJECT",
+            status_code=409,
+            message="프로젝트에 소속 되지 않은 유저입니다."
+        )

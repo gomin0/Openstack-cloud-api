@@ -132,3 +132,33 @@ class KeystoneClient(OpenStackClient):
             url=self._KEYSTONE_URL + f"/v3/users/{user_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
         )
+
+    async def assign_role_from_user_on_project(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        project_openstack_id: str,
+        user_openstack_id: str,
+        role_openstack_id: str,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="PUT",
+            url=self._KEYSTONE_URL + f"/v3/projects/{project_openstack_id}/users/{user_openstack_id}/roles/{role_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+        )
+
+    async def unassign_role_from_user_on_project(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        project_openstack_id: str,
+        user_openstack_id: str,
+        role_openstack_id: str,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="DELETE",
+            url=self._KEYSTONE_URL + f"/v3/projects/{project_openstack_id}/users/{user_openstack_id}/roles/{role_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+        )
