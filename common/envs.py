@@ -16,6 +16,7 @@ class Envs(BaseSettings):
 
     DEFAULT_DOMAIN_ID: int
     DEFAULT_DOMAIN_OPENSTACK_ID: str
+    DEFAULT_ROLE_OPENSTACK_ID: str
 
     JWT_SECRET: str
     ACCESS_TOKEN_DURATION_MINUTES: int
