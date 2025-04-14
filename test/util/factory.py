@@ -57,10 +57,11 @@ def create_project_user(
     user_id: int,
     project_id: int,
     project_user_id: int | None = None,
+    role_id: str = random_int()
 ) -> ProjectUser:
     return ProjectUser(
         id=project_user_id,
         user_id=user_id,
         project_id=project_id,
-        role_id=random_string(),
+        role_id=role_id,
     )
