@@ -150,3 +150,73 @@ class ProjectService:
             if ex.openstack_status_code == 403:
                 raise ProjectAccessDeniedException() from ex
             raise ex
+
+    @transactional()
+    async def unassign_role_from_user_on_project(
+        self,
+        compensating_tx: CompensationManager,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        keystone_user_id: int,
+        project_id: int,
+        user_id: int
+    ) -> None:
+        project: Project | None = await self.project_repository.find_by_id(
+            session=session,
+            project_id=project_id
+        )
+        if not project:
+            raise ProjectNotFoundException()
+
+        if not await self.project_user_repository.exists_by_user_and_project(
+            session=session,
+            project_id=project_id,
+            user_id=keystone_user_id,
+        ):
+            raise ProjectAccessDeniedException()
+
+        user: User | None = await self.user_repository.find_by_id(
+            session=session,
+            user_id=user_id
+        )
+        if not user:
+            raise UserNotFoundException()
+
+        project_user: ProjectUser = await self.project_user_repository.find(
+            session=session,
+            project_id=project_id,
+            user_id=user_id,
+            role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
+        )
+        if not project_user:
+            raise UserRoleNotInProjectException()
+
+        await self.project_user_repository.remove_user_role(
+            session=session,
+            project_user=project_user
+        )
+
+        try:
+            project_openstack_id: str = project.openstack_id
+            user_openstack_id: str = user.openstack_id
+            await self.keystone_client.unassign_role_from_user_on_project(
+                client=client,
+                project_openstack_id=project_openstack_id,
+                user_openstack_id=user_openstack_id,
+                role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+                keystone_token=keystone_token
+            )
+            compensating_tx.add_task(
+                lambda: self.keystone_client.assign_role_from_user_on_project(
+                    client=client,
+                    project_openstack_id=project_openstack_id,
+                    user_openstack_id=user_openstack_id,
+                    role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+                    keystone_token=keystone_token
+                )
+            )
+        except OpenStackException as ex:
+            if ex.openstack_status_code == 403:
+                raise ProjectAccessDeniedException() from ex
+            raise ex
