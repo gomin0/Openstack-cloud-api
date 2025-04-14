@@ -379,11 +379,11 @@ async def test_assign_user_success(
     user1_id = 1
     user2_id = 2
     project = Project(id=project_id, name="TestProject", openstack_id="pos", domain_id=1)
-    user = User(id=user1_id, name="u1", openstack_id="u1", domain_id=1)
-    user = User(id=user2_id, name="u2", openstack_id="u2", domain_id=1)
+    user1 = User(id=user1_id, name="u1", openstack_id="u1", domain_id=1)
+    user2 = User(id=user2_id, name="u2", openstack_id="u2", domain_id=1)
 
     mock_project_repository.find_by_id.return_value = project
-    mock_user_repository.find_by_id.return_value = user
+    mock_user_repository.find_by_id.return_value = user2
     mock_project_user_repository.exists_by_project_and_user.side_effect = [True, False]
 
     # when
@@ -410,6 +410,7 @@ async def test_assign_user_success(
         call(session=mock_session, project_id=project_id, user_id=user1_id),
         call(session=mock_session, project_id=project_id, user_id=user2_id)
     ])
+    assert mock_project_user_repository.exists_by_project_and_user.call_count == 2
 
     mock_project_user_repository.create.assert_called_once()
     mock_keystone_client.assign_role_to_user_on_project.assert_called_once()
@@ -547,3 +548,4 @@ async def test_assign_user_fail_already_assigned(
         call(session=mock_session, project_id=project_id, user_id=user1_id),
         call(session=mock_session, project_id=project_id, user_id=user2_id)
     ])
+    assert mock_project_user_repository.exists_by_project_and_user.call_count == 2
