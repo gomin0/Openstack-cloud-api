@@ -1,6 +1,11 @@
+from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.project.entity import Project, ProjectUser
 from domain.user.entitiy import User
+from test.util.database import add_to_db
+from test.util.factory import create_domain, create_project, create_user, create_project_user, create_access_token
+
+envs: Envs = get_envs()
 
 
 async def find_projects_setup(db_session):
@@ -102,3 +107,98 @@ async def test_get_project_fail_not_found(client):
     assert response.status_code == 404
     data = response.json()
     assert data["code"] == "PROJECT_NOT_FOUND"
+
+
+async def test_assign_user_to_project(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    user1 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    user2 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project_user = await add_to_db(db_session, create_project_user(user_id=user1.id, project_id=project.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user1.id)
+
+    # when
+    response = await client.post(
+        f"/projects/{project.id}/users/{user2.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 204
+
+
+async def test_assign_user_to_project_fail_project_not_found(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id)
+    project_id = 1
+
+    # when
+    response = await client.post(
+        f"/projects/{project_id}/users/{user.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    data = response.json()
+    assert data["code"] == "PROJECT_NOT_FOUND"
+
+
+async def test_assign_user_to_project_fail_access_denied(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    user1 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    user2 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user1.id)
+
+    # when
+    response = await client.post(
+        f"/projects/{project.id}/users/{user2.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 403
+    data = response.json()
+    assert data["code"] == "PROJECT_ACCESS_DENIED"
+
+
+async def test_assign_user_to_project_fail_already_assigned(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    user1 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    user2 = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project_user1 = await add_to_db(db_session, create_project_user(user_id=user1.id, project_id=project.id))
+    project_user2 = await add_to_db(
+        db_session,
+        create_project_user(
+            user_id=user2.id,
+            project_id=project.id,
+            role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
+        )
+    )
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user1.id)
+
+    # when
+    response = await client.post(
+        f"/projects/{project.id}/users/{user2.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    data = response.json()
+    assert data["code"] == "USER_ROLE_ALREADY_IN_PROJECT"
