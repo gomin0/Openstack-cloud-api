@@ -102,7 +102,7 @@ class ProjectService:
 
         old_name: str = project.name
 
-        if not await self.project_user_repository.exists_by_user_and_project(
+        if not await self.project_user_repository.exists_by_project_and_user(
             session=session,
             project_id=project_id,
             user_id=user_id,
@@ -147,13 +147,13 @@ class ProjectService:
         return project
 
     @transactional()
-    async def assign_role_from_user_on_project(
+    async def assign_user_on_project(
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
-        keystone_user_id: int,
+        request_user_id: int,
         project_id: int,
         user_id: int
     ) -> None:
@@ -164,10 +164,10 @@ class ProjectService:
         if not project:
             raise ProjectNotFoundException()
 
-        if not await self.project_user_repository.exists_by_user_and_project(
+        if not await self.project_user_repository.exists_by_project_and_user(
             session=session,
             project_id=project_id,
-            user_id=keystone_user_id,
+            user_id=request_user_id,
         ):
             raise ProjectAccessDeniedException()
 
@@ -178,20 +178,18 @@ class ProjectService:
         if not user:
             raise UserNotFoundException()
 
-        if await self.project_user_repository.is_user_role_exist(
+        if await self.project_user_repository.exists_by_project_and_user(
             session=session,
             project_id=project_id,
             user_id=user_id,
-            role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
         ):
             raise UserRoleAlreadyInProjectException()
 
-        await self.project_user_repository.add_user_role(
+        await self.project_user_repository.create_project_user(
             session=session,
-            project_user=ProjectUser.add(
+            project_user=ProjectUser(
                 project_id=project_id,
                 user_id=user_id,
-                role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
             )
         )
 
@@ -220,7 +218,7 @@ class ProjectService:
             raise ex
 
     @transactional()
-    async def unassign_role_from_user_on_project(
+    async def unassign_user_from_project(
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
@@ -237,7 +235,7 @@ class ProjectService:
         if not project:
             raise ProjectNotFoundException()
 
-        if not await self.project_user_repository.exists_by_user_and_project(
+        if not await self.project_user_repository.exists_by_project_and_user(
             session=session,
             project_id=project_id,
             user_id=keystone_user_id,
@@ -251,11 +249,10 @@ class ProjectService:
         if not user:
             raise UserNotFoundException()
 
-        project_user: ProjectUser | None = await self.project_user_repository.find(
+        project_user: ProjectUser | None = await self.project_user_repository.find_by_project_and_user(
             session=session,
             project_id=project_id,
             user_id=user_id,
-            role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
         )
         if not project_user:
             raise UserRoleNotInProjectException()

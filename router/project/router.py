@@ -103,13 +103,11 @@ async def update_project(
     "/{project_id}/users/{user_id}",
     summary="프로젝트에 계정 소속", status_code=204,
     responses={
-        401: {"description": "인증 정보가 유효하지 않은 경우"},
-        403: {"description": "해당 프로젝트에 대한 접근 권한이 없는 경우"},
         404: {"description": "프로젝트, 계정이 없는 경우"},
         409: {"description": "이미 소속된 경우"}
     }
 )
-async def assign_role_from_user_on_project(
+async def assign_user_on_project(
     project_id: int = Path(description="프로젝트 ID"),
     user_id: int = Path(description="계정 ID"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -118,11 +116,11 @@ async def assign_role_from_user_on_project(
     client: AsyncClient = Depends(get_async_client)
 ) -> None:
     async with compensating_transaction() as compensating_tx:
-        await project_service.assign_role_from_user_on_project(
+        await project_service.assign_user_on_project(
             compensating_tx=compensating_tx,
             session=session,
             keystone_token=current_user.keystone_token,
-            keystone_user_id=current_user.user_id,
+            request_user_id=current_user.user_id,
             client=client,
             project_id=project_id,
             user_id=user_id,
@@ -139,7 +137,7 @@ async def assign_role_from_user_on_project(
         409: {"description": "해당 계정이 이 프로젝트에 소속되어 있지 않은 경우"}
     }
 )
-async def unassign_role_from_user_on_project(
+async def unassign_user_from_project(
     project_id: int = Path(description="프로젝트 ID"),
     user_id: int = Path(description="계정 ID"),
     current_user: CurrentUser = Depends(get_current_user),
@@ -148,7 +146,7 @@ async def unassign_role_from_user_on_project(
     client: AsyncClient = Depends(get_async_client)
 ) -> None:
     async with compensating_transaction() as compensating_tx:
-        await project_service.unassign_role_from_user_on_project(
+        await project_service.unassign_user_from_project(
             compensating_tx=compensating_tx,
             session=session,
             keystone_token=current_user.keystone_token,
