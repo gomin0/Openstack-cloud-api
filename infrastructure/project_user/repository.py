@@ -5,7 +5,7 @@ from domain.project.entity import ProjectUser
 
 
 class ProjectUserRepository:
-    async def exists_by_user_and_project(
+    async def exists_by_project_and_user(
         self,
         session: AsyncSession,
         project_id: int,
@@ -16,28 +16,10 @@ class ProjectUserRepository:
             ProjectUser.user_id == user_id
         ))
 
-        result = await session.scalar(stmt)
+        result: bool = await session.scalar(stmt)
         return result
 
-    async def is_user_role_exist(
-        self,
-        session: AsyncSession,
-        project_id: int,
-        user_id: int,
-        role_id: str
-    ) -> bool:
-        result: bool = await session.scalar(
-            select(
-                exists().where(
-                    ProjectUser.project_id == project_id,
-                    ProjectUser.user_id == user_id,
-                    ProjectUser.role_id == role_id
-                )
-            )
-        )
-        return result
-
-    async def add_user_role(
+    async def create_project_user(
         self,
         session: AsyncSession,
         project_user: ProjectUser,
