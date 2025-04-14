@@ -196,7 +196,7 @@ class ProjectService:
         try:
             project_openstack_id: str = project.openstack_id
             user_openstack_id: str = user.openstack_id
-            await self.keystone_client.assign_role_from_user_on_project(
+            await self.keystone_client.assign_role_to_user_on_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,

@@ -412,7 +412,7 @@ async def test_assign_user_success(
     ])
 
     mock_project_user_repository.create_project_user.assert_called_once()
-    mock_keystone_client.assign_role_from_user_on_project.assert_called_once()
+    mock_keystone_client.assign_role_to_user_on_project.assert_called_once()
 
 
 async def test_assign_user_fail_project_not_found(
