@@ -11,7 +11,7 @@ from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
-from exception.project_exception import ProjectNotFoundException, UserRoleAlreadyInProjectException, \
+from exception.project_exception import ProjectNotFoundException, UserAlreadyInProjectException, \
     ProjectAccessDeniedException, ProjectNameDuplicatedException
 from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
@@ -183,9 +183,9 @@ class ProjectService:
             project_id=project_id,
             user_id=user_id,
         ):
-            raise UserRoleAlreadyInProjectException()
+            raise UserAlreadyInProjectException()
 
-        await self.project_user_repository.create_project_user(
+        await self.project_user_repository.create(
             session=session,
             project_user=ProjectUser(
                 project_id=project_id,

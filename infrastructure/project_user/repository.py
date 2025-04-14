@@ -19,7 +19,7 @@ class ProjectUserRepository:
         result: bool = await session.scalar(stmt)
         return result
 
-    async def create_project_user(
+    async def create(
         self,
         session: AsyncSession,
         project_user: ProjectUser,

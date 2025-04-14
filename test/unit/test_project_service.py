@@ -8,7 +8,7 @@ from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
-    ProjectAccessDeniedException, UserRoleAlreadyInProjectException
+    ProjectAccessDeniedException, UserAlreadyInProjectException
 from exception.user_exception import UserNotFoundException
 
 
@@ -411,7 +411,7 @@ async def test_assign_user_success(
         call(session=mock_session, project_id=project_id, user_id=user2_id)
     ])
 
-    mock_project_user_repository.create_project_user.assert_called_once()
+    mock_project_user_repository.create.assert_called_once()
     mock_keystone_client.assign_role_to_user_on_project.assert_called_once()
 
 
@@ -532,7 +532,7 @@ async def test_assign_user_fail_already_assigned(
     mock_project_user_repository.exists_by_project_and_user.side_effect = [True, True]
 
     # when & then
-    with pytest.raises(UserRoleAlreadyInProjectException):
+    with pytest.raises(UserAlreadyInProjectException):
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
