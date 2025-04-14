@@ -21,3 +21,12 @@ class ProjectAccessDeniedException(CustomException):
             status_code=403,
             message=message
         )
+
+
+class UserRoleAlreadyInProjectException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="USER_ROLE_ALREADY_IN_PROJECT",
+            status_code=409,
+            message="프로젝트에 이미 소속된 유저입니다."
+        )
