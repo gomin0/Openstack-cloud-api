@@ -1,20 +1,38 @@
 from fastapi import Depends
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from common.compensating_transaction import CompensationManager
+from common.envs import Envs, get_envs
 from domain.enum import SortOrder
-from domain.project.entity import Project
+from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
-from exception.project_exception import ProjectNotFoundException
+from domain.user.entitiy import User
+from exception.openstack_exception import OpenStackException
+from exception.project_exception import ProjectNotFoundException, UserRoleAlreadyInProjectException, \
+    ProjectAccessDeniedException
+from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
+from infrastructure.keystone.client import KeystoneClient
 from infrastructure.project.repository import ProjectRepository
+from infrastructure.project_user.repository import ProjectUserRepository
+from infrastructure.user.repository import UserRepository
+
+envs: Envs = get_envs()
 
 
 class ProjectService:
     def __init__(
         self,
-        project_repository: ProjectRepository = Depends()
+        project_repository: ProjectRepository = Depends(),
+        user_repository: UserRepository = Depends(),
+        project_user_repository: ProjectUserRepository = Depends(),
+        keystone_client: KeystoneClient = Depends()
     ):
         self.project_repository = project_repository
+        self.user_repository = user_repository
+        self.project_user_repository = project_user_repository
+        self.keystone_client = keystone_client
 
     @transactional()
     async def find_projects(
@@ -59,3 +77,76 @@ class ProjectService:
             raise ProjectNotFoundException()
 
         return project
+
+    @transactional()
+    async def assign_role_from_user_on_project(
+        self,
+        compensating_tx: CompensationManager,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        keystone_user_id: int,
+        project_id: int,
+        user_id: int
+    ) -> None:
+        project: Project | None = await self.project_repository.find_by_id(
+            session=session,
+            project_id=project_id
+        )
+        if not project:
+            raise ProjectNotFoundException()
+
+        if not await self.project_user_repository.exists_by_user_and_project(
+            session=session,
+            project_id=project_id,
+            user_id=keystone_user_id,
+        ):
+            raise ProjectAccessDeniedException()
+
+        user: User | None = await self.user_repository.find_by_id(
+            session=session,
+            user_id=user_id
+        )
+        if not user:
+            raise UserNotFoundException()
+
+        if await self.project_user_repository.is_user_role_exist(
+            session=session,
+            project_id=project_id,
+            user_id=user_id,
+            role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
+        ):
+            raise UserRoleAlreadyInProjectException()
+
+        await self.project_user_repository.add_user_role(
+            session=session,
+            project_user=ProjectUser.add(
+                project_id=project_id,
+                user_id=user_id,
+                role_id=envs.DEFAULT_ROLE_OPENSTACK_ID
+            )
+        )
+
+        try:
+            project_openstack_id: str = project.openstack_id
+            user_openstack_id: str = user.openstack_id
+            await self.keystone_client.assign_role_from_user_on_project(
+                client=client,
+                project_openstack_id=project_openstack_id,
+                user_openstack_id=user_openstack_id,
+                role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+                keystone_token=keystone_token
+            )
+            compensating_tx.add_task(
+                lambda: self.keystone_client.unassign_role_from_user_on_project(
+                    client=client,
+                    project_openstack_id=project_openstack_id,
+                    user_openstack_id=user_openstack_id,
+                    role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+                    keystone_token=keystone_token
+                )
+            )
+        except OpenStackException as ex:
+            if ex.openstack_status_code == 403:
+                raise ProjectAccessDeniedException() from ex
+            raise ex
