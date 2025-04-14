@@ -133,6 +133,30 @@ class KeystoneClient(OpenStackClient):
             headers={"X-Auth-Token": keystone_token},
         )
 
+    async def update_project(
+        self,
+        client: AsyncClient,
+        project_openstack_id: str,
+        name: str,
+        keystone_token: str
+    ) -> None:
+        url = f"{self._KEYSTONE_URL}/v3/projects/{project_openstack_id}"
+
+        await self.request(
+            client=client,
+            url=url,
+            method="PATCH",
+            headers={
+                "X-Auth-Token": keystone_token,
+                "Content-Type": "application/json",
+            },
+            json={
+                "project": {
+                    "name": name
+                }
+            }
+        )
+
     async def assign_role_from_user_on_project(
         self,
         client: AsyncClient,

@@ -1,6 +1,8 @@
+import backoff
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from common.compensating_transaction import CompensationManager
 from common.envs import Envs, get_envs
@@ -9,8 +11,8 @@ from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
-from exception.project_exception import ProjectNotFoundException, UserRoleAlreadyInProjectException, \
-    ProjectAccessDeniedException, UserRoleNotInProjectException
+from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
+    ProjectAccessDeniedException, UserRoleAlreadyInProjectException, UserRoleNotInProjectException
 from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
@@ -75,6 +77,72 @@ class ProjectService:
 
         if not project:
             raise ProjectNotFoundException()
+
+        return project
+
+    @backoff.on_exception(backoff.expo, StaleDataError, max_tries=3)
+    @transactional()
+    async def update_project(
+        self,
+        compensating_tx: CompensationManager,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        user_id: int,
+        project_id: int,
+        new_name: str,
+    ) -> Project | None:
+        project: Project | None = await self.project_repository.find_by_id(
+            session=session,
+            project_id=project_id,
+        )
+
+        if not project:
+            raise ProjectNotFoundException()
+
+        old_name: str = project.name
+
+        if not await self.project_user_repository.exists_by_user_and_project(
+            session=session,
+            project_id=project_id,
+            user_id=user_id,
+        ):
+            raise ProjectAccessDeniedException()
+
+        if await self.project_repository.exists_by_name(
+            session=session,
+            name=new_name,
+        ):
+            raise ProjectNameDuplicatedException()
+
+        project.update_name(new_name)
+        project: Project = await self.project_repository.update_with_optimistic_lock(
+            session=session,
+            project=project
+        )
+
+        try:
+            project_openstack_id: str = project.openstack_id
+            await self.keystone_client.update_project(
+                client=client,
+                project_openstack_id=project_openstack_id,
+                name=new_name,
+                keystone_token=keystone_token
+            )
+            compensating_tx.add_task(
+                lambda: self.keystone_client.update_project(
+                    client=client,
+                    project_openstack_id=project_openstack_id,
+                    name=old_name,
+                    keystone_token=keystone_token
+                )
+            )
+        except OpenStackException as ex:
+            if ex.openstack_status_code == 403:
+                raise ProjectAccessDeniedException() from ex
+            if ex.openstack_status_code == 409:
+                raise ProjectNameDuplicatedException() from ex
+            raise ex
 
         return project
 

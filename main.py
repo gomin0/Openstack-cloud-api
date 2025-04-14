@@ -2,9 +2,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy.orm.exc import StaleDataError
 
 from exception.base_exception import CustomException
-from exception.exception_handler import custom_validation_error_handler, custom_exception_handler
+from exception.exception_handler import custom_validation_error_handler, custom_exception_handler, \
+    stale_data_error_handler
 from infrastructure.async_client import init_async_client, close_async_client
 from router.auth.router import router as auth_router
 from router.project.router import router as project_router
@@ -26,3 +28,4 @@ app.include_router(project_router)
 
 app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
 app.add_exception_handler(CustomException, custom_exception_handler)
+app.add_exception_handler(StaleDataError, stale_data_error_handler)
