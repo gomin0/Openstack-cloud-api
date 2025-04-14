@@ -36,10 +36,34 @@ class ProjectUserRepository:
         )
         return result
 
+    async def find(
+        self,
+        session: AsyncSession,
+        project_id: int,
+        user_id: int,
+        role_id: str
+    ) -> ProjectUser | None:
+        project_user: ProjectUser | None = await session.scalar(
+            select(ProjectUser).where(
+                ProjectUser.project_id == project_id,
+                ProjectUser.user_id == user_id,
+                ProjectUser.role_id == role_id
+            )
+        )
+        return project_user
+
     async def add_user_role(
         self,
         session: AsyncSession,
         project_user: ProjectUser,
     ) -> None:
         session.add(project_user)
+        await session.flush()
+
+    async def remove_user_role(
+        self,
+        session: AsyncSession,
+        project_user: ProjectUser,
+    ) -> None:
+        await session.delete(project_user)
         await session.flush()
