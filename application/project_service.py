@@ -273,7 +273,7 @@ class ProjectService:
                 keystone_token=keystone_token
             )
             compensating_tx.add_task(
-                lambda: self.keystone_client.assign_role_from_user_on_project(
+                lambda: self.keystone_client.assign_role_to_user_on_project(
                     client=client,
                     project_openstack_id=project_openstack_id,
                     user_openstack_id=user_openstack_id,
