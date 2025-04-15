@@ -186,7 +186,7 @@ async def test_update_user_success(
     mock_user_repository.update.return_value = create_user(user_id=user.id, name=new_name)
 
     # when
-    result: User = await user_service.update_user(
+    result: User = await user_service.update_user_info(
         session=mock_session,
         user_id=user.id,
         name=new_name,
@@ -208,7 +208,7 @@ async def test_update_user_fail_when_user_not_found(
 
     # when & then
     with pytest.raises(UserNotFoundException):
-        await user_service.update_user(
+        await user_service.update_user_info(
             session=mock_session,
             user_id=random_int(),
             name=random_string(),

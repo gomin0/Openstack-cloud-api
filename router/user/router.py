@@ -85,8 +85,9 @@ async def create_user(
         )
 
 
-@router.patch(
-    path="/me", status_code=200,
+@router.put(
+    path="/me",
+    status_code=200,
     summary="내 정보 변경",
     responses={422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}}
 )
@@ -96,7 +97,7 @@ async def update_user(
     user_service: UserService = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
-    user: User = await user_service.update_user(
+    user: User = await user_service.update_user_info(
         session=session,
         user_id=current_user.user_id,
         name=request.name,

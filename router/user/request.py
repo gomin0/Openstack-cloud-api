@@ -8,4 +8,4 @@ class CreateUserRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    name: str | None = Field(default=None, max_length=15, description="이름", examples=["woody"])
+    name: str = Field(max_length=15, description="이름", examples=["woody"])

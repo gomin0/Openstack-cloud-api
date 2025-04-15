@@ -213,7 +213,7 @@ async def test_update_user_success(client, db_session):
 
     # when
     access_token = create_access_token(user_id=user.id)
-    response = await client.patch(
+    response = await client.put(
         url="/users/me",
         headers={
             "Content-Type": "application/json",

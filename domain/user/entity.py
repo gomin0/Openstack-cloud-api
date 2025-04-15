@@ -60,6 +60,5 @@ class User(Base):
             password=hashed_password,
         )
 
-    def update(self, name: str | None):
-        if name is not None:
-            self.name = name
+    def update_info(self, name: str):
+        self.name = name
