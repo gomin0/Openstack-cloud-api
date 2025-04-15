@@ -6,6 +6,7 @@ from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
 from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
 from test.unit.conftest import mock_session, mock_user_repository, user_service, mock_keystone_client
+from test.util.factory import create_user
 from test.util.factory import create_user_stub
 from test.util.random import random_string, random_int
 
@@ -171,3 +172,45 @@ async def test_create_user_fail_raises_account_id_duplicate_exception_on_opensta
     mock_user_repository.exists_by_account_id.assert_called_once()
     mock_keystone_client.authenticate_with_scoped_auth.assert_called_once()
     mock_keystone_client.create_user.assert_called_once()
+
+
+async def test_update_user_success(
+    user_service,
+    mock_user_repository,
+    mock_session,
+):
+    # given
+    user: User = create_user()
+    new_name: str = random_string()
+    mock_user_repository.find_by_id.return_value = user
+    mock_user_repository.update.return_value = create_user(user_id=user.id, name=new_name)
+
+    # when
+    result: User = await user_service.update_user(
+        session=mock_session,
+        user_id=user.id,
+        name=new_name,
+    )
+
+    # then
+    mock_user_repository.find_by_id.assert_called_once()
+    mock_user_repository.update.assert_called_once()
+    assert result.name == new_name
+
+
+async def test_update_user_fail_when_user_not_found(
+    user_service,
+    mock_user_repository,
+    mock_session,
+):
+    # given
+    mock_user_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(UserNotFoundException):
+        await user_service.update_user(
+            session=mock_session,
+            user_id=random_int(),
+            name=random_string(),
+        )
+    mock_user_repository.find_by_id.assert_called_once()

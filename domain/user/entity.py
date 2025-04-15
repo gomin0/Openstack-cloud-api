@@ -59,3 +59,7 @@ class User(Base):
             name=name,
             password=hashed_password,
         )
+
+    def update(self, name: str | None):
+        if name is not None:
+            self.name = name
