@@ -1,12 +1,12 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR, Integer
+from sqlalchemy import String, DateTime, ForeignKey, BigInteger, CHAR, Integer, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.domain.entity import Domain
 from domain.entity import Base
-from domain.enum import EntityStatus
+from domain.enum import LifecycleStatus
 from domain.user.entitiy import User
 
 
@@ -17,8 +17,10 @@ class Project(Base):
     openstack_id: Mapped[str] = mapped_column("openstack_id", CHAR(32), nullable=False)
     domain_id: Mapped[int] = mapped_column("domain_id", BigInteger, ForeignKey("domain.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
-    status: Mapped[str] = mapped_column(
-        "status", String(15), nullable=False, default=EntityStatus.ACTIVE.value
+    lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
+        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
+        nullable=False,
+        default=LifecycleStatus.ACTIVE
     )
     created_at: Mapped[datetime] = mapped_column(
         "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
