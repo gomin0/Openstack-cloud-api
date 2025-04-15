@@ -41,7 +41,7 @@ class ProjectUserRepository:
         session.add(project_user)
         await session.flush()
 
-    async def remove(
+    async def delete(
         self,
         session: AsyncSession,
         project_user: ProjectUser,

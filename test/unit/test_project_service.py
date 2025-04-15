@@ -588,7 +588,7 @@ async def test_unassign_user_success(
     )
 
     # then
-    mock_project_user_repository.remove.assert_called_once_with(
+    mock_project_user_repository.delete.assert_called_once_with(
         session=mock_session,
         project_user=project_user
     )

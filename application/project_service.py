@@ -257,7 +257,7 @@ class ProjectService:
         if not project_user:
             raise UserNotInProjectException()
 
-        await self.project_user_repository.remove(
+        await self.project_user_repository.delete(
             session=session,
             project_user=project_user
         )
