@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from domain.domain.entity import Domain
 from domain.entity import Base
 from domain.enum import LifecycleStatus
-from domain.user.entitiy import User
+from domain.user.entity import User
 
 
 class Project(Base):

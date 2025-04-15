@@ -6,7 +6,7 @@ from sqlalchemy import select
 from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.project.entity import Project, ProjectUser
-from domain.user.entitiy import User
+from domain.user.entity import User
 from router.user.request import CreateUserRequest
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user

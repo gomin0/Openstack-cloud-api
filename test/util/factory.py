@@ -6,7 +6,7 @@ from common import auth_token_manager
 from domain.domain.entity import Domain
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
-from domain.user.entitiy import User
+from domain.user.entity import User
 from test.util.random import random_string, random_int
 
 

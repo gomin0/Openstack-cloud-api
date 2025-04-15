@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from domain.enum import SortOrder, LifecycleStatus
 from domain.project.entity import ProjectUser
-from domain.user.entitiy import User
+from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from exception.common_exception import MultipleEntitiesFoundException
 

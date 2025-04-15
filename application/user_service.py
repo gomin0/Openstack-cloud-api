@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.compensating_transaction import CompensationManager
 from common.envs import get_envs, Envs
 from domain.enum import SortOrder
-from domain.user.entitiy import User
+from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
 from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException

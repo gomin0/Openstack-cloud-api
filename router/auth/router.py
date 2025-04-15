@@ -7,7 +7,7 @@ from application.keystone_service import KeystoneService
 from common.auth_token_manager import create_access_token
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project
-from domain.user.entitiy import User
+from domain.user.entity import User
 from exception.project_exception import ProjectAccessDeniedException
 from exception.user_exception import UserNotJoinedAnyProjectException
 from infrastructure.async_client import get_async_client

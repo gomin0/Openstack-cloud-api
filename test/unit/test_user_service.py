@@ -1,7 +1,7 @@
 import pytest
 
 from domain.enum import SortOrder
-from domain.user.entitiy import User
+from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
 from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
