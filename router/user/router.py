@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from application.user_service import UserService
 from common.compensating_transaction import compensating_transaction
 from domain.enum import SortOrder
-from domain.user.entitiy import User
+from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session

@@ -1,7 +1,7 @@
 import pytest
 
 from domain.project.entity import Project
-from domain.user.entitiy import User
+from domain.user.entity import User
 from exception.auth_exception import InvalidAuthException
 from test.util.factory import create_user
 from test.util.random import random_int, random_string

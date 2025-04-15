@@ -4,9 +4,9 @@ from sqlalchemy import select, Select, ScalarResult, exists, ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from domain.enum import SortOrder, EntityStatus
+from domain.enum import SortOrder, LifecycleStatus
 from domain.project.entity import ProjectUser
-from domain.user.entitiy import User
+from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from exception.common_exception import MultipleEntitiesFoundException
 
@@ -26,7 +26,7 @@ class UserRepository:
         query: Select[tuple[User]] = select(User)
 
         if not with_deleted:
-            query = query.where(User.status == EntityStatus.ACTIVE.value)
+            query = query.where(User.lifecycle_status == LifecycleStatus.ACTIVE)
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
@@ -63,7 +63,7 @@ class UserRepository:
         query: Select[tuple[User]] = select(User).where(User.id == user_id)
 
         if not with_deleted:
-            query = query.where(User.status == EntityStatus.ACTIVE.value)
+            query = query.where(User.lifecycle_status == LifecycleStatus.ACTIVE)
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
@@ -82,7 +82,7 @@ class UserRepository:
         query: Select = select(User).where(User.account_id == account_id)
 
         if not with_deleted:
-            query = query.where(User.status == EntityStatus.ACTIVE.value)
+            query = query.where(User.lifecycle_status == LifecycleStatus.ACTIVE)
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
@@ -100,7 +100,7 @@ class UserRepository:
         session: AsyncSession,
         account_id: str,
     ) -> bool:
-        is_not_deleted: ColumnElement = User.status == EntityStatus.ACTIVE.value
+        is_not_deleted: ColumnElement = User.lifecycle_status == LifecycleStatus.ACTIVE
         query: Select = select(exists().where(is_not_deleted, User.account_id == account_id))
         return await session.scalar(query)
 

@@ -5,7 +5,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.project.entity import Project
-from domain.user.entitiy import User
+from domain.user.entity import User
 from exception.auth_exception import InvalidAuthException
 from infrastructure.database import transactional
 from infrastructure.user.repository import UserRepository

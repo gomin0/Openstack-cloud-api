@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from domain.domain.entity import Domain
 from domain.project.entity import Project
-from domain.user.entitiy import User
+from domain.user.entity import User
 
 
 class DomainResponse(BaseModel):

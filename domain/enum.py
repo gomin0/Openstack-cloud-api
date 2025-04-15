@@ -6,7 +6,7 @@ class SortOrder(Enum):
     DESC = "desc"
 
 
-class EntityStatus(Enum):
+class LifecycleStatus(Enum):
     ACTIVE = "ACTIVE"
     MARK_DELETED = "MARK_DELETED"
     DELETED = "DELETED"

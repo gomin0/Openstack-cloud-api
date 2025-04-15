@@ -2,7 +2,7 @@ from sqlalchemy import select, Select, ScalarResult, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 
-from domain.enum import SortOrder, EntityStatus
+from domain.enum import SortOrder, LifecycleStatus
 from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 
@@ -22,7 +22,7 @@ class ProjectRepository:
         query: Select[tuple[Project]] = select(Project)
 
         if not with_deleted:
-            query = query.where(Project.status == EntityStatus.ACTIVE.value)
+            query = query.where(Project.lifecycle_status == LifecycleStatus.ACTIVE)
 
         if with_relations:
             query = query.options(
@@ -59,7 +59,7 @@ class ProjectRepository:
         query: Select[tuple[Project]] = select(Project).where(Project.id == project_id)
 
         if not with_deleted:
-            query = query.where(Project.status == EntityStatus.ACTIVE.value)
+            query = query.where(Project.lifecycle_status == LifecycleStatus.ACTIVE)
         if with_relations:
             query = query.options(
                 joinedload(Project._domain),
@@ -78,7 +78,7 @@ class ProjectRepository:
             select(
                 exists().where(
                     Project.name == name,
-                    Project.status == EntityStatus.ACTIVE.value,
+                    Project.lifecycle_status == LifecycleStatus.ACTIVE,
                 )
             )
         )

@@ -4,7 +4,7 @@ import httpx
 
 from domain.domain.entity import Domain
 from domain.project.entity import Project
-from domain.user.entitiy import User
+from domain.user.entity import User
 from test.end_to_end.conftest import mock_async_client
 from test.util.database import add_to_db
 from test.util.factory import create_user, create_domain, create_project, create_project_user
