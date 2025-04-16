@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 
 from domain.enum import SortOrder
 from router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
-from router.security_group.response import SecurityGroupDetailResponses, SecurityGroupDetailResponse
+from router.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 
 router = APIRouter(prefix="/security-group", tags=["security-group"])
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/security-group", tags=["security-group"])
 async def find_security_groups(
     sort_by: SecurityGroupSortOption = Query(default=SecurityGroupSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-) -> SecurityGroupDetailResponses:
+) -> SecurityGroupDetailsResponse:
     raise NotImplementedError()
 
 
