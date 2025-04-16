@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query
 
 from domain.enum import SortOrder
-from router.floating_ip.response import FloatingIpDetailResponses, FloatingIpDetailResponse
+from router.floating_ip.request import CreateFloatingIPRequest
+from router.floating_ip.response import FloatingIpDetailResponses, FloatingIpDetailResponse, FloatingIpResponse
 
 router = APIRouter(prefix="/floating-ip", tags=["floating-ip"])
 
@@ -32,4 +33,18 @@ async def find_floating_ips(
 async def get_floating_ip(
     floating_ip_id: int,
 ) -> FloatingIpDetailResponse:
+    raise NotImplementedError()
+
+
+@router.post(
+    "",
+    status_code=201,
+    summary="플로팅 IP 할당",
+    responses={
+        422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
+    }
+)
+async def create_floating_ip(
+    request: CreateFloatingIPRequest,
+) -> FloatingIpResponse:
     raise NotImplementedError()
