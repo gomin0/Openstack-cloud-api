@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 
 from domain.enum import SortOrder
+from router.security_group.request import CreateSecurityGroupRequest
 from router.security_group.response import SecurityGroupDetailResponses, SecurityGroupDetailResponse
 
 router = APIRouter(prefix="/security-group", tags=["security-group"])
@@ -30,5 +31,19 @@ async def find_security_groups(
 )
 async def get_security_group(
     security_group_id: int,
+) -> SecurityGroupDetailResponse:
+    raise NotImplementedError()
+
+
+@router.post(
+    "", status_code=201,
+    summary="보안그룹 생성",
+    responses={
+        409: {"description": "보안그룹 이름이 이미 프로젝트 내에서 사용중인 경우"},
+        422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}
+    }
+)
+async def create_security_group(
+    request: CreateSecurityGroupRequest,
 ) -> SecurityGroupDetailResponse:
     raise NotImplementedError()
