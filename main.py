@@ -10,6 +10,7 @@ from exception.exception_handler import custom_validation_error_handler, custom_
 from infrastructure.async_client import init_async_client, close_async_client
 from router.auth.router import router as auth_router
 from router.project.router import router as project_router
+from router.security_group.router import router as security_group_router
 from router.user.router import router as user_router
 
 
@@ -25,6 +26,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(project_router)
+app.include_router(security_group_router)
 
 app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
 app.add_exception_handler(CustomException, custom_exception_handler)
