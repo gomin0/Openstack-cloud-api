@@ -64,3 +64,18 @@ async def update_security_group(
     request: UpdateSecurityGroupRequest,
 ) -> SecurityGroupDetailResponse:
     raise NotImplementedError()
+
+
+@router.delete(
+    "/{security_group_id}",
+    status_code=204,
+    summary="보안그룹 삭제",
+    responses={
+        404: {"description": "해당 ID의 보안그룹을 찾을 수 없는 경우"},
+        409: {"description": "연결된 서버가 존재해 삭제할 수 없는 경우"}
+    }
+)
+async def delete_security_group(
+    security_group_id: int,
+) -> None:
+    raise NotImplementedError()
