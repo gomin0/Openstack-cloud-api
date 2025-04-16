@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from domain.security_group.enum import SecurityGroupRuleDirection
+
 
 class SecurityGroupRuleRequest(BaseModel):
     protocol: str | None = Field(description="프로토콜", examples=["tcp"])

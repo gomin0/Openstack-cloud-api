@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import Field, BaseModel, ConfigDict
 
+from domain.security_group.enum import SecurityGroupRuleDirection
+
 
 class SecurityGroupRuleResponse(BaseModel):
     id: int = Field(description="룰셋 ID", examples=[1])
