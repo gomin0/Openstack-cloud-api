@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 
 from domain.enum import SortOrder
-from router.floating_ip.response import FloatingIpDetailResponses
+from router.floating_ip.response import FloatingIpDetailResponses, FloatingIpDetailResponse
 
 router = APIRouter(prefix="/floating-ip", tags=["floating-ip"])
 
@@ -18,4 +18,18 @@ async def find_floating_ips(
     sort_by: FloatingIPSortOption = Query(default=FloatingIPSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
 ) -> FloatingIpDetailResponses:
+    raise NotImplementedError()
+
+
+@router.get(
+    "/{floating_ip_id}",
+    status_code=200,
+    summary="단일 플로팅 IP 조회",
+    responses={
+        404: {"description": "해당 ID의 플로팅 IP를 찾을 수 없는 경우"},
+    }
+)
+async def get_floating_ip(
+    floating_ip_id: int,
+) -> FloatingIpDetailResponse:
     raise NotImplementedError()
