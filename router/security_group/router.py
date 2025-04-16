@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Query
 
 from domain.enum import SortOrder
+from domain.security_group.enum import SecurityGroupSortOption
 from router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
 from router.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 
-router = APIRouter(prefix="/security-group", tags=["security-group"])
+router = APIRouter(prefix="/security-groups", tags=["security-group"])
 
 
 @router.get(
