@@ -48,3 +48,18 @@ async def create_floating_ip(
     request: CreateFloatingIPRequest,
 ) -> FloatingIpResponse:
     raise NotImplementedError()
+
+
+@router.delete(
+    "/{floating_ip_id}",
+    status_code=204,
+    summary="플로팅 IP 할당 해제(삭제)",
+    responses={
+        404: {"description": "해당 ID의 플로팅 IP를 찾을 수 없는 경우"},
+        409: {"description": "서버에 연결된 상태에서는 삭제할 수 없음"},
+    }
+)
+async def delete_floating_ip(
+    floating_ip_id: int,
+) -> None:
+    raise NotImplementedError()
