@@ -2,14 +2,17 @@ from unittest.mock import call
 
 import pytest
 
+from common.envs import Envs, get_envs
 from domain.enum import SortOrder
-from domain.project.entity import Project
+from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
-    ProjectAccessDeniedException, UserAlreadyInProjectException
+    ProjectAccessDeniedException, UserAlreadyInProjectException, UserNotInProjectException
 from exception.user_exception import UserNotFoundException
+
+envs: Envs = get_envs()
 
 
 async def test_find_projects(mock_session, mock_project_repository, project_service):
@@ -549,3 +552,171 @@ async def test_assign_user_fail_already_assigned(
         call(session=mock_session, project_id=project_id, user_id=user2_id)
     ])
     assert mock_project_user_repository.exists_by_project_and_user.call_count == 2
+
+
+async def test_unassign_user_success(
+    mock_session,
+    mock_async_client,
+    mock_project_repository,
+    mock_user_repository,
+    mock_project_user_repository,
+    mock_keystone_client,
+    project_service,
+    mock_compensation_manager
+):
+    # given
+    project_id = 1
+    user_id = 1
+    project = Project(id=project_id, name="Project", openstack_id="pos", domain_id=1)
+    user = User(id=user_id, name="User", openstack_id="uos", domain_id=1)
+    project_user = ProjectUser(id=1, user_id=user_id, project_id=project_id)
+
+    mock_project_repository.find_by_id.return_value = project
+    mock_project_user_repository.exists_by_project_and_user.return_value = True
+    mock_user_repository.find_by_id.return_value = user
+    mock_project_user_repository.find_by_project_and_user.return_value = project_user
+
+    # when
+    await project_service.unassign_user_from_project(
+        compensating_tx=mock_compensation_manager,
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token="token",
+        keystone_user_id=user_id,
+        project_id=project_id,
+        user_id=user_id
+    )
+
+    # then
+    mock_project_user_repository.delete.assert_called_once_with(
+        session=mock_session,
+        project_user=project_user
+    )
+    mock_keystone_client.unassign_role_from_user_on_project.assert_called_once()
+
+
+async def test_unassign_user_fail_project_not_found(
+    mock_session,
+    mock_async_client,
+    mock_project_repository,
+    project_service,
+    mock_compensation_manager
+):
+    # given
+    mock_project_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(ProjectNotFoundException):
+        await project_service.unassign_user_from_project(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token="token",
+            keystone_user_id=1,
+            project_id=1,
+            user_id=1
+        )
+
+    mock_project_repository.find_by_id.assert_called_once()
+
+
+async def test_unassign_user_fail_access_denied(
+    mock_session,
+    mock_async_client,
+    mock_project_repository,
+    mock_project_user_repository,
+    project_service,
+    mock_compensation_manager
+):
+    # given
+    project_id = 1
+    project = Project(id=project_id, name="Project", openstack_id="pos", domain_id=1)
+    mock_project_repository.find_by_id.return_value = project
+    mock_project_user_repository.exists_by_project_and_user.return_value = False
+
+    # when & then
+    with pytest.raises(ProjectAccessDeniedException):
+        await project_service.unassign_user_from_project(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token="token",
+            keystone_user_id=1,
+            project_id=project_id,
+            user_id=1
+        )
+
+    mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
+        session=mock_session,
+        user_id=1,
+        project_id=1
+    )
+
+
+async def test_unassign_user_fail_user_not_found(
+    mock_session,
+    mock_async_client,
+    mock_project_repository,
+    mock_project_user_repository,
+    mock_user_repository,
+    project_service,
+    mock_compensation_manager
+):
+    # given
+    project_id = 1
+    project = Project(id=project_id, name="Project", openstack_id="pos", domain_id=1)
+    mock_project_repository.find_by_id.return_value = project
+    mock_project_user_repository.exists_by_user_and_project.return_value = True
+    mock_user_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(UserNotFoundException):
+        await project_service.unassign_user_from_project(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token="token",
+            keystone_user_id=1,
+            project_id=project_id,
+            user_id=1
+        )
+    mock_user_repository.find_by_id.assert_called_once_with(session=mock_session, user_id=1)
+
+
+async def test_unassign_user_fail_user_not_in_project(
+    mock_session,
+    mock_async_client,
+    mock_project_repository,
+    mock_project_user_repository,
+    mock_user_repository,
+    project_service,
+    mock_compensation_manager
+):
+    # given
+    project_id = 1
+    user_id = 1
+    project = Project(id=project_id, name="Project", openstack_id="pos", domain_id=1)
+    user = User(id=user_id, name="User", openstack_id="uos", domain_id=1)
+
+    mock_project_repository.find_by_id.return_value = project
+    mock_project_user_repository.exists_by_project_and_user.return_value = True
+    mock_user_repository.find_by_id.return_value = user
+    mock_project_user_repository.find_by_project_and_user.return_value = None
+
+    # when & then
+    with pytest.raises(UserNotInProjectException):
+        await project_service.unassign_user_from_project(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token="token",
+            keystone_user_id=1,
+            project_id=project_id,
+            user_id=user_id
+        )
+
+    mock_project_user_repository.find_by_project_and_user.assert_called_once_with(
+        session=mock_session,
+        project_id=project_id,
+        user_id=user_id,
+    )

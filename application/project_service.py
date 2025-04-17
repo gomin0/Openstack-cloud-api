@@ -12,7 +12,7 @@ from domain.project.enum import ProjectSortOption
 from domain.user.entitiy import User
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectNotFoundException, UserAlreadyInProjectException, \
-    ProjectAccessDeniedException, ProjectNameDuplicatedException
+    ProjectAccessDeniedException, ProjectNameDuplicatedException, UserNotInProjectException
 from exception.user_exception import UserNotFoundException
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
@@ -205,6 +205,75 @@ class ProjectService:
             )
             compensating_tx.add_task(
                 lambda: self.keystone_client.unassign_role_from_user_on_project(
+                    client=client,
+                    project_openstack_id=project_openstack_id,
+                    user_openstack_id=user_openstack_id,
+                    role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+                    keystone_token=keystone_token
+                )
+            )
+        except OpenStackException as ex:
+            if ex.openstack_status_code == 403:
+                raise ProjectAccessDeniedException() from ex
+            raise ex
+
+    @transactional()
+    async def unassign_user_from_project(
+        self,
+        compensating_tx: CompensationManager,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        request_user_id: int,
+        project_id: int,
+        user_id: int
+    ) -> None:
+        project: Project | None = await self.project_repository.find_by_id(
+            session=session,
+            project_id=project_id
+        )
+        if not project:
+            raise ProjectNotFoundException()
+
+        if not await self.project_user_repository.exists_by_project_and_user(
+            session=session,
+            project_id=project_id,
+            user_id=request_user_id,
+        ):
+            raise ProjectAccessDeniedException()
+
+        user: User | None = await self.user_repository.find_by_id(
+            session=session,
+            user_id=user_id
+        )
+        if not user:
+            raise UserNotFoundException()
+
+        project_user: ProjectUser | None = await self.project_user_repository.find_by_project_and_user(
+            session=session,
+            project_id=project_id,
+            user_id=user_id,
+        )
+        if not project_user:
+            raise UserNotInProjectException()
+
+        await self.project_user_repository.delete(
+            session=session,
+            project_user=project_user
+        )
+
+        try:
+            project_openstack_id: str = project.openstack_id
+            user_openstack_id: str = user.openstack_id
+            await self.keystone_client.unassign_role_from_user_on_project(
+                client=client,
+                project_openstack_id=project_openstack_id,
+                user_openstack_id=user_openstack_id,
+                role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+                keystone_token=keystone_token
+            )
+            compensating_tx.add_task(
+                lambda: self.keystone_client.assign_role_to_user_on_project(
                     client=client,
                     project_openstack_id=project_openstack_id,
                     user_openstack_id=user_openstack_id,
