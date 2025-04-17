@@ -28,8 +28,8 @@ async def find_users_setup(db_session):
     db_session.add_all([domain, user1, user2, project1, project2])
     await db_session.flush()
 
-    project_user1 = ProjectUser(user_id=user1.id, project_id=project1.id, role_id="role123")
-    project_user2 = ProjectUser(user_id=user1.id, project_id=project2.id, role_id="role123")
+    project_user1 = ProjectUser(user_id=user1.id, project_id=project1.id)
+    project_user2 = ProjectUser(user_id=user1.id, project_id=project2.id)
 
     db_session.add_all([project_user1, project_user2])
     await db_session.flush()
@@ -86,8 +86,8 @@ async def test_get_user(client, db_session):
     db_session.add_all([user, project1, project2])
     await db_session.flush()
 
-    project_user1 = ProjectUser(user_id=user.id, project_id=project1.id, role_id="role123")
-    project_user2 = ProjectUser(user_id=user.id, project_id=project2.id, role_id="role123")
+    project_user1 = ProjectUser(user_id=user.id, project_id=project1.id)
+    project_user2 = ProjectUser(user_id=user.id, project_id=project2.id)
 
     db_session.add_all([project_user1, project_user2])
     await db_session.flush()

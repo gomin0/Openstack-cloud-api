@@ -68,7 +68,6 @@ def create_project_user(
         id=project_user_id,
         user_id=user_id,
         project_id=project_id,
-        role_id=random_string(),
     )
 
 
