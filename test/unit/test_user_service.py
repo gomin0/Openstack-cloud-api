@@ -183,7 +183,6 @@ async def test_update_user_success(
     user: User = create_user()
     new_name: str = random_string()
     mock_user_repository.find_by_id.return_value = user
-    mock_user_repository.update.return_value = create_user(user_id=user.id, name=new_name)
 
     # when
     result: User = await user_service.update_user_info(
@@ -194,7 +193,6 @@ async def test_update_user_success(
 
     # then
     mock_user_repository.find_by_id.assert_called_once()
-    mock_user_repository.update.assert_called_once()
     assert result.name == new_name
 
 

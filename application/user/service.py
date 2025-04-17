@@ -142,12 +142,13 @@ class UserService:
         user.update_info(name=name)
         return user
 
-    async def _get_cloud_admin_keystone_token(self, client: AsyncClient):
+    async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
         keystone_token: str
-        keystone_token, _ = await self.keystone_client.authenticate_with_unscoped_auth(
+        keystone_token, _ = await self.keystone_client.authenticate_with_scoped_auth(
             client=client,
             domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
             user_openstack_id=envs.CLOUD_ADMIN_OPENSTACK_ID,
             password=envs.CLOUD_ADMIN_PASSWORD,
+            project_openstack_id=envs.CLOUD_ADMIN_DEFAULT_PROJECT_OPENSTACK_ID
         )
         return keystone_token
