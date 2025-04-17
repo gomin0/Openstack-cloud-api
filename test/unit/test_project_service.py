@@ -119,7 +119,7 @@ async def test_update_project(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = token, exp
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = token, exp
     mock_keystone_client.update_project.return_value = None
 
     # when
@@ -272,7 +272,7 @@ async def test_update_project_fail_openstack_403(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
     mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=403)
 
     # when & then
@@ -327,7 +327,7 @@ async def test_update_project_fail_openstack_409(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
     mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=409)
 
     # when & then
@@ -387,7 +387,7 @@ async def test_assign_user_success(
     mock_project_repository.find_by_id.return_value = project
     mock_user_repository.find_by_id.return_value = user2
     mock_project_user_repository.exists_by_project_and_user.side_effect = [True, False]
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
 
     # when
     await project_service.assign_user_on_project(
@@ -570,7 +570,7 @@ async def test_unassign_user_success(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_user_repository.find_by_id.return_value = user
     mock_project_user_repository.find_by_project_and_user.return_value = project_user
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
 
     # when
     await project_service.unassign_user_from_project(
