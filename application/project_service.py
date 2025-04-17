@@ -9,7 +9,7 @@ from common.envs import Envs, get_envs
 from domain.enum import SortOrder
 from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
-from domain.user.entitiy import User
+from domain.user.entity import User
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectNotFoundException, UserAlreadyInProjectException, \
     ProjectAccessDeniedException, ProjectNameDuplicatedException, UserNotInProjectException
@@ -87,7 +87,6 @@ class ProjectService:
         compensating_tx: CompensationManager,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         user_id: int,
         project_id: int,
         new_name: str,
@@ -121,20 +120,21 @@ class ProjectService:
             project=project
         )
 
+        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         try:
             project_openstack_id: str = project.openstack_id
             await self.keystone_client.update_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
                 name=new_name,
-                keystone_token=keystone_token
+                keystone_token=cloud_admin_keystone_token
             )
             compensating_tx.add_task(
                 lambda: self.keystone_client.update_project(
                     client=client,
                     project_openstack_id=project_openstack_id,
                     name=old_name,
-                    keystone_token=keystone_token
+                    keystone_token=cloud_admin_keystone_token
                 )
             )
         except OpenStackException as ex:
@@ -152,7 +152,6 @@ class ProjectService:
         compensating_tx: CompensationManager,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         request_user_id: int,
         project_id: int,
         user_id: int
@@ -193,6 +192,7 @@ class ProjectService:
             )
         )
 
+        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         try:
             project_openstack_id: str = project.openstack_id
             user_openstack_id: str = user.openstack_id
@@ -201,7 +201,7 @@ class ProjectService:
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                keystone_token=keystone_token
+                keystone_token=cloud_admin_keystone_token
             )
             compensating_tx.add_task(
                 lambda: self.keystone_client.unassign_role_from_user_on_project(
@@ -209,7 +209,7 @@ class ProjectService:
                     project_openstack_id=project_openstack_id,
                     user_openstack_id=user_openstack_id,
                     role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                    keystone_token=keystone_token
+                    keystone_token=cloud_admin_keystone_token
                 )
             )
         except OpenStackException as ex:
@@ -223,7 +223,6 @@ class ProjectService:
         compensating_tx: CompensationManager,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         request_user_id: int,
         project_id: int,
         user_id: int
@@ -262,6 +261,7 @@ class ProjectService:
             project_user=project_user
         )
 
+        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         try:
             project_openstack_id: str = project.openstack_id
             user_openstack_id: str = user.openstack_id
@@ -270,7 +270,7 @@ class ProjectService:
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                keystone_token=keystone_token
+                keystone_token=cloud_admin_keystone_token
             )
             compensating_tx.add_task(
                 lambda: self.keystone_client.assign_role_to_user_on_project(
@@ -278,10 +278,21 @@ class ProjectService:
                     project_openstack_id=project_openstack_id,
                     user_openstack_id=user_openstack_id,
                     role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                    keystone_token=keystone_token
+                    keystone_token=cloud_admin_keystone_token
                 )
             )
         except OpenStackException as ex:
             if ex.openstack_status_code == 403:
                 raise ProjectAccessDeniedException() from ex
             raise ex
+
+    async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
+        keystone_token: str
+        keystone_token, _ = await self.keystone_client.authenticate_with_scoped_auth(
+            client=client,
+            domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
+            user_openstack_id=envs.CLOUD_ADMIN_OPENSTACK_ID,
+            password=envs.CLOUD_ADMIN_PASSWORD,
+            project_openstack_id=envs.CLOUD_ADMIN_DEFAULT_PROJECT_OPENSTACK_ID
+        )
+        return keystone_token

@@ -102,7 +102,7 @@ async def test_create_user_success(
     # given
     expected_result: User = create_user()
     mock_user_repository.exists_by_account_id.return_value = False
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "keystone_token", "exp"
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = "keystone_token", "exp"
     mock_keystone_client.create_user.return_value = "openstack_id"
     mock_user_repository.create.return_value = expected_result
 
@@ -118,7 +118,7 @@ async def test_create_user_success(
 
     # then
     mock_user_repository.exists_by_account_id.assert_called_once()
-    mock_keystone_client.authenticate_with_unscoped_auth.assert_called_once()
+    mock_keystone_client.authenticate_with_scoped_auth.assert_called_once()
     mock_keystone_client.create_user.assert_called_once()
     assert actual_result == expected_result
 
@@ -156,7 +156,7 @@ async def test_create_user_fail_raises_account_id_duplicate_exception_on_opensta
 ):
     # given
     mock_user_repository.exists_by_account_id.return_value = False
-    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "keystone_token", "exp"
+    mock_keystone_client.authenticate_with_scoped_auth.return_value = "keystone_token", "exp"
     mock_keystone_client.create_user.side_effect = OpenStackException(openstack_status_code=409)
 
     # when & then
@@ -170,5 +170,5 @@ async def test_create_user_fail_raises_account_id_duplicate_exception_on_opensta
             password=random_string(),
         )
     mock_user_repository.exists_by_account_id.assert_called_once()
-    mock_keystone_client.authenticate_with_unscoped_auth.assert_called_once()
+    mock_keystone_client.authenticate_with_scoped_auth.assert_called_once()
     mock_keystone_client.create_user.assert_called_once()

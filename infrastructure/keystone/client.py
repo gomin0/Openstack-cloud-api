@@ -54,43 +54,6 @@ class KeystoneClient(OpenStackClient):
         keystone_token_expires_at: str = response.json().get("token").get("expires_at")
         return keystone_token, keystone_token_expires_at
 
-    async def authenticate_with_unscoped_auth(
-        self,
-        client: AsyncClient,
-        user_openstack_id: str,
-        domain_openstack_id: str,
-        password: str,
-    ) -> tuple[str, str]:
-        """
-        :return: 생성된 subject token과 token의 만료 시각이 담긴 tuple
-        """
-        response: Response = await self.request(
-            client=client,
-            url=self._KEYSTONE_URL + "/v3/auth/tokens",
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            json={
-                "auth": {
-                    "identity": {
-                        "methods": ["password"],
-                        "password": {
-                            "user": {
-                                "id": user_openstack_id,
-                                "domain": {
-                                    "id": domain_openstack_id,
-                                },
-                                "password": password,
-                            }
-                        }
-                    },
-                },
-            },
-        )
-
-        keystone_token: str = response.headers.get("x-subject-token")
-        keystone_token_expires_at: str = response.json().get("token").get("expires_at")
-        return keystone_token, keystone_token_expires_at
-
     async def create_user(
         self,
         client: AsyncClient,

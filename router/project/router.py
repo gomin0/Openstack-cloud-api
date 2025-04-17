@@ -91,7 +91,6 @@ async def update_project(
             compensating_tx=compensating_tx,
             session=session,
             client=client,
-            keystone_token=current_user.keystone_token,
             user_id=current_user.user_id,
             project_id=project_id,
             new_name=request.name
@@ -119,7 +118,6 @@ async def assign_user_on_project(
         await project_service.assign_user_on_project(
             compensating_tx=compensating_tx,
             session=session,
-            keystone_token=current_user.keystone_token,
             request_user_id=current_user.user_id,
             client=client,
             project_id=project_id,
@@ -149,7 +147,6 @@ async def unassign_user_from_project(
         await project_service.unassign_user_from_project(
             compensating_tx=compensating_tx,
             session=session,
-            keystone_token=current_user.keystone_token,
             request_user_id=current_user.user_id,
             client=client,
             project_id=project_id,
