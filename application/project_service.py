@@ -224,7 +224,7 @@ class ProjectService:
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
-        keystone_user_id: int,
+        request_user_id: int,
         project_id: int,
         user_id: int
     ) -> None:
@@ -238,7 +238,7 @@ class ProjectService:
         if not await self.project_user_repository.exists_by_project_and_user(
             session=session,
             project_id=project_id,
-            user_id=keystone_user_id,
+            user_id=request_user_id,
         ):
             raise ProjectAccessDeniedException()
 

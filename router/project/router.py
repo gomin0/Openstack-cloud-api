@@ -150,7 +150,7 @@ async def unassign_user_from_project(
             compensating_tx=compensating_tx,
             session=session,
             keystone_token=current_user.keystone_token,
-            keystone_user_id=current_user.user_id,
+            request_user_id=current_user.user_id,
             client=client,
             project_id=project_id,
             user_id=user_id,
