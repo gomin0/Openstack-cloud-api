@@ -6,7 +6,7 @@ from common.envs import Envs, get_envs
 from domain.enum import SortOrder
 from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
-from domain.user.entitiy import User
+from domain.user.entity import User
 from exception.openstack_exception import OpenStackException
 from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
     ProjectAccessDeniedException, UserAlreadyInProjectException, UserNotInProjectException
@@ -110,6 +110,7 @@ async def test_update_project(
     old_name = "Old"
     new_name = "New"
     token = "test_token"
+    exp = "exp"
     openstack_id = "abc123"
 
     project = Project(id=project_id, name=old_name, openstack_id=openstack_id, domain_id=domain_id)
@@ -118,13 +119,14 @@ async def test_update_project(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
+    mock_keystone_client.authenticate_with_unscoped_auth.return_value = token, exp
+    mock_keystone_client.update_project.return_value = None
 
     # when
     result = await project_service.update_project(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
         client=mock_async_client,
-        keystone_token=token,
         user_id=user_id,
         project_id=project_id,
         new_name=new_name
@@ -162,7 +164,6 @@ async def test_update_project_fail_not_found(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             user_id=1,
             project_id=project_id,
             new_name=new_name
@@ -195,7 +196,6 @@ async def test_update_project_fail_duplicate_name(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             user_id=123,
             project_id=project_id,
             new_name=new_name
@@ -240,7 +240,6 @@ async def test_update_project_fail_access_denied(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             project_id=project_id,
             new_name=new_name,
             user_id=user_id
@@ -273,6 +272,7 @@ async def test_update_project_fail_openstack_403(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
+    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
     mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=403)
 
     # when & then
@@ -281,7 +281,6 @@ async def test_update_project_fail_openstack_403(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             user_id=1,
             project_id=1,
             new_name=new_name
@@ -328,6 +327,7 @@ async def test_update_project_fail_openstack_409(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
+    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
     mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=409)
 
     # when & then
@@ -336,7 +336,6 @@ async def test_update_project_fail_openstack_409(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             user_id=1,
             project_id=1,
             new_name=new_name
@@ -388,13 +387,13 @@ async def test_assign_user_success(
     mock_project_repository.find_by_id.return_value = project
     mock_user_repository.find_by_id.return_value = user2
     mock_project_user_repository.exists_by_project_and_user.side_effect = [True, False]
+    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
 
     # when
     await project_service.assign_user_on_project(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
         client=mock_async_client,
-        keystone_token="token",
         request_user_id=user1_id,
         project_id=project_id,
         user_id=user2_id
@@ -435,7 +434,6 @@ async def test_assign_user_fail_project_not_found(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             request_user_id=1,
             project_id=1,
             user_id=1
@@ -467,7 +465,6 @@ async def test_assign_user_fail_access_denied(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             request_user_id=1,
             project_id=project_id,
             user_id=1
@@ -502,7 +499,6 @@ async def test_assign_user_fail_user_not_found(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             request_user_id=1,
             project_id=project_id,
             user_id=1
@@ -541,7 +537,6 @@ async def test_assign_user_fail_already_assigned(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
             request_user_id=user1_id,
             project_id=project_id,
             user_id=user2_id
@@ -575,14 +570,14 @@ async def test_unassign_user_success(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_user_repository.find_by_id.return_value = user
     mock_project_user_repository.find_by_project_and_user.return_value = project_user
+    mock_keystone_client.authenticate_with_unscoped_auth.return_value = "token", "exp"
 
     # when
     await project_service.unassign_user_from_project(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
         client=mock_async_client,
-        keystone_token="token",
-        keystone_user_id=user_id,
+        request_user_id=user_id,
         project_id=project_id,
         user_id=user_id
     )
@@ -611,8 +606,7 @@ async def test_unassign_user_fail_project_not_found(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
-            keystone_user_id=1,
+            request_user_id=1,
             project_id=1,
             user_id=1
         )
@@ -640,8 +634,7 @@ async def test_unassign_user_fail_access_denied(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
-            keystone_user_id=1,
+            request_user_id=1,
             project_id=project_id,
             user_id=1
         )
@@ -675,8 +668,7 @@ async def test_unassign_user_fail_user_not_found(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
-            keystone_user_id=1,
+            request_user_id=1,
             project_id=project_id,
             user_id=1
         )
@@ -709,8 +701,7 @@ async def test_unassign_user_fail_user_not_in_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
             client=mock_async_client,
-            keystone_token="token",
-            keystone_user_id=1,
+            request_user_id=1,
             project_id=project_id,
             user_id=user_id
         )

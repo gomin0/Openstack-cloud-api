@@ -1,3 +1,6 @@
+from datetime import datetime
+from unittest.mock import Mock
+
 from common.envs import Envs, get_envs
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_project_user, create_access_token
@@ -89,14 +92,30 @@ async def test_get_project_fail_not_found(client):
     assert data["code"] == "PROJECT_NOT_FOUND"
 
 
-async def test_update_project(client, db_session):
+async def test_update_project(client, db_session, mock_async_client):
     # given
     domain = await add_to_db(db_session, create_domain())
     project = await add_to_db(db_session, create_project(domain_id=domain.id, name="프로젝트1"))
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project_user = await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
     await db_session.commit()
+
     access_token = create_access_token(user_id=user.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v3/auth/tokens" in url:
+            mock_response.headers = {"x-subject-token": "keystone-token"}
+            mock_response.json.return_value = {"token": {'expires_at': datetime.now()}}
+        elif method == "PATCH" and "/v3/projects/" in url:
+            mock_response.json.return_value = {}
+        else:
+            raise ValueError("Unknown API endpoint")
+        mock_response.status_code = 201
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
 
     # when
     response = await client.put(
@@ -179,7 +198,7 @@ async def test_update_project_fail_access_denied(client, db_session):
     assert data["code"] == "PROJECT_ACCESS_DENIED"
 
 
-async def test_assign_user_to_project(client, db_session):
+async def test_assign_user_to_project(client, db_session, mock_async_client):
     # given
     domain = await add_to_db(db_session, create_domain())
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
@@ -189,6 +208,21 @@ async def test_assign_user_to_project(client, db_session):
     await db_session.commit()
 
     access_token = create_access_token(user_id=user1.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v3/auth/tokens" in url:
+            mock_response.headers = {"x-subject-token": "keystone-token"}
+            mock_response.json.return_value = {"token": {'expires_at': datetime.now()}}
+        elif method == "PUT" and "/v3/projects/" in url and "/users/" in url and "/roles/" in url:
+            mock_response.json.return_value = {}
+        else:
+            raise ValueError("Unknown API endpoint")
+        mock_response.status_code = 201
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
 
     # when
     response = await client.post(
@@ -273,7 +307,7 @@ async def test_assign_user_to_project_fail_already_assigned(client, db_session):
     assert data["code"] == "USER_ROLE_ALREADY_IN_PROJECT"
 
 
-async def test_unassign_user_from_project(client, db_session):
+async def test_unassign_user_from_project(client, db_session, mock_async_client):
     # given
     domain = await add_to_db(db_session, create_domain())
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
@@ -290,6 +324,21 @@ async def test_unassign_user_from_project(client, db_session):
     await db_session.commit()
 
     access_token = create_access_token(user_id=user1.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v3/auth/tokens" in url:
+            mock_response.headers = {"x-subject-token": "keystone-token"}
+            mock_response.json.return_value = {"token": {'expires_at': datetime.now()}}
+        elif method == "DELETE" and "/v3/projects/" in url and "/users/" in url and "/roles/" in url:
+            mock_response.json.return_value = {}
+        else:
+            raise ValueError("Unknown API endpoint")
+        mock_response.status_code = 201
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
 
     # when
     response = await client.delete(
