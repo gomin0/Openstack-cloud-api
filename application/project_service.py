@@ -293,6 +293,6 @@ class ProjectService:
             domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
             user_openstack_id=envs.CLOUD_ADMIN_OPENSTACK_ID,
             password=envs.CLOUD_ADMIN_PASSWORD,
-            project_openstack_id=envs.CLOUD_PROJECT_OPENSTACK_ID
+            project_openstack_id=envs.CLOUD_ADMIN_DEFAULT_PROJECT_OPENSTACK_ID
         )
         return keystone_token
