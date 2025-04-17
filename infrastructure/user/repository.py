@@ -108,8 +108,3 @@ class UserRepository:
         session.add(user)
         await session.flush()
         return user
-
-    async def update(self, session: AsyncSession, user: User) -> User:
-        # UPDATE query는 SQLAlchemy의 변경 감지 기능을 통해 수행
-        await session.flush()
-        return user
