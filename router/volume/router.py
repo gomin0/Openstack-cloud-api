@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED
+from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
@@ -94,4 +94,23 @@ async def update_volume_size(
     request: UpdateVolumeSizeRequest,
     _: CurrentUser = Depends(get_current_user),
 ) -> VolumeResponse:
+    raise NotImplementedError()
+
+
+@router.delete(
+    path="/{volume_id}",
+    status_code=HTTP_204_NO_CONTENT,
+    summary="볼륨 삭제",
+    responses={
+        401: {"description": "인증 정보가 유효하지 않은 경우"},
+        403: {"description": "볼륨에 대한 접근 권한이 없는 경우"},
+        404: {"description": "볼륨을 찾을 수 없는 경우"},
+        409: {"description": "볼륨에 연결된 서버가 존재하거나, 볼륨이 삭제 가능한 상태가 아닌 경우"},
+        422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
+    }
+)
+async def delete_volume(
+    volume_id: int,
+    _: CurrentUser = Depends(get_current_user),
+) -> None:
     raise NotImplementedError()
