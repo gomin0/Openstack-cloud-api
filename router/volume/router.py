@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
+from domain.enum import SortOrder
+from domain.volume.enum import VolumeSortOption
 from router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
 from router.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
 
@@ -19,6 +21,8 @@ router = APIRouter(prefix="/volumes", tags=["volume"])
     }
 )
 async def find_volumes_detail(
+    sort_by: VolumeSortOption = Query(default=VolumeSortOption.CREATED_AT),
+    sort_order: SortOrder = Query(default=SortOrder.ASC),
     _: CurrentUser = Depends(get_current_user)
 ) -> VolumesDetailResponse:
     raise NotImplementedError()
