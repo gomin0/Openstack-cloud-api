@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query
-from router.floating_ip.request import CreateFloatingIPRequest
 
 from domain.enum import SortOrder
 from domain.floating_ip.enum import FloatingIpSortOption
@@ -50,7 +49,6 @@ async def get_floating_ip(
     }
 )
 async def create_floating_ip(
-    request: CreateFloatingIPRequest,
 ) -> FloatingIpResponse:
     raise NotImplementedError()
 
