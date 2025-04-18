@@ -12,7 +12,6 @@ class SecurityGroupRuleRequest(BaseModel):
 
 
 class CreateSecurityGroupRequest(BaseModel):
-    project_id: int = Field(description="프로젝트 ID")
     name: str = Field(max_length=255, description="보안그룹 이름")
     description: str = Field(max_length=255, description="보안그룹 설명")
     rules: list[SecurityGroupRuleRequest] = Field(description="초기 룰셋 목록")
