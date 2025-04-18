@@ -5,8 +5,11 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm.exc import StaleDataError
 
 from exception.base_exception import CustomException
-from exception.exception_handler import custom_validation_error_handler, custom_exception_handler, \
-    stale_data_error_handler
+from exception.exception_handler import (
+    custom_validation_error_handler,
+    custom_exception_handler,
+    stale_data_error_handler,
+)
 from infrastructure.async_client import init_async_client, close_async_client
 from router.auth.router import router as auth_router
 from router.floating_ip.router import router as floating_ip_router
@@ -27,6 +30,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(project_router)
+app.include_router(volume_router)
 app.include_router(security_group_router)
 app.include_router(floating_ip_router)
 
