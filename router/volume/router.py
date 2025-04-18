@@ -55,3 +55,23 @@ async def create_volume(
     _: CurrentUser = Depends(get_current_user),
 ) -> VolumeResponse:
     raise NotImplementedError()
+
+
+@router.put(
+    path="/{volume_id}/info",
+    status_code=HTTP_200_OK,
+    summary="볼륨 정보 변경",
+    responses={
+        401: {"description": "인증 정보가 유효하지 않은 경우"},
+        403: {"description": "볼륨에 대한 접근 권한이 없는 경우"},
+        404: {"description": "볼륨을 찾을 수 없는 경우"},
+        409: {"description": "변경하려는 이름이 이미 사용중인 경우"},
+        422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
+    }
+)
+async def update_volume_info(
+    volume_id: int,
+    request: UpdateVolumeInfoRequest,
+    _: CurrentUser = Depends(get_current_user),
+) -> VolumeResponse:
+    raise NotImplementedError()

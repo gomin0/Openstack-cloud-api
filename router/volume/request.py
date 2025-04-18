@@ -17,3 +17,8 @@ class CreateVolumeRequest(BaseModel):
         description="사용할 부팅 이미지의 uuid",
         examples=["1abc7a2f-8eec-49a2-b9ef-be16e0959cdb"]
     )
+
+
+class UpdateVolumeInfoRequest(BaseModel):
+    name: str = Field(max_length=255, description="Name of volume", examples=["volume-001"])
+    description: str = Field(max_length=255, description="Description of volume", examples=["For test"])
