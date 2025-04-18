@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
-from router.volume.response import VolumesDetailResponse, VolumeDetailResponse
+from router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
+from router.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
 
 router = APIRouter(prefix="/volumes", tags=["volume"])
 
@@ -37,4 +38,20 @@ async def get_volume_detail(
     volume_id: int,
     _: CurrentUser = Depends(get_current_user),
 ) -> VolumeDetailResponse:
+    raise NotImplementedError()
+
+
+@router.post(
+    path="",
+    status_code=HTTP_202_ACCEPTED,
+    summary="볼륨 생성",
+    responses={
+        401: {"description": "인증 정보가 유효하지 않은 경우"},
+        422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
+    }
+)
+async def create_volume(
+    request: CreateVolumeRequest,
+    _: CurrentUser = Depends(get_current_user),
+) -> VolumeResponse:
     raise NotImplementedError()
