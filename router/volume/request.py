@@ -22,3 +22,7 @@ class CreateVolumeRequest(BaseModel):
 class UpdateVolumeInfoRequest(BaseModel):
     name: str = Field(max_length=255, description="Name of volume", examples=["volume-001"])
     description: str = Field(max_length=255, description="Description of volume", examples=["For test"])
+
+
+class UpdateVolumeSizeRequest(BaseModel):
+    size: int = Field(description="변경하려는 용량(GiB). 반드시 기존 용량보다 커야 합니다.", examples=[4])
