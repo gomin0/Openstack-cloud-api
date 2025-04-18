@@ -19,6 +19,7 @@ _ACCESS_TOKEN_DURATION_MINUTES = envs.ACCESS_TOKEN_DURATION_MINUTES
 
 def create_access_token(
     user_id: int,
+    project_id: int,
     keystone_token: KeystoneToken,
 ) -> str:
     now = datetime.now(tz=timezone.utc)
@@ -32,6 +33,9 @@ def create_access_token(
     return jwt.encode(
         claims={
             "sub": str(user_id),
+            "project": {
+                "id": project_id,
+            },
             "keystone": {
                 "token": keystone_token.token,
                 "exp": int(keystone_token.expires_at.timestamp()),
@@ -50,6 +54,7 @@ def get_current_user(
     payload = _decode_access_token(token=credentials.credentials)
     return CurrentUser(
         user_id=int(payload.get("sub")),
+        project_id=int(payload.get("project").get("id")),
         keystone_token=payload.get("keystone").get("token"),
     )
 

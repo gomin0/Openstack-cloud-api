@@ -66,6 +66,7 @@ async def login(
     # Access token 발급
     access_token: str = create_access_token(
         user_id=user.id,
+        project_id=project.id,
         keystone_token=keystone_token
     )
 
