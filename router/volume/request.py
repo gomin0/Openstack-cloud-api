@@ -5,7 +5,7 @@ class CreateVolumeRequest(BaseModel):
     name: str = Field(max_length=255, description="Name of volume", examples=["volume-001"])
     description: str = Field(max_length=255, description="Description of volume", examples=["For test"])
     size: int = Field(description="용량(GiB)", examples=[1])
-    type_id: str = Field(
+    volume_type_id: str = Field(
         min_length=36,
         max_length=36,
         description="사용할 volume type의 uuid",
