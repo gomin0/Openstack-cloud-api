@@ -86,10 +86,10 @@ async def update_volume_info(
     status_code=HTTP_202_ACCEPTED,
     summary="볼륨 용량 변경",
     responses={
+        400: {"description": "변경하려는 볼륨 용량이 기존 용량보다 크지 않은 경우"},
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "볼륨에 대한 접근 권한이 없는 경우"},
         404: {"description": "볼륨을 찾을 수 없는 경우"},
-        409: {"description": "변경하려는 볼륨 용량이 기존 용량보다 크지 않은 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
     }
 )
