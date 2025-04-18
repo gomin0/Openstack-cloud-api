@@ -20,7 +20,7 @@ class Volume(Base):
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     description: Mapped[str] = mapped_column("description", String(255), nullable=False)
     status: Mapped[VolumeStatus] = mapped_column(
-        Enum(VolumeStatus, name="volume_status", native_enum=False, length=30),
+        Enum(VolumeStatus, name="status", native_enum=False, length=30),
         nullable=False
     )
     size: Mapped[int] = mapped_column("size", Integer, nullable=False)
