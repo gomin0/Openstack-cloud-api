@@ -28,7 +28,6 @@ app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(project_router)
 app.include_router(security_group_router)
-
 app.include_router(floating_ip_router)
 
 app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
