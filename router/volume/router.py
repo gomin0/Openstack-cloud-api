@@ -51,6 +51,7 @@ async def get_volume_detail(
     summary="볼륨 생성",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
+        409: {"description": "사용하려는 볼륨 이름이 이미 사용중인 볼륨 이름인 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
     }
 )
