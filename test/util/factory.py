@@ -73,11 +73,13 @@ def create_project_user(
 
 def create_access_token(
     user_id: int,
+    project_id: int = random_int(),
     token: str = random_string(),
     expires_at: datetime = datetime.now(timezone.utc) + timedelta(minutes=60)
 ) -> str:
     return auth_token_manager.create_access_token(
         user_id=user_id,
+        project_id=project_id,
         keystone_token=KeystoneToken(
             token=token,
             expires_at=expires_at
