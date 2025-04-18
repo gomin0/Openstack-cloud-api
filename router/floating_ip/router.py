@@ -4,6 +4,7 @@ from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.floating_ip.enum import FloatingIpSortOption
+from router.floating_ip.request import CreateFloatingIPRequest
 from router.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, FloatingIpResponse
 
 router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
@@ -53,6 +54,7 @@ async def get_floating_ip(
     }
 )
 async def create_floating_ip(
+    request: CreateFloatingIPRequest,
     _: CurrentUser = Depends(get_current_user),
 ) -> FloatingIpResponse:
     raise NotImplementedError()
