@@ -26,7 +26,7 @@ class Volume(Base):
     size: Mapped[int] = mapped_column("size", Integer, nullable=False)
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
     lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="volume_lifecycle_status", native_enum=False, length=15),
+        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
         nullable=False,
         default=LifecycleStatus.ACTIVE
     )

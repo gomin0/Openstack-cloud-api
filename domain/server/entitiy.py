@@ -22,7 +22,7 @@ class Server(Base):
         nullable=False
     )
     lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="server_lifecycle_status", native_enum=False, length=15),
+        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
         nullable=False,
         default=LifecycleStatus.ACTIVE
     )

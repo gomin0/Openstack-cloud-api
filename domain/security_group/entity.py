@@ -16,7 +16,7 @@ class SecurityGroup(Base):
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     description: Mapped[str] = mapped_column("description", String(255), nullable=False)
     lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="sg_lifecycle_status", native_enum=False, length=15),
+        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
         nullable=False,
         default=LifecycleStatus.ACTIVE
     )

@@ -21,7 +21,7 @@ class FloatingIp(Base):
     )
     address: Mapped[str] = mapped_column("address", String(15), nullable=False)
     lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="sg_lifecycle_status", native_enum=False, length=15),
+        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
         nullable=False,
         default=LifecycleStatus.ACTIVE
     )

@@ -15,11 +15,10 @@ class NetworkInterface(Base):
     port_openstack_id: Mapped[str] = mapped_column("openstack_id", CHAR(36), nullable=False)
     fixed_ip_address: Mapped[str] = mapped_column("fixed_ip_address", String(15), nullable=False)
     lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="server_lifecycle_status", native_enum=False, length=15),
+        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
         nullable=False,
         default=LifecycleStatus.ACTIVE
     )
-    address: Mapped[str] = mapped_column("address", String(15), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
