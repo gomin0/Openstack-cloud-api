@@ -15,7 +15,7 @@ class Volume(Base):
     openstack_id: Mapped[str] = mapped_column("openstack_id", CHAR(36), nullable=False)
     project_id: Mapped[int] = mapped_column("project_id", BigInteger, ForeignKey("project.id"), nullable=False)
     server_id: Mapped[int | None] = mapped_column("server_id", BigInteger, ForeignKey("server.id"), nullable=True)
-    type_openstack_id: Mapped[str] = mapped_column("type_openstack_id", CHAR(36), nullable=False)
+    volume_type_openstack_id: Mapped[str] = mapped_column("volume_type_openstack_id", CHAR(36), nullable=False)
     image_openstack_id: Mapped[str] = mapped_column("image_openstack_id", CHAR(36), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     description: Mapped[str] = mapped_column("description", String(255), nullable=False)
