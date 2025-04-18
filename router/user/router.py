@@ -86,20 +86,22 @@ async def create_user(
 
 
 @router.put(
-    path="/me",
+    path="/{user_id}/info",
     status_code=200,
-    summary="내 정보 변경",
+    summary="유저 정보 변경",
     responses={422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}}
 )
-async def update_user(
-    request: UpdateUserRequest,
+async def update_user_info(
+    user_id: int,
+    request: UpdateUserInfoRequest,
     current_user: CurrentUser = Depends(get_current_user),
     user_service: UserService = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
     user: User = await user_service.update_user_info(
         session=session,
-        user_id=current_user.user_id,
+        request_user_id=current_user.user_id,
+        user_id=user_id,
         name=request.name,
     )
     return UserResponse.from_entity(user)

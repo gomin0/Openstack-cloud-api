@@ -12,7 +12,11 @@ from domain.enum import SortOrder
 from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
-from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
+from exception.user_exception import (
+    UserNotFoundException,
+    UserAccountIdDuplicateException,
+    UserUpdatePermissionDeniedException
+)
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
 from infrastructure.user.repository import UserRepository
@@ -132,9 +136,13 @@ class UserService:
     async def update_user_info(
         self,
         session: AsyncSession,
+        request_user_id: int,
         user_id: int,
         name: str,
     ) -> User:
+        if request_user_id != user_id:
+            raise UserUpdatePermissionDeniedException()
+
         user: User | None = await self.user_repository.find_by_id(session, user_id=user_id)
         if user is None:
             raise UserNotFoundException()

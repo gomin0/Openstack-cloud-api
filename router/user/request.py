@@ -7,5 +7,5 @@ class CreateUserRequest(BaseModel):
     name: str = Field(max_length=15, description="이름", examples=["woody"])
 
 
-class UpdateUserRequest(BaseModel):
+class UpdateUserInfoRequest(BaseModel):
     name: str = Field(max_length=15, description="이름", examples=["woody"])

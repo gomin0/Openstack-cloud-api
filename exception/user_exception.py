@@ -26,3 +26,12 @@ class UserAccountIdDuplicateException(CustomException):
             status_code=409,
             message=f"이미 사용중인 계정 ID 입니다. account_id={account_id}"
         )
+
+
+class UserUpdatePermissionDeniedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="USER_UPDATE_PERMISSION_DENIED",
+            status_code=403,
+            message="유저를 변경할 권한이 없습니다."
+        )

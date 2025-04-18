@@ -203,7 +203,7 @@ async def test_create_user_fail_duplicate_account_id(client, db_session, mock_as
     assert response_body["code"] == "USER_ACCOUNT_ID_DUPLICATE"
 
 
-async def test_update_user_success(client, db_session):
+async def test_update_user_info_success(client, db_session):
     # given
     domain: Domain = await add_to_db(db_session, create_domain())
     user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
@@ -214,7 +214,7 @@ async def test_update_user_success(client, db_session):
     # when
     access_token = create_access_token(user_id=user.id)
     response = await client.put(
-        url="/users/me",
+        url=f"/users/{user.id}/info",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}",
@@ -225,3 +225,28 @@ async def test_update_user_success(client, db_session):
     # then
     assert response.status_code == 200
     assert response.json()["name"] == new_name
+
+
+async def test_update_user_info_fail_request_user_is_not_equal_to_target_user(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    request_user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
+    target_user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+
+    new_name: str = random_string()
+
+    # when
+    access_token = create_access_token(user_id=request_user.id)
+    response = await client.put(
+        url=f"/users/{target_user.id}/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        json={"name": new_name}
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == "USER_UPDATE_PERMISSION_DENIED"
