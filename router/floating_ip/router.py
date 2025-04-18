@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 
 from domain.enum import SortOrder
 from domain.floating_ip.enum import FloatingIpSortOption
-from router.floating_ip.response import FloatingIpDetailResponses, FloatingIpDetailResponse, FloatingIpResponse
+from router.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse
 
 router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
 async def find_floating_ips(
     sort_by: FloatingIpSortOption = Query(default=FloatingIpSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-) -> FloatingIpDetailResponses:
+) -> FloatingIpDetailsResponse:
     raise NotImplementedError()
 
 
@@ -49,7 +49,7 @@ async def get_floating_ip(
     }
 )
 async def create_floating_ip(
-) -> FloatingIpResponse:
+) -> FloatingIpDetailResponse:
     raise NotImplementedError()
 
 
