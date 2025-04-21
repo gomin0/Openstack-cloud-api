@@ -14,7 +14,7 @@ from test.util.random import random_string, random_int
 class ProjectStub(Project):
     def __init__(self, *args, users=None, domain=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self._mock_users = users or []
+        self._mock_users = users
         self._mock_domain = domain
 
     @async_property
