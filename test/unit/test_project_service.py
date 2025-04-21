@@ -1,16 +1,21 @@
+from datetime import datetime, timezone
 from unittest.mock import call
 
 import pytest
 
+from application.project.response import ProjectDetailResponse
 from common.envs import Envs, get_envs
+from domain.domain.entity import Domain
 from domain.enum import SortOrder
 from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
 from domain.user.entity import User
 from exception.openstack_exception import OpenStackException
-from exception.project_exception import ProjectNotFoundException, ProjectNameDuplicatedException, \
-    ProjectAccessDeniedException, UserAlreadyInProjectException, UserNotInProjectException
+from exception.project_exception import (ProjectNotFoundException, ProjectNameDuplicatedException,
+                                         ProjectAccessDeniedException, UserAlreadyInProjectException,
+                                         UserNotInProjectException)
 from exception.user_exception import UserNotFoundException
+from test.util.factory import create_project_stub
 
 envs: Envs = get_envs()
 
@@ -18,8 +23,18 @@ envs: Envs = get_envs()
 async def test_find_projects(mock_session, mock_project_repository, project_service):
     # given
     name_like = "a"
-    project1 = Project(id=1, name="Alpha", domain_id=1, openstack_id="1cd74dcf765544d79a8d5fb7db589133")
-    project2 = Project(id=2, name="Beta", domain_id=1, openstack_id="50d30edec2af40fcba9c3e0783bb29ea")
+    domain = Domain(
+        id=1,
+        name="domain",
+        openstack_id="779b35a7173444e387a7f34134a56e31",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None
+    )
+
+    project1 = create_project_stub(domain=domain, project_id=1)
+    project2 = create_project_stub(domain=domain, project_id=2)
+
     mock_project_repository.find_all.return_value = [project1, project2]
 
     # when
@@ -33,7 +48,12 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
     )
 
     # then
-    assert result == [project1, project2]
+    expected = [
+        await ProjectDetailResponse.from_entity(project1),
+        await ProjectDetailResponse.from_entity(project2),
+    ]
+    assert result.projects == expected
+
     mock_project_repository.find_all.assert_called_once_with(
         session=mock_session,
         ids=None,
@@ -49,8 +69,15 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
 async def test_get_project(mock_session, mock_project_repository, project_service):
     # given
     project_id = 1
-    domain_id = 1
-    project = Project(id=project_id, name="Test", domain_id=domain_id, openstack_id="1cd74dcf765544d79a8d5fb7db589133")
+    domain = Domain(
+        id=1,
+        name="domain",
+        openstack_id="779b35a7173444e387a7f34134a56e31",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None
+    )
+    project = create_project_stub(domain=domain, project_id=project_id)
 
     mock_project_repository.find_by_id.return_value = project
 
@@ -63,7 +90,7 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
     )
 
     # then
-    assert result == project
+    assert result == await ProjectDetailResponse.from_entity(project)
     mock_project_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         project_id=project_id,
@@ -106,14 +133,19 @@ async def test_update_project(
     # given
     project_id = 1
     user_id = 1
-    domain_id = 1
-    old_name = "Old"
     new_name = "New"
     token = "test_token"
     exp = "exp"
     openstack_id = "abc123"
-
-    project = Project(id=project_id, name=old_name, openstack_id=openstack_id, domain_id=domain_id)
+    domain = Domain(
+        id=1,
+        name="domain",
+        openstack_id="779b35a7173444e387a7f34134a56e31",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None
+    )
+    project = create_project_stub(domain=domain, openstack_id=openstack_id, project_id=project_id)
 
     mock_project_repository.find_by_id.return_value = project
     mock_project_user_repository.exists_by_project_and_user.return_value = True

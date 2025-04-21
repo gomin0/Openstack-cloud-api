@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 
 import bcrypt
+from async_property import async_property
 
 from common import auth_token_manager
 from domain.domain.entity import Domain
@@ -8,6 +9,21 @@ from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
 from domain.user.entity import User
 from test.util.random import random_string, random_int
+
+
+class ProjectStub(Project):
+    def __init__(self, *args, users=None, domain=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mock_users = users or []
+        self._mock_domain = domain
+
+    @async_property
+    async def users(self):
+        return self._mock_users
+
+    @async_property
+    async def domain(self):
+        return self._mock_domain
 
 
 def create_domain(
@@ -35,6 +51,31 @@ def create_project(
         openstack_id=openstack_id,
         name=name,
         version=version
+    )
+
+
+def create_project_stub(
+    domain: Domain,
+    users: list[User] = None,
+    project_id: int | None = None,
+    openstack_id: str = random_string(),
+    name: str = random_string(),
+    version: int = 0,
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None
+) -> ProjectStub:
+    return ProjectStub(
+        id=project_id,
+        domain_id=domain.id,
+        openstack_id=openstack_id,
+        name=name,
+        version=version,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
+        users=users or [],
+        domain=domain
     )
 
 
