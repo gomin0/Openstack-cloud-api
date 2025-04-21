@@ -5,13 +5,22 @@ from async_property import async_property
 
 from common import auth_token_manager
 from domain.domain.entity import Domain
+from domain.enum import LifecycleStatus
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
 from domain.user.entity import User
 from test.util.random import random_string, random_int
 
 
-class ProjectStub(Project):
+class StubUser(User):
+    _mock_projects: list[Project] = []
+
+    @async_property
+    async def projects(self) -> list[Project]:
+        return self._mock_projects
+
+
+class StubProject(Project):
     def __init__(self, *args, users=None, domain=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._mock_users = users
@@ -54,7 +63,7 @@ def create_project(
     )
 
 
-def create_project_stub(
+def create_stub_project(
     domain: Domain,
     users: list[User] = None,
     project_id: int | None = None,
@@ -64,8 +73,8 @@ def create_project_stub(
     created_at: datetime = datetime.now(timezone.utc),
     updated_at: datetime = datetime.now(timezone.utc),
     deleted_at: datetime | None = None
-) -> ProjectStub:
-    return ProjectStub(
+) -> StubProject:
+    return StubProject(
         id=project_id,
         domain_id=domain.id,
         openstack_id=openstack_id,
@@ -97,7 +106,39 @@ def create_user(
             password=plain_password.encode("UTF-8"),
             salt=bcrypt.gensalt()
         ).decode("UTF-8"),
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
     )
+
+
+def create_stub_user(
+    user_id: int | None = None,
+    domain_id: int = random_int(),
+    openstack_id: str = random_string(),
+    account_id: str = random_string(),
+    name: str = random_string(),
+    plain_password: str = random_string(),
+    projects: list[Project] | None = None,
+) -> User:
+    user: StubUser = StubUser(
+        id=user_id,
+        domain_id=domain_id,
+        openstack_id=openstack_id,
+        account_id=account_id,
+        name=name,
+        password=bcrypt.hashpw(
+            password=plain_password.encode("UTF-8"),
+            salt=bcrypt.gensalt()
+        ).decode("UTF-8"),
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
+    )
+    user._mock_projects = projects or []
+    return user
 
 
 def create_project_user(

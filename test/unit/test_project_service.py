@@ -15,7 +15,7 @@ from exception.project_exception import (ProjectNotFoundException, ProjectNameDu
                                          ProjectAccessDeniedException, UserAlreadyInProjectException,
                                          UserNotInProjectException)
 from exception.user_exception import UserNotFoundException
-from test.util.factory import create_project_stub
+from test.util.factory import create_stub_project
 
 envs: Envs = get_envs()
 
@@ -32,8 +32,8 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
         deleted_at=None
     )
 
-    project1 = create_project_stub(domain=domain, project_id=1)
-    project2 = create_project_stub(domain=domain, project_id=2)
+    project1 = create_stub_project(domain=domain, project_id=1)
+    project2 = create_stub_project(domain=domain, project_id=2)
 
     mock_project_repository.find_all.return_value = [project1, project2]
 
@@ -77,7 +77,7 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
         updated_at=datetime.now(timezone.utc),
         deleted_at=None
     )
-    project = create_project_stub(domain=domain, project_id=project_id)
+    project = create_stub_project(domain=domain, project_id=project_id)
 
     mock_project_repository.find_by_id.return_value = project
 
@@ -145,7 +145,7 @@ async def test_update_project(
         updated_at=datetime.now(timezone.utc),
         deleted_at=None
     )
-    project = create_project_stub(domain=domain, openstack_id=openstack_id, project_id=project_id)
+    project = create_stub_project(domain=domain, openstack_id=openstack_id, project_id=project_id)
 
     mock_project_repository.find_by_id.return_value = project
     mock_project_user_repository.exists_by_project_and_user.return_value = True
