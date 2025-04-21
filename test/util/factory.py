@@ -1,5 +1,4 @@
 from datetime import datetime, timezone, timedelta
-from typing import List
 
 import bcrypt
 from async_property import async_property
@@ -19,21 +18,6 @@ class StubUser(User):
     @async_property
     async def projects(self) -> list[Project]:
         return self._mock_projects
-
-
-class ProjectStub(Project):
-    def __init__(self, *args, users=None, domain, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._mock_users: List[User] = users
-        self._mock_domain: Domain = domain
-
-    @async_property
-    async def users(self):
-        return self._mock_users
-
-    @async_property
-    async def domain(self):
-        return self._mock_domain
 
 
 def create_domain(
@@ -168,3 +152,18 @@ def create_access_token(
             expires_at=expires_at
         )
     )
+
+
+class ProjectStub(Project):
+    def __init__(self, domain: Domain, users: list[User] | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self._mock_users = users
+        self._mock_domain = domain
+
+    @async_property
+    async def users(self):
+        return self._mock_users
+
+    @async_property
+    async def domain(self):
+        return self._mock_domain
