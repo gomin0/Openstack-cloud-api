@@ -20,8 +20,8 @@ class StubUser(User):
         return self._mock_projects
 
 
-class StubProject(Project):
-    def __init__(self, *args, users=None, domain=None, **kwargs):
+class ProjectStub(Project):
+    def __init__(self, *args, users=None, domain, **kwargs):
         super().__init__(*args, **kwargs)
         self._mock_users = users
         self._mock_domain = domain
@@ -63,7 +63,7 @@ def create_project(
     )
 
 
-def create_stub_project(
+def create_project_stub(
     domain: Domain,
     users: list[User] = None,
     project_id: int | None = None,
@@ -73,8 +73,8 @@ def create_stub_project(
     created_at: datetime = datetime.now(timezone.utc),
     updated_at: datetime = datetime.now(timezone.utc),
     deleted_at: datetime | None = None
-) -> StubProject:
-    return StubProject(
+) -> ProjectStub:
+    return ProjectStub(
         id=project_id,
         domain_id=domain.id,
         openstack_id=openstack_id,

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query, Path, Depends, Body
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
+from application.project.response import ProjectDetailsResponse, ProjectResponse, ProjectDetailResponse
 from application.project.service import ProjectService
 from common.auth_token_manager import get_current_user
 from common.compensating_transaction import compensating_transaction
@@ -31,8 +31,8 @@ async def find_projects(
     order: SortOrder = Query(default=SortOrder.ASC),
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session)
-) -> ProjectListResponse:
-    return await project_service.find_projects(
+) -> ProjectDetailsResponse:
+    return await project_service.find_projects_details(
         session=session,
         ids=ids,
         name=name,
@@ -55,7 +55,7 @@ async def get_project(
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ) -> ProjectDetailResponse:
-    return await project_service.get_project(
+    return await project_service.get_project_detail(
         session=session,
         project_id=project_id,
         with_relations=True

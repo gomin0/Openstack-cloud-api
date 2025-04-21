@@ -4,7 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
-from application.project.response import ProjectListResponse, ProjectDetailResponse, ProjectResponse
+from application.project.response import ProjectDetailsResponse, ProjectDetailResponse, ProjectResponse
 from common.compensating_transaction import CompensationManager
 from common.envs import Envs, get_envs
 from domain.enum import SortOrder
@@ -38,7 +38,7 @@ class ProjectService:
         self.keystone_client = keystone_client
 
     @transactional()
-    async def find_projects(
+    async def find_projects_details(
         self,
         session: AsyncSession,
         ids: list[int] | None = None,
@@ -48,7 +48,7 @@ class ProjectService:
         order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
         with_relations: bool = False,
-    ) -> ProjectListResponse:
+    ) -> ProjectDetailsResponse:
         projects: list[Project] = await self.project_repository.find_all(
             session=session,
             ids=ids,
@@ -60,12 +60,12 @@ class ProjectService:
             with_relations=with_relations
         )
 
-        return ProjectListResponse(
+        return ProjectDetailsResponse(
             projects=[await ProjectDetailResponse.from_entity(project) for project in projects]
         )
 
     @transactional()
-    async def get_project(
+    async def get_project_detail(
         self,
         session: AsyncSession,
         project_id: int,
