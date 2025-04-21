@@ -6,19 +6,20 @@ from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
 from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
 from test.unit.conftest import mock_session, mock_user_repository, user_service, mock_keystone_client
-from test.util.factory import create_user
-from test.util.random import random_string
+from test.util.factory import create_user_stub
+from test.util.random import random_string, random_int
 
 
 async def test_find_users(mock_session, mock_user_repository, user_service):
     # given
-    account_id = "user1"
-    user1 = User(openstack_id="user123", domain_id=1, account_id="user1", name="사용자1", password="@!#32")
-    user2 = User(openstack_id="user1234", domain_id=1, account_id="user2", name="사용자1", password="@!#32")
+    domain_id: int = random_int()
+    account_id: str = random_string()
+    user1 = create_user_stub(user_id=random_int(), domain_id=domain_id)
+    user2 = create_user_stub(user_id=random_int(), domain_id=domain_id)
     mock_user_repository.find_all.return_value = [user1, user2]
 
     # when
-    result = await user_service.find_users(
+    result = await user_service.find_user_details(
         session=mock_session,
         account_id=account_id,
         sort_by=UserSortOption.ACCOUNT_ID,
@@ -28,7 +29,7 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
     )
 
     # then
-    assert result == [user1, user2]
+    assert len(result) == 2
     mock_user_repository.find_all.assert_called_once_with(
         session=mock_session,
         user_id=None,
@@ -43,16 +44,14 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
 
 async def test_get_user(mock_session, mock_user_repository, user_service):
     # given
-    user_id = 1
-    domain_id = 1
-    user = User(
-        id=user_id, openstack_id="open123", domain_id=domain_id, account_id="ted123", name="Ted", password="Ted123"
-    )
+    user_id: int = random_int()
+    domain_id: int = random_int()
+    user = create_user_stub(user_id=random_int(), domain_id=domain_id)
 
     mock_user_repository.find_by_id.return_value = user
 
     # when
-    result = await user_service.get_user(
+    result = await user_service.get_user_detail(
         session=mock_session,
         user_id=user_id,
         with_deleted=False,
@@ -60,7 +59,7 @@ async def test_get_user(mock_session, mock_user_repository, user_service):
     )
 
     # then
-    assert result == user
+    assert result.id == user.id
     mock_user_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         user_id=user_id,
@@ -76,7 +75,7 @@ async def test_get_user_fail_not_found(mock_session, mock_user_repository, user_
 
     # when & then
     with pytest.raises(UserNotFoundException):
-        await user_service.get_user(
+        await user_service.get_user_detail(
             session=mock_session,
             user_id=user_id,
             with_deleted=False,
@@ -100,7 +99,7 @@ async def test_create_user_success(
     mock_compensation_manager,
 ):
     # given
-    expected_result: User = create_user()
+    expected_result: User = create_user_stub(user_id=random_int(), domain_id=random_int())
     mock_user_repository.exists_by_account_id.return_value = False
     mock_keystone_client.authenticate_with_scoped_auth.return_value = "keystone_token", "exp"
     mock_keystone_client.create_user.return_value = "openstack_id"
@@ -120,7 +119,7 @@ async def test_create_user_success(
     mock_user_repository.exists_by_account_id.assert_called_once()
     mock_keystone_client.authenticate_with_scoped_auth.assert_called_once()
     mock_keystone_client.create_user.assert_called_once()
-    assert actual_result == expected_result
+    assert actual_result.id == expected_result.id
 
 
 async def test_create_user_fail_duplicate_account_id(

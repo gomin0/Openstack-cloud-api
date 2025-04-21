@@ -83,5 +83,5 @@ class ProjectDetailResponse(BaseModel):
         )
 
 
-class ProjectListResponse(BaseModel):
+class ProjectDetailsResponse(BaseModel):
     projects: list[ProjectDetailResponse] = Field(description="프로젝트 목록")
