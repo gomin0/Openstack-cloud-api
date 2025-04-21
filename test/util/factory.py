@@ -104,7 +104,9 @@ def create_user_stub(
     plain_password: str = random_string(),
     projects: list[Project] | None = None,
 ) -> User:
-    user: UserStub = UserStub(
+    return UserStub(
+        domain=create_domain(domain_id=domain_id),
+        projects=projects or [],
         id=user_id,
         domain_id=domain_id,
         openstack_id=openstack_id,
@@ -119,9 +121,6 @@ def create_user_stub(
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
     )
-    user._mock_domain = create_domain(domain_id=domain_id)
-    user._mock_projects = projects or []
-    return user
 
 
 def create_project_user(
@@ -170,17 +169,12 @@ class ProjectStub(Project):
 class UserStub(User):
     def __init__(
         self,
-        domain: Domain | None = None,
+        domain: Domain,
         projects: list[Project] | None = None,
         **kwargs: Any,
     ):
-        domain_id: int | None = kwargs.get("domain_id")
-        if domain_id is None:
-            domain_id: int = random_int()
-
         super().__init__(**kwargs)
-
-        self._mock_domain: Domain = domain or create_domain(domain_id=domain_id)
+        self._mock_domain: Domain = domain
         self._mock_projects: list[Project] = projects or []
 
     @async_property
