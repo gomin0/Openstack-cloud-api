@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from typing import List
 
 import bcrypt
 from async_property import async_property
@@ -23,8 +24,8 @@ class StubUser(User):
 class ProjectStub(Project):
     def __init__(self, *args, users=None, domain, **kwargs):
         super().__init__(*args, **kwargs)
-        self._mock_users = users
-        self._mock_domain = domain
+        self._mock_users: List[User] = users
+        self._mock_domain: Domain = domain
 
     @async_property
     async def users(self):
