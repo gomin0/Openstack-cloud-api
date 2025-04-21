@@ -16,6 +16,7 @@ from router.floating_ip.router import router as floating_ip_router
 from router.project.router import router as project_router
 from router.security_group.router import router as security_group_router
 from router.user.router import router as user_router
+from router.volume.router import router as volume_router
 
 
 @asynccontextmanager
