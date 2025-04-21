@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from typing import Any
 
 import bcrypt
 from async_property import async_property
@@ -12,14 +13,6 @@ from domain.user.entity import User
 from test.util.random import random_string, random_int
 
 
-class StubUser(User):
-    _mock_projects: list[Project] = []
-
-    @async_property
-    async def projects(self) -> list[Project]:
-        return self._mock_projects
-
-
 def create_domain(
     domain_id: int | None = None,
     openstack_id: str = random_string(),
@@ -29,6 +22,10 @@ def create_domain(
         id=domain_id,
         openstack_id=openstack_id,
         name=name,
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
     )
 
 
@@ -122,6 +119,7 @@ def create_stub_user(
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
     )
+    user._mock_domain = create_domain(domain_id=domain_id)
     user._mock_projects = projects or []
     return user
 
@@ -167,3 +165,28 @@ class ProjectStub(Project):
     @async_property
     async def domain(self):
         return self._mock_domain
+
+
+class StubUser(User):
+    def __init__(
+        self,
+        domain: Domain | None = None,
+        projects: list[Project] | None = None,
+        **kwargs: Any,
+    ):
+        domain_id: int | None = kwargs.get("domain_id")
+        if domain_id is None:
+            domain_id: int = random_int()
+
+        super().__init__(**kwargs)
+
+        self._mock_domain: Domain = domain or create_domain(domain_id=domain_id)
+        self._mock_projects: list[Project] = projects or []
+
+    @async_property
+    async def domain(self) -> Domain:
+        return self._mock_domain
+
+    @async_property
+    async def projects(self) -> list[Project]:
+        return self._mock_projects

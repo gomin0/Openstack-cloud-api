@@ -5,6 +5,7 @@ from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.user.response import UserDetailResponse, UserResponse
 from common.compensating_transaction import CompensationManager
 from common.envs import get_envs, Envs
 from domain.enum import SortOrder
@@ -29,7 +30,7 @@ class UserService:
         self.keystone_client = keystone_client
 
     @transactional()
-    async def find_users(
+    async def find_user_details(
         self,
         session: AsyncSession,
         user_id: int | None = None,
@@ -39,7 +40,7 @@ class UserService:
         sort_order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
         with_relations: bool = False,
-    ) -> list[User]:
+    ) -> list[UserDetailResponse]:
         users: list[User] = await self.user_repository.find_all(
             session=session,
             user_id=user_id,
@@ -50,16 +51,16 @@ class UserService:
             with_deleted=with_deleted,
             with_relations=with_relations,
         )
-        return users
+        return [await UserDetailResponse.from_entity(user) for user in users]
 
     @transactional()
-    async def get_user(
+    async def get_user_detail(
         self,
         session: AsyncSession,
         user_id: int,
         with_deleted: bool = False,
         with_relations: bool = False,
-    ) -> User:
+    ) -> UserDetailResponse:
         user: User | None = await self.user_repository.find_by_id(
             session=session,
             user_id=user_id,
@@ -70,7 +71,7 @@ class UserService:
         if not user:
             raise UserNotFoundException()
 
-        return user
+        return await UserDetailResponse.from_entity(user)
 
     @transactional()
     async def create_user(
@@ -81,7 +82,7 @@ class UserService:
         account_id: str,
         name: str,
         password: str,
-    ) -> User:
+    ) -> UserResponse:
         # Check duplication
         is_account_id_exists: bool = await self.user_repository.exists_by_account_id(session, account_id=account_id)
         if is_account_id_exists:
@@ -125,7 +126,7 @@ class UserService:
                 hashed_password=hashed_password.decode("UTF-8"),
             )
         )
-        return user
+        return UserResponse.from_entity(user)
 
     async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
         keystone_token: str
