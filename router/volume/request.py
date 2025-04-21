@@ -11,7 +11,8 @@ class CreateVolumeRequest(BaseModel):
         description="사용할 volume type의 uuid",
         examples=["64abcd22-a30b-4982-8f82-332e89ff4bf7"]
     )
-    image_id: str = Field(
+    image_id: str | None = Field(
+        default=None,
         min_length=36,
         max_length=36,
         description="사용할 부팅 이미지의 uuid",
