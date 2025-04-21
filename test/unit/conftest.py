@@ -3,8 +3,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.auth_service import AuthService
-from application.keystone_service import KeystoneService
+from application.auth.service import AuthService
 from application.project_service import ProjectService
 from application.user_service import UserService
 
@@ -64,10 +63,5 @@ def user_service(mock_user_repository, mock_keystone_client):
 
 
 @pytest.fixture(scope='function')
-def auth_service(mock_user_repository):
-    return AuthService(user_repository=mock_user_repository)
-
-
-@pytest.fixture(scope='function')
-def keystone_service(mock_keystone_client):
-    return KeystoneService(keystone_client=mock_keystone_client)
+def auth_service(mock_user_repository, mock_keystone_client):
+    return AuthService(user_repository=mock_user_repository, keystone_client=mock_keystone_client)

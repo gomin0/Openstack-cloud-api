@@ -25,7 +25,7 @@ class CompensationManager:
 
 
 @asynccontextmanager
-async def compensating_transaction() -> AsyncGenerator[CompensationManager]:
+async def compensating_transaction() -> AsyncGenerator[CompensationManager, None]:
     manager: CompensationManager = CompensationManager()
     try:
         yield manager
