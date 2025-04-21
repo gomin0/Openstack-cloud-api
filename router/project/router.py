@@ -2,17 +2,16 @@ from fastapi import APIRouter, Query, Path, Depends, Body
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.project_service import ProjectService
+from application.project.response import ProjectDetailsResponse, ProjectResponse, ProjectDetailResponse
+from application.project.service import ProjectService
 from common.auth_token_manager import get_current_user
 from common.compensating_transaction import compensating_transaction
 from common.context import CurrentUser
 from domain.enum import SortOrder
-from domain.project.entity import Project
 from domain.project.enum import ProjectSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.project.request import ProjectUpdateRequest
-from router.project.response import ProjectListResponse, ProjectResponse, ProjectDetailResponse
 
 router = APIRouter(prefix="/projects", tags=["project"])
 
@@ -32,8 +31,8 @@ async def find_projects(
     order: SortOrder = Query(default=SortOrder.ASC),
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session)
-) -> ProjectListResponse:
-    projects: list[Project] = await project_service.find_projects(
+) -> ProjectDetailsResponse:
+    return await project_service.find_projects_details(
         session=session,
         ids=ids,
         name=name,
@@ -41,9 +40,6 @@ async def find_projects(
         sort_by=sort_by,
         order=order,
         with_relations=True
-    )
-    return ProjectListResponse(
-        projects=[await ProjectDetailResponse.from_entity(project) for project in projects]
     )
 
 
@@ -59,12 +55,11 @@ async def get_project(
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ) -> ProjectDetailResponse:
-    project: Project = await project_service.get_project(
+    return await project_service.get_project_detail(
         session=session,
         project_id=project_id,
         with_relations=True
     )
-    return await ProjectDetailResponse.from_entity(project)
 
 
 @router.put(
@@ -87,7 +82,7 @@ async def update_project(
     client: AsyncClient = Depends(get_async_client)
 ) -> ProjectResponse:
     async with compensating_transaction() as compensating_tx:
-        project: Project = await project_service.update_project(
+        return await project_service.update_project(
             compensating_tx=compensating_tx,
             session=session,
             client=client,
@@ -95,7 +90,6 @@ async def update_project(
             project_id=project_id,
             new_name=request.name
         )
-    return ProjectResponse.from_entity(project)
 
 
 @router.post(

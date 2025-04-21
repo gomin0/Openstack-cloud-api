@@ -48,6 +48,31 @@ def create_project(
     )
 
 
+def create_project_stub(
+    domain: Domain,
+    users: list[User] = None,
+    project_id: int | None = None,
+    openstack_id: str = random_string(),
+    name: str = random_string(),
+    version: int = 0,
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None
+) -> ProjectStub:
+    return ProjectStub(
+        id=project_id,
+        domain_id=domain.id,
+        openstack_id=openstack_id,
+        name=name,
+        version=version,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
+        users=users or [],
+        domain=domain
+    )
+
+
 def create_user(
     user_id: int | None = None,
     domain_id: int = random_int(),
@@ -127,3 +152,18 @@ def create_access_token(
             expires_at=expires_at
         )
     )
+
+
+class ProjectStub(Project):
+    def __init__(self, domain: Domain, users: list[User] | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self._mock_users = users
+        self._mock_domain = domain
+
+    @async_property
+    async def users(self):
+        return self._mock_users
+
+    @async_property
+    async def domain(self):
+        return self._mock_domain

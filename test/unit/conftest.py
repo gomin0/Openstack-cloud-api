@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.auth.service import AuthService
-from application.project_service import ProjectService
+from application.project.service import ProjectService
 from application.user_service import UserService
 
 

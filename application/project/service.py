@@ -4,6 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
+from application.project.response import ProjectDetailsResponse, ProjectDetailResponse, ProjectResponse
 from common.compensating_transaction import CompensationManager
 from common.envs import Envs, get_envs
 from domain.enum import SortOrder
@@ -37,7 +38,7 @@ class ProjectService:
         self.keystone_client = keystone_client
 
     @transactional()
-    async def find_projects(
+    async def find_projects_details(
         self,
         session: AsyncSession,
         ids: list[int] | None = None,
@@ -47,7 +48,7 @@ class ProjectService:
         order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
         with_relations: bool = False,
-    ) -> list[Project]:
+    ) -> ProjectDetailsResponse:
         projects: list[Project] = await self.project_repository.find_all(
             session=session,
             ids=ids,
@@ -58,16 +59,19 @@ class ProjectService:
             with_deleted=with_deleted,
             with_relations=with_relations
         )
-        return projects
+
+        return ProjectDetailsResponse(
+            projects=[await ProjectDetailResponse.from_entity(project) for project in projects]
+        )
 
     @transactional()
-    async def get_project(
+    async def get_project_detail(
         self,
         session: AsyncSession,
         project_id: int,
         with_deleted: bool = False,
         with_relations: bool = False,
-    ) -> Project:
+    ) -> ProjectDetailResponse:
         project: Project | None = await self.project_repository.find_by_id(
             session=session,
             project_id=project_id,
@@ -78,7 +82,7 @@ class ProjectService:
         if not project:
             raise ProjectNotFoundException()
 
-        return project
+        return await ProjectDetailResponse.from_entity(project)
 
     @backoff.on_exception(backoff.expo, StaleDataError, max_tries=3)
     @transactional()
@@ -90,7 +94,7 @@ class ProjectService:
         user_id: int,
         project_id: int,
         new_name: str,
-    ) -> Project | None:
+    ) -> ProjectResponse:
         project: Project | None = await self.project_repository.find_by_id(
             session=session,
             project_id=project_id,
@@ -144,7 +148,7 @@ class ProjectService:
                 raise ProjectNameDuplicatedException() from ex
             raise ex
 
-        return project
+        return ProjectResponse.from_entity(project)
 
     @transactional()
     async def assign_user_on_project(
