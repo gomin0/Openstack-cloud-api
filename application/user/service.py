@@ -139,7 +139,7 @@ class UserService:
         request_user_id: int,
         user_id: int,
         name: str,
-    ) -> User:
+    ) -> UserResponse:
         if request_user_id != user_id:
             raise UserUpdatePermissionDeniedException()
 
@@ -148,7 +148,7 @@ class UserService:
             raise UserNotFoundException()
 
         user.update_info(name=name)
-        return user
+        return UserResponse.from_entity(user)
 
     async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
         keystone_token: str

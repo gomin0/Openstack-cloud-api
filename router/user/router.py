@@ -11,7 +11,7 @@ from domain.enum import SortOrder
 from domain.user.enum import UserSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
-from router.user.request import CreateUserRequest, UpdateUserRequest
+from router.user.request import CreateUserRequest, UpdateUserInfoRequest
 
 router = APIRouter(prefix="/users", tags=["user"])
 
@@ -98,13 +98,12 @@ async def update_user_info(
     user_service: UserService = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ) -> UserResponse:
-    user: User = await user_service.update_user_info(
+    return await user_service.update_user_info(
         session=session,
         request_user_id=current_user.user_id,
         user_id=user_id,
         name=request.name,
     )
-    return UserResponse.from_entity(user)
 
 
 @router.delete(
