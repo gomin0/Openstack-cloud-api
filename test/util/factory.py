@@ -55,7 +55,7 @@ def create_project_stub(
     created_at: datetime = datetime.now(timezone.utc),
     updated_at: datetime = datetime.now(timezone.utc),
     deleted_at: datetime | None = None
-) -> ProjectStub:
+) -> Project:
     return ProjectStub(
         id=project_id,
         domain_id=domain.id,
