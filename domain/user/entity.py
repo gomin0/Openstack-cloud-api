@@ -59,3 +59,6 @@ class User(Base):
             name=name,
             password=hashed_password,
         )
+
+    def update_info(self, name: str):
+        self.name = name

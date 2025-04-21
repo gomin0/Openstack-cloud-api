@@ -7,6 +7,5 @@ class CreateUserRequest(BaseModel):
     name: str = Field(max_length=15, description="이름", examples=["woody"])
 
 
-class UpdateUserRequest(BaseModel):
-    name: str | None = Field(default=None, max_length=15, description="이름", examples=["woody"])
-    password: str | None = Field(default=None, description="비밀번호", examples=["1q2w3e4r"])
+class UpdateUserInfoRequest(BaseModel):
+    name: str = Field(max_length=15, description="이름", examples=["woody"])

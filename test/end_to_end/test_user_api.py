@@ -9,7 +9,7 @@ from domain.project.entity import Project, ProjectUser
 from domain.user.entity import User
 from router.user.request import CreateUserRequest
 from test.util.database import add_to_db
-from test.util.factory import create_domain, create_user
+from test.util.factory import create_domain, create_user, create_access_token
 from test.util.random import random_string
 
 envs: Envs = get_envs()
@@ -201,3 +201,52 @@ async def test_create_user_fail_duplicate_account_id(client, db_session, mock_as
     response_body = response.json()
     assert response.status_code == 409
     assert response_body["code"] == "USER_ACCOUNT_ID_DUPLICATE"
+
+
+async def test_update_user_info_success(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+
+    new_name: str = random_string()
+
+    # when
+    access_token = create_access_token(user_id=user.id)
+    response = await client.put(
+        url=f"/users/{user.id}/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        json={"name": new_name}
+    )
+
+    # then
+    assert response.status_code == 200
+    assert response.json()["name"] == new_name
+
+
+async def test_update_user_info_fail_request_user_is_not_equal_to_target_user(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    request_user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
+    target_user: User = await add_to_db(db_session, create_user(domain_id=domain.id))
+    await db_session.commit()
+
+    new_name: str = random_string()
+
+    # when
+    access_token = create_access_token(user_id=request_user.id)
+    response = await client.put(
+        url=f"/users/{target_user.id}/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        json={"name": new_name}
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == "USER_UPDATE_PERMISSION_DENIED"

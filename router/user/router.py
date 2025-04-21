@@ -4,12 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
 from application.user.service import UserService
+from common.auth_token_manager import get_current_user
 from common.compensating_transaction import compensating_transaction
+from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.user.enum import UserSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
-from router.user.request import CreateUserRequest, UpdateUserRequest
+from router.user.request import CreateUserRequest, UpdateUserInfoRequest
 
 router = APIRouter(prefix="/users", tags=["user"])
 
@@ -83,16 +85,25 @@ async def create_user(
         )
 
 
-@router.patch(
-    path="/{user_id}", status_code=200,
+@router.put(
+    path="/{user_id}/info",
+    status_code=200,
     summary="유저 정보 변경",
-    responses={
-        409: {"description": "변경하려는 이름이 이미 사용중인 경우"},
-        422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}
-    }
+    responses={422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"}}
 )
-def update_user(user_id: int, request: UpdateUserRequest) -> UserResponse:
-    raise NotImplementedError()
+async def update_user_info(
+    user_id: int,
+    request: UpdateUserInfoRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    user_service: UserService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+) -> UserResponse:
+    return await user_service.update_user_info(
+        session=session,
+        request_user_id=current_user.user_id,
+        user_id=user_id,
+        name=request.name,
+    )
 
 
 @router.delete(

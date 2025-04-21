@@ -5,6 +5,7 @@ import bcrypt
 from async_property import async_property
 
 from common import auth_token_manager
+from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.enum import LifecycleStatus
 from domain.keystone.model import KeystoneToken
@@ -12,10 +13,12 @@ from domain.project.entity import Project, ProjectUser
 from domain.user.entity import User
 from test.util.random import random_string, random_int
 
+envs: Envs = get_envs()
+
 
 def create_domain(
-    domain_id: int | None = None,
-    openstack_id: str = random_string(),
+    domain_id: int | None = envs.DEFAULT_DOMAIN_ID,
+    openstack_id: str = envs.DEFAULT_DOMAIN_OPENSTACK_ID,
     name: str = random_string(),
 ) -> Domain:
     return Domain(
@@ -77,6 +80,8 @@ def create_user(
     account_id: str = random_string(),
     name: str = random_string(),
     plain_password: str = random_string(),
+    lifecycle_status: LifecycleStatus = LifecycleStatus.ACTIVE,
+    deleted_at: datetime | None = None,
 ) -> User:
     return User(
         id=user_id,
@@ -136,17 +141,17 @@ def create_project_user(
 
 
 def create_access_token(
-    user_id: int,
+    user_id: int = random_int(),
     project_id: int = random_int(),
-    token: str = random_string(),
-    expires_at: datetime = datetime.now(timezone.utc) + timedelta(minutes=60)
+    keystone_token: str = random_string(),
+    keystone_token_expires_at: datetime = datetime.now(timezone.utc) + timedelta(minutes=60),
 ) -> str:
     return auth_token_manager.create_access_token(
         user_id=user_id,
         project_id=project_id,
         keystone_token=KeystoneToken(
-            token=token,
-            expires_at=expires_at
+            token=keystone_token,
+            expires_at=keystone_token_expires_at
         )
     )
 
