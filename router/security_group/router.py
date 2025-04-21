@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Query, Depends
 
+from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.security_group.enum import SecurityGroupSortOption
 from router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
-from router.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 
 router = APIRouter(prefix="/security-groups", tags=["security-group"])
 

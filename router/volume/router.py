@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
+from application.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.volume.enum import VolumeSortOption
 from router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
-from router.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
 
 router = APIRouter(prefix="/volumes", tags=["volume"])
 
