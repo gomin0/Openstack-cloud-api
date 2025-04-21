@@ -6,7 +6,7 @@ from domain.user.entity import User
 from exception.auth_exception import InvalidAuthException
 from exception.project_exception import ProjectAccessDeniedException
 from exception.user_exception import UserNotJoinedAnyProjectException
-from test.util.factory import create_project, create_stub_user
+from test.util.factory import create_project, create_user_stub
 from test.util.random import random_int, random_string
 
 
@@ -24,7 +24,7 @@ async def test_login_success_with_project_id(
     password: str = random_string()
 
     joined_project: Project = create_project(domain_id=domain_id, project_id=project_id)
-    user: User = create_stub_user(
+    user: User = create_user_stub(
         user_id=random_int(),
         domain_id=domain_id,
         account_id=account_id,
@@ -64,7 +64,7 @@ async def test_login_success_without_project_id(
     password: str = random_string()
 
     joined_project: Project = create_project(domain_id=domain_id, project_id=random_int())
-    user: User = create_stub_user(
+    user: User = create_user_stub(
         user_id=random_int(),
         domain_id=domain_id,
         account_id=account_id,
@@ -124,7 +124,7 @@ async def test_login_fail_using_invalid_password(
     account_id: str = random_string()
     valid_password: str = random_string()
     invalid_password: str = random_string()
-    user: User = create_stub_user(
+    user: User = create_user_stub(
         domain_id=random_int(),
         account_id=account_id,
         plain_password=valid_password,
@@ -153,7 +153,7 @@ async def test_login_fail_user_did_not_join_any_project(
     # given
     account_id: str = random_string()
     password: str = random_string()
-    user: User = create_stub_user(
+    user: User = create_user_stub(
         domain_id=random_int(),
         account_id=account_id,
         plain_password=password,
@@ -183,7 +183,7 @@ async def test_login_fail_has_not_project_access_permission(
     # given
     account_id: str = random_string()
     password: str = random_string()
-    user: User = create_stub_user(
+    user: User = create_user_stub(
         domain_id=random_int(),
         account_id=account_id,
         plain_password=password,

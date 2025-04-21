@@ -2,15 +2,14 @@ from fastapi import APIRouter, Query, Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.user_service import UserService
+from application.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
+from application.user.service import UserService
 from common.compensating_transaction import compensating_transaction
 from domain.enum import SortOrder
-from domain.user.entity import User
 from domain.user.enum import UserSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.user.request import CreateUserRequest, UpdateUserRequest
-from router.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
 
 router = APIRouter(prefix="/users", tags=["user"])
 
@@ -28,7 +27,7 @@ async def find_users(
     user_service: UserService = Depends(),
     session: AsyncSession = Depends(get_db_session)
 ) -> UserDetailsResponse:
-    users: list[User] = await user_service.find_users(
+    users: list[UserDetailResponse] = await user_service.find_user_details(
         session=session,
         user_id=user_id,
         account_id=account_id,
@@ -37,9 +36,7 @@ async def find_users(
         sort_order=sort_order,
         with_relations=True
     )
-    return UserDetailsResponse(
-        users=[await UserDetailResponse.from_entity(user) for user in users]
-    )
+    return UserDetailsResponse(users=users)
 
 
 @router.get(
@@ -54,12 +51,11 @@ async def get_user(
     user_service: UserService = Depends(),
     session: AsyncSession = Depends(get_db_session)
 ) -> UserDetailResponse:
-    user: User = await user_service.get_user(
+    return await user_service.get_user_detail(
         session=session,
         user_id=user_id,
         with_relations=True
     )
-    return await UserDetailResponse.from_entity(user)
 
 
 @router.post(
@@ -77,7 +73,7 @@ async def create_user(
     client: AsyncClient = Depends(get_async_client),
 ) -> UserResponse:
     async with compensating_transaction() as compensating_tx:
-        user: User = await user_service.create_user(
+        return await user_service.create_user(
             compensating_tx=compensating_tx,
             session=session,
             client=client,
@@ -85,7 +81,6 @@ async def create_user(
             name=request.name,
             password=request.password,
         )
-    return UserResponse.from_entity(user)
 
 
 @router.patch(

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from typing import Any
 
 import bcrypt
 from async_property import async_property
@@ -12,14 +13,6 @@ from domain.user.entity import User
 from test.util.random import random_string, random_int
 
 
-class StubUser(User):
-    _mock_projects: list[Project] = []
-
-    @async_property
-    async def projects(self) -> list[Project]:
-        return self._mock_projects
-
-
 def create_domain(
     domain_id: int | None = None,
     openstack_id: str = random_string(),
@@ -29,6 +22,10 @@ def create_domain(
         id=domain_id,
         openstack_id=openstack_id,
         name=name,
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
     )
 
 
@@ -58,7 +55,7 @@ def create_project_stub(
     created_at: datetime = datetime.now(timezone.utc),
     updated_at: datetime = datetime.now(timezone.utc),
     deleted_at: datetime | None = None
-) -> ProjectStub:
+) -> Project:
     return ProjectStub(
         id=project_id,
         domain_id=domain.id,
@@ -98,7 +95,7 @@ def create_user(
     )
 
 
-def create_stub_user(
+def create_user_stub(
     user_id: int | None = None,
     domain_id: int = random_int(),
     openstack_id: str = random_string(),
@@ -107,7 +104,9 @@ def create_stub_user(
     plain_password: str = random_string(),
     projects: list[Project] | None = None,
 ) -> User:
-    user: StubUser = StubUser(
+    return UserStub(
+        domain=create_domain(domain_id=domain_id),
+        projects=projects or [],
         id=user_id,
         domain_id=domain_id,
         openstack_id=openstack_id,
@@ -122,8 +121,6 @@ def create_stub_user(
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
     )
-    user._mock_projects = projects or []
-    return user
 
 
 def create_project_user(
@@ -167,3 +164,23 @@ class ProjectStub(Project):
     @async_property
     async def domain(self):
         return self._mock_domain
+
+
+class UserStub(User):
+    def __init__(
+        self,
+        domain: Domain,
+        projects: list[Project] | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(**kwargs)
+        self._mock_domain: Domain = domain
+        self._mock_projects: list[Project] = projects or []
+
+    @async_property
+    async def domain(self) -> Domain:
+        return self._mock_domain
+
+    @async_property
+    async def projects(self) -> list[Project]:
+        return self._mock_projects
