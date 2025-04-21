@@ -6,7 +6,7 @@ from domain.user.enum import UserSortOption
 from exception.openstack_exception import OpenStackException
 from exception.user_exception import UserNotFoundException, UserAccountIdDuplicateException
 from test.unit.conftest import mock_session, mock_user_repository, user_service, mock_keystone_client
-from test.util.factory import create_stub_user
+from test.util.factory import create_user_stub
 from test.util.random import random_string, random_int
 
 
@@ -14,8 +14,8 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
     # given
     domain_id: int = random_int()
     account_id: str = random_string()
-    user1 = create_stub_user(user_id=random_int(), domain_id=domain_id)
-    user2 = create_stub_user(user_id=random_int(), domain_id=domain_id)
+    user1 = create_user_stub(user_id=random_int(), domain_id=domain_id)
+    user2 = create_user_stub(user_id=random_int(), domain_id=domain_id)
     mock_user_repository.find_all.return_value = [user1, user2]
 
     # when
@@ -46,7 +46,7 @@ async def test_get_user(mock_session, mock_user_repository, user_service):
     # given
     user_id: int = random_int()
     domain_id: int = random_int()
-    user = create_stub_user(user_id=random_int(), domain_id=domain_id)
+    user = create_user_stub(user_id=random_int(), domain_id=domain_id)
 
     mock_user_repository.find_by_id.return_value = user
 
@@ -99,7 +99,7 @@ async def test_create_user_success(
     mock_compensation_manager,
 ):
     # given
-    expected_result: User = create_stub_user(user_id=random_int(), domain_id=random_int())
+    expected_result: User = create_user_stub(user_id=random_int(), domain_id=random_int())
     mock_user_repository.exists_by_account_id.return_value = False
     mock_keystone_client.authenticate_with_scoped_auth.return_value = "keystone_token", "exp"
     mock_keystone_client.create_user.return_value = "openstack_id"

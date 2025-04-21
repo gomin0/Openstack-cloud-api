@@ -95,7 +95,7 @@ def create_user(
     )
 
 
-def create_stub_user(
+def create_user_stub(
     user_id: int | None = None,
     domain_id: int = random_int(),
     openstack_id: str = random_string(),
@@ -104,7 +104,7 @@ def create_stub_user(
     plain_password: str = random_string(),
     projects: list[Project] | None = None,
 ) -> User:
-    user: StubUser = StubUser(
+    user: UserStub = UserStub(
         id=user_id,
         domain_id=domain_id,
         openstack_id=openstack_id,
@@ -167,7 +167,7 @@ class ProjectStub(Project):
         return self._mock_domain
 
 
-class StubUser(User):
+class UserStub(User):
     def __init__(
         self,
         domain: Domain | None = None,
