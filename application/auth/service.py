@@ -57,7 +57,9 @@ class AuthService:
         # Access token 발급
         access_token: str = create_access_token(
             user_id=user.id,
+            user_openstack_id=user.openstack_id,
             project_id=project.id,
+            project_openstack_id=project.openstack_id,
             keystone_token=keystone_token
         )
 
