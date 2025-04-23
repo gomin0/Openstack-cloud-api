@@ -20,7 +20,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "integer"
                 },
                 {
                   "type": "null"
@@ -250,6 +250,9 @@
           "204": {
             "description": "Successful Response"
           },
+          "404": {
+            "description": "\u003Ccode\u003Euser_id\u003C/code\u003E에 해당하는 유저가 없는 경우"
+          },
           "409": {
             "description": "마지막 남은 계정을 삭제하려고 하는 경우"
           },
@@ -267,12 +270,12 @@
       }
     },
     "/auth/login": {
-      "get": {
+      "post": {
         "tags": [
           "auth"
         ],
         "summary": "Login",
-        "operationId": "login_auth_login_get",
+        "operationId": "login_auth_login_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -294,8 +297,14 @@
               }
             }
           },
+          "400": {
+            "description": "유저가 소속된 프로젝트가 없는 경우."
+          },
           "401": {
             "description": "인증 정보가 잘못된 경우"
+          },
+          "403": {
+            "description": "\u003Ccode\u003Eproject_id\u003C/code\u003E에 해당하는 프로젝트에 소속되지 않았거나 접근 권한이 없는 경우."
           },
           "422": {
             "description": "요청 데이터의 값이나 형식이 잘못된 경우"
@@ -303,13 +312,13 @@
         }
       }
     },
-    "/project": {
+    "/projects": {
       "get": {
         "tags": [
           "project"
         ],
         "summary": "프로젝트 목록 조회",
-        "operationId": "get_projects_project_get",
+        "operationId": "find_projects_projects_get",
         "parameters": [
           {
             "name": "ids",
@@ -400,13 +409,13 @@
         }
       }
     },
-    "/project/{project_id}": {
+    "/projects/{project_id}": {
       "get": {
         "tags": [
           "project"
         ],
         "summary": "프로젝트 단일 조회",
-        "operationId": "get_project_project__project_id__get",
+        "operationId": "get_project_projects__project_id__get",
         "parameters": [
           {
             "name": "project_id",
@@ -451,7 +460,12 @@
           "project"
         ],
         "summary": "프로젝트 변경",
-        "operationId": "update_project_project__project_id__put",
+        "operationId": "update_project_projects__project_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "project_id",
@@ -481,10 +495,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectResponse"
+                  "$ref": "#/components/schemas/router__project__response__ProjectResponse"
                 }
               }
             }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "해당 프로젝트에 대한 접근 권한이 없는 경우"
           },
           "404": {
             "description": "해당 ID의 프로젝트가 없는 경우"
@@ -498,13 +518,18 @@
         }
       }
     },
-    "/project/{project_id}/users/{user_id}": {
+    "/projects/{project_id}/users/{user_id}": {
       "post": {
         "tags": [
           "project"
         ],
         "summary": "프로젝트에 계정 소속",
-        "operationId": "assign_account_to_project_project__project_id__users__user_id__post",
+        "operationId": "assign_user_on_project_projects__project_id__users__user_id__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "project_id",
@@ -556,7 +581,12 @@
           "project"
         ],
         "summary": "프로젝트에서 계정 제외",
-        "operationId": "remove_account_from_project_project__project_id__users__user_id__delete",
+        "operationId": "unassign_user_from_project_projects__project_id__users__user_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "project_id",
@@ -585,6 +615,12 @@
           "204": {
             "description": "Successful Response"
           },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "해당 프로젝트에 대한 접근 권한이 없는 경우"
+          },
           "404": {
             "description": "프로젝트, 계정이 없는 경우"
           },
@@ -603,10 +639,834 @@
           }
         }
       }
+    },
+    "/volumes": {
+      "get": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "볼륨 목록 조회",
+        "operationId": "find_volumes_detail_volumes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VolumeSortOption",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumesDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "볼륨 생성",
+        "operationId": "create_volume_volumes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVolumeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      }
+    },
+    "/volumes/{volume_id}": {
+      "get": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "볼륨 단건 조회",
+        "operationId": "get_volume_detail_volumes__volume_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "volume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Volume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "볼륨에 대한 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "볼륨을 찾을 수 없는 경우"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "볼륨 삭제",
+        "operationId": "delete_volume_volumes__volume_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "volume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Volume Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "볼륨에 대한 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "볼륨을 찾을 수 없는 경우"
+          },
+          "409": {
+            "description": "볼륨에 연결된 서버가 존재하거나, 볼륨이 삭제 가능한 상태가 아닌 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      }
+    },
+    "/volumes/{volume_id}/info": {
+      "put": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "볼륨 정보 변경",
+        "operationId": "update_volume_info_volumes__volume_id__info_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "volume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Volume Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVolumeInfoRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "볼륨에 대한 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "볼륨을 찾을 수 없는 경우"
+          },
+          "409": {
+            "description": "변경하려는 이름이 이미 사용중인 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      }
+    },
+    "/volumes/{volume_id}/size": {
+      "put": {
+        "tags": [
+          "volume"
+        ],
+        "summary": "볼륨 용량 변경",
+        "operationId": "update_volume_size_volumes__volume_id__size_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "volume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Volume Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVolumeSizeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VolumeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "변경하려는 볼륨 용량이 기존 용량보다 크지 않은 경우"
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "볼륨에 대한 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "볼륨을 찾을 수 없는 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      }
+    },
+    "/security-groups": {
+      "get": {
+        "tags": [
+          "security-group"
+        ],
+        "summary": "보안그룹 목록 조회",
+        "operationId": "find_security_groups_security_groups_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SecurityGroupSortOption",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityGroupDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "422": {
+            "description": "쿼리 파라미터 값이나 형식이 잘못된 경우"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "security-group"
+        ],
+        "summary": "보안그룹 생성",
+        "operationId": "create_security_group_security_groups_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSecurityGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityGroupDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "409": {
+            "description": "보안그룹 이름이 이미 프로젝트 내에서 사용중인 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      }
+    },
+    "/security-groups/{security_group_id}": {
+      "get": {
+        "tags": [
+          "security-group"
+        ],
+        "summary": "보안그룹 단일 조회",
+        "operationId": "get_security_group_security_groups__security_group_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "security_group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Security Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityGroupDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "보안 그룹 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "해당 ID의 보안그룹을 찾을 수 없는 경우"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "security-group"
+        ],
+        "summary": "보안그룹 변경",
+        "operationId": "update_security_group_security_groups__security_group_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "security_group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Security Group Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSecurityGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityGroupDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "보안 그룹 변경 권한이 없는 경우"
+          },
+          "404": {
+            "description": "해당 ID의 보안그룹을 찾을 수 없는 경우"
+          },
+          "409": {
+            "description": "변경하려는 이름이 이미 사용중인 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "security-group"
+        ],
+        "summary": "보안그룹 삭제",
+        "operationId": "delete_security_group_security_groups__security_group_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "security_group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Security Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "보안 그룹 삭제 권한이 없는 경우"
+          },
+          "404": {
+            "description": "해당 ID의 보안그룹을 찾을 수 없는 경우"
+          },
+          "409": {
+            "description": "연결된 서버가 존재해 삭제할 수 없는 경우"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/floating-ips": {
+      "get": {
+        "tags": [
+          "floating-ip"
+        ],
+        "summary": "소유한 플로팅 IP 목록 조회",
+        "operationId": "find_floating_ips_floating_ips_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/FloatingIpSortOption",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "default": "asc"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingIpDetailsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "422": {
+            "description": "쿼리 파라미터 값이나 형식이 잘못된 경우"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "floating-ip"
+        ],
+        "summary": "플로팅 IP 할당",
+        "operationId": "create_floating_ip_floating_ips_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFloatingIpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingIpResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "422": {
+            "description": "요청 데이터의 값이나 형식이 잘못된 경우"
+          }
+        }
+      }
+    },
+    "/floating-ips/{floating_ip_id}": {
+      "get": {
+        "tags": [
+          "floating-ip"
+        ],
+        "summary": "단일 플로팅 IP 조회",
+        "operationId": "get_floating_ip_floating_ips__floating_ip_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "floating_ip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Floating Ip Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloatingIpDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "floating ip에 대한 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "해당 ID의 플로팅 IP를 찾을 수 없는 경우"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "floating-ip"
+        ],
+        "summary": "플로팅 IP 할당 해제(삭제)",
+        "operationId": "delete_floating_ip_floating_ips__floating_ip_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "floating_ip_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Floating Ip Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "인증 정보가 유효하지 않은 경우"
+          },
+          "403": {
+            "description": "floating ip에 대한 접근 권한이 없는 경우"
+          },
+          "404": {
+            "description": "해당 ID의 플로팅 IP를 찾을 수 없는 경우"
+          },
+          "409": {
+            "description": "서버에 연결된 상태에서는 삭제할 수 없음"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CreateFloatingIpRequest": {
+        "properties": {
+          "floating_network_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 36,
+            "title": "Floating Network Id",
+            "description": "플로팅 IP를 할당받을 Public network ID",
+            "examples": [
+              "b1321e7e-7709-47d1-b851-5e6c4e0e1111"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "floating_network_id"
+        ],
+        "title": "CreateFloatingIpRequest"
+      },
+      "CreateSecurityGroupRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name",
+            "description": "보안그룹 이름"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Description",
+            "description": "보안그룹 설명"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityGroupRuleRequest"
+            },
+            "type": "array",
+            "title": "Rules",
+            "description": "초기 룰셋 목록"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "rules"
+        ],
+        "title": "CreateSecurityGroupRequest"
+      },
       "CreateUserRequest": {
         "properties": {
           "account_id": {
@@ -634,21 +1494,6 @@
             "examples": [
               "woody"
             ]
-          },
-          "project_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Project Id",
-            "description": "기본 소속 프로젝트의 id",
-            "examples": [
-              "1"
-            ]
           }
         },
         "type": "object",
@@ -658,6 +1503,65 @@
           "name"
         ],
         "title": "CreateUserRequest"
+      },
+      "CreateVolumeRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name",
+            "description": "Name of volume",
+            "examples": [
+              "volume-001"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Description",
+            "description": "Description of volume",
+            "examples": [
+              "For test"
+            ]
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "용량(GiB)",
+            "examples": [
+              1
+            ]
+          },
+          "type_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 36,
+            "title": "Type Id",
+            "description": "사용할 volume type의 uuid",
+            "examples": [
+              "64abcd22-a30b-4982-8f82-332e89ff4bf7"
+            ]
+          },
+          "image_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 36,
+            "title": "Image Id",
+            "description": "사용할 부팅 이미지의 uuid",
+            "examples": [
+              "1abc7a2f-8eec-49a2-b9ef-be16e0959cdb"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "size",
+          "type_id",
+          "image_id"
+        ],
+        "title": "CreateVolumeRequest"
       },
       "DomainResponse": {
         "properties": {
@@ -721,6 +1625,205 @@
         ],
         "title": "DomainResponse"
       },
+      "FloatingIpDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "플로팅 IP ID",
+            "examples": [
+              1
+            ]
+          },
+          "address": {
+            "type": "string",
+            "title": "Address",
+            "description": "IP 주소",
+            "examples": [
+              "0.0.0.0"
+            ]
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id",
+            "description": "프로젝트 ID",
+            "examples": [
+              1
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/FloatingIpStatus",
+            "description": "플로팅 IP 상태",
+            "examples": [
+              "ACTIVE"
+            ]
+          },
+          "server": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/router__floating_ip__response__ServerResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "연결된 서버 정보"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "생성일"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "수정일"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "삭제일"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "address",
+          "project_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FloatingIpDetailResponse"
+      },
+      "FloatingIpDetailsResponse": {
+        "properties": {
+          "floating_ips": {
+            "items": {
+              "$ref": "#/components/schemas/FloatingIpDetailResponse"
+            },
+            "type": "array",
+            "title": "Floating Ips"
+          }
+        },
+        "type": "object",
+        "required": [
+          "floating_ips"
+        ],
+        "title": "FloatingIpDetailsResponse"
+      },
+      "FloatingIpResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "플로팅 IP ID",
+            "examples": [
+              1
+            ]
+          },
+          "address": {
+            "type": "string",
+            "title": "Address",
+            "description": "IP 주소",
+            "examples": [
+              "0.0.0.0"
+            ]
+          },
+          "server_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Id",
+            "description": "서버 ID",
+            "examples": [
+              1
+            ]
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id",
+            "description": "프로젝트 ID",
+            "examples": [
+              1
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/FloatingIpStatus",
+            "description": "플로팅 IP 상태",
+            "examples": [
+              "ACTIVE"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "생성일"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "수정일"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "삭제일"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "address",
+          "project_id",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FloatingIpResponse"
+      },
+      "FloatingIpSortOption": {
+        "type": "string",
+        "enum": [
+          "address",
+          "created_at"
+        ],
+        "title": "FloatingIpSortOption"
+      },
+      "FloatingIpStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "DOWN",
+          "ERROR"
+        ],
+        "title": "FloatingIpStatus"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -752,6 +1855,18 @@
             "examples": [
               "1q2w3e4r"
             ]
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Id",
+            "description": "Id of project"
           }
         },
         "type": "object",
@@ -766,11 +1881,17 @@
           "user": {
             "$ref": "#/components/schemas/UserResponse",
             "description": "로그인한 유저 정보"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "access token"
           }
         },
         "type": "object",
         "required": [
-          "user"
+          "user",
+          "token"
         ],
         "title": "LoginResponse"
       },
@@ -792,6 +1913,11 @@
               "779b35a7173444e387a7f34134a56e31"
             ]
           },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "프로젝트 이름"
+          },
           "domain": {
             "$ref": "#/components/schemas/DomainResponse",
             "description": "프로젝트가 속한 도메인 정보"
@@ -803,83 +1929,6 @@
             "type": "array",
             "title": "Accounts",
             "description": "프로젝트에 속한 계정 목록"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At",
-            "description": "생성일"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At",
-            "description": "생성일"
-          },
-          "deleted_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deleted At",
-            "description": "생성일"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "openstack_id",
-          "domain",
-          "accounts",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ProjectDetailResponse"
-      },
-      "ProjectListResponse": {
-        "properties": {
-          "projects": {
-            "items": {
-              "$ref": "#/components/schemas/ProjectDetailResponse"
-            },
-            "type": "array",
-            "title": "Projects",
-            "description": "프로젝트 목록"
-          }
-        },
-        "type": "object",
-        "required": [
-          "projects"
-        ],
-        "title": "ProjectListResponse"
-      },
-      "ProjectResponse": {
-        "properties": {
-          "id": {
-            "type": "integer",
-            "title": "Id",
-            "description": "프로젝트 id",
-            "examples": [
-              1
-            ]
-          },
-          "openstack_id": {
-            "type": "string",
-            "title": "Openstack Id",
-            "description": "프로젝트 uuid",
-            "examples": [
-              "779b35a7173444e387a7f34134a56e31"
-            ]
-          },
-          "domain_id": {
-            "type": "integer",
-            "title": "Domain Id",
-            "description": "프로젝트가 속한 도메인 정보"
           },
           "created_at": {
             "type": "string",
@@ -911,11 +1960,30 @@
         "required": [
           "id",
           "openstack_id",
-          "domain_id",
+          "name",
+          "domain",
+          "accounts",
           "created_at",
           "updated_at"
         ],
-        "title": "ProjectResponse"
+        "title": "ProjectDetailResponse"
+      },
+      "ProjectListResponse": {
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectDetailResponse"
+            },
+            "type": "array",
+            "title": "Projects",
+            "description": "프로젝트 목록"
+          }
+        },
+        "type": "object",
+        "required": [
+          "projects"
+        ],
+        "title": "ProjectListResponse"
       },
       "ProjectSortOption": {
         "type": "string",
@@ -943,42 +2011,269 @@
         ],
         "title": "ProjectUpdateRequest"
       },
-      "SignUpRequest": {
+      "SecurityGroupDetailResponse": {
         "properties": {
-          "account_id": {
-            "type": "string",
-            "maxLength": 20,
-            "title": "Account Id",
-            "description": "로그인 id",
-            "examples": [
-              "example1234"
-            ]
-          },
-          "password": {
-            "type": "string",
-            "title": "Password",
-            "description": "비밀번호",
-            "examples": [
-              "1q2w3e4r"
-            ]
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "보안그룹 ID"
           },
           "name": {
             "type": "string",
-            "maxLength": 15,
             "title": "Name",
-            "description": "이름",
+            "description": "보안그룹 이름"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "보안그룹 설명"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id",
+            "description": "소속 프로젝트 ID"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityGroupRuleResponse"
+            },
+            "type": "array",
+            "title": "Rules",
+            "description": "보안 그룹 룰셋 목록"
+          },
+          "servers": {
+            "items": {
+              "$ref": "#/components/schemas/router__security_group__response__ServerResponse"
+            },
+            "type": "array",
+            "title": "Servers",
+            "description": "연결된 서버 목록"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "생성일"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "수정일"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "삭제일"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "project_id",
+          "rules",
+          "servers",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SecurityGroupDetailResponse"
+      },
+      "SecurityGroupDetailsResponse": {
+        "properties": {
+          "security_groups": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityGroupDetailResponse"
+            },
+            "type": "array",
+            "title": "Security Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "security_groups"
+        ],
+        "title": "SecurityGroupDetailsResponse"
+      },
+      "SecurityGroupRuleDirection": {
+        "type": "string",
+        "enum": [
+          "ingress",
+          "egress"
+        ],
+        "title": "SecurityGroupRuleDirection"
+      },
+      "SecurityGroupRuleRequest": {
+        "properties": {
+          "protocol": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol",
+            "description": "프로토콜",
             "examples": [
-              "woody"
+              "tcp"
+            ]
+          },
+          "direction": {
+            "$ref": "#/components/schemas/SecurityGroupRuleDirection",
+            "maxLength": 10,
+            "description": "방향",
+            "examples": [
+              "ingress"
+            ]
+          },
+          "port_range_min": {
+            "type": "integer",
+            "title": "Port Range Min",
+            "description": "시작 포트",
+            "examples": [
+              22
+            ]
+          },
+          "port_range_max": {
+            "type": "integer",
+            "title": "Port Range Max",
+            "description": "종료 포트",
+            "examples": [
+              22
+            ]
+          },
+          "remote_ip_prefix": {
+            "type": "string",
+            "maxLength": 43,
+            "title": "Remote Ip Prefix",
+            "description": "CIDR",
+            "examples": [
+              "0.0.0.0/0"
             ]
           }
         },
         "type": "object",
         "required": [
-          "account_id",
-          "password",
-          "name"
+          "direction",
+          "port_range_min",
+          "port_range_max",
+          "remote_ip_prefix"
         ],
-        "title": "SignUpRequest"
+        "title": "SecurityGroupRuleRequest"
+      },
+      "SecurityGroupRuleResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "룰셋 ID",
+            "examples": [
+              1
+            ]
+          },
+          "protocol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protocol",
+            "description": "프로토콜",
+            "examples": [
+              "tcp"
+            ]
+          },
+          "direction": {
+            "$ref": "#/components/schemas/SecurityGroupRuleDirection",
+            "description": "방향",
+            "examples": [
+              "ingress"
+            ]
+          },
+          "port_range_min": {
+            "type": "integer",
+            "title": "Port Range Min",
+            "description": "시작 포트",
+            "examples": [
+              22
+            ]
+          },
+          "port_range_max": {
+            "type": "integer",
+            "title": "Port Range Max",
+            "description": "종료 포트",
+            "examples": [
+              22
+            ]
+          },
+          "remote_ip_prefix": {
+            "type": "string",
+            "title": "Remote Ip Prefix",
+            "description": "CIDR",
+            "examples": [
+              "0.0.0.0/0"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "생성일"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "수정일"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "삭제일"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "direction",
+          "port_range_min",
+          "port_range_max",
+          "remote_ip_prefix",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SecurityGroupRuleResponse"
+      },
+      "SecurityGroupSortOption": {
+        "type": "string",
+        "enum": [
+          "name",
+          "created_at"
+        ],
+        "title": "SecurityGroupSortOption"
       },
       "SortOrder": {
         "type": "string",
@@ -987,6 +2282,37 @@
           "desc"
         ],
         "title": "SortOrder"
+      },
+      "UpdateSecurityGroupRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name",
+            "description": "변경할 보안그룹 이름"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Description",
+            "description": "변경할 보안그룹 설명"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/SecurityGroupRuleRequest"
+            },
+            "type": "array",
+            "title": "Rules",
+            "description": "전체 룰셋 목록 (기존 대체)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "rules"
+        ],
+        "title": "UpdateSecurityGroupRequest"
       },
       "UpdateUserRequest": {
         "properties": {
@@ -1025,6 +2351,51 @@
         "type": "object",
         "title": "UpdateUserRequest"
       },
+      "UpdateVolumeInfoRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Name",
+            "description": "Name of volume",
+            "examples": [
+              "volume-001"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 255,
+            "title": "Description",
+            "description": "Description of volume",
+            "examples": [
+              "For test"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description"
+        ],
+        "title": "UpdateVolumeInfoRequest"
+      },
+      "UpdateVolumeSizeRequest": {
+        "properties": {
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "변경하려는 용량(GiB). 반드시 기존 용량보다 커야 합니다.",
+            "examples": [
+              4
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "size"
+        ],
+        "title": "UpdateVolumeSizeRequest"
+      },
       "UserDetailResponse": {
         "properties": {
           "id": {
@@ -1049,7 +2420,7 @@
           },
           "projects": {
             "items": {
-              "$ref": "#/components/schemas/ProjectResponse"
+              "$ref": "#/components/schemas/router__user__response__ProjectResponse"
             },
             "type": "array",
             "title": "Projects",
@@ -1247,6 +2618,511 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VolumeDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Id of volume"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id",
+            "description": "Id of project"
+          },
+          "server": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/router__volume__response__ServerResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Server information"
+          },
+          "type_id": {
+            "type": "string",
+            "title": "Type Id",
+            "description": "Id of volume type",
+            "examples": [
+              "64abcd22-a30b-4982-8f82-332e89ff4bf1"
+            ]
+          },
+          "image_id": {
+            "type": "string",
+            "title": "Image Id",
+            "description": "Id of boot image",
+            "examples": [
+              "2fcc7a2f-8eec-49a2-b9ef-be16e0959cdb"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of volume",
+            "examples": [
+              "volume-001"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Description of volume",
+            "examples": [
+              "volume-001"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/VolumeStatus",
+            "description": "Status of volume"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "Size of volume(GiB)"
+          },
+          "is_root_volume": {
+            "type": "boolean",
+            "title": "Is Root Volume",
+            "description": "Whether it is a root volume"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Creation time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Last update time"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "Deletion time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "type_id",
+          "image_id",
+          "name",
+          "description",
+          "status",
+          "size",
+          "is_root_volume",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "VolumeDetailResponse"
+      },
+      "VolumeResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Id of volume"
+          },
+          "project_id": {
+            "type": "integer",
+            "title": "Project Id",
+            "description": "Id of project"
+          },
+          "server_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server Id",
+            "description": "Id of server"
+          },
+          "type_id": {
+            "type": "string",
+            "title": "Type Id",
+            "description": "Id of volume type",
+            "examples": [
+              "64abcd22-a30b-4982-8f82-332e89ff4bf1"
+            ]
+          },
+          "image_id": {
+            "type": "string",
+            "title": "Image Id",
+            "description": "Id of boot image",
+            "examples": [
+              "2fcc7a2f-8eec-49a2-b9ef-be16e0959cdb"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of volume",
+            "examples": [
+              "volume-001"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Description of volume",
+            "examples": [
+              "volume-001"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/VolumeStatus",
+            "description": "Status of volume"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "Size of volume(GiB)"
+          },
+          "is_root_volume": {
+            "type": "boolean",
+            "title": "Is Root Volume",
+            "description": "Whether it is a root volume"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Creation time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Last update time"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "Deletion time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "project_id",
+          "type_id",
+          "image_id",
+          "name",
+          "description",
+          "status",
+          "size",
+          "is_root_volume",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "VolumeResponse"
+      },
+      "VolumeSortOption": {
+        "type": "string",
+        "enum": [
+          "created_at",
+          "name"
+        ],
+        "title": "VolumeSortOption"
+      },
+      "VolumeStatus": {
+        "type": "string",
+        "enum": [
+          "CREATING",
+          "AVAILABLE",
+          "RESERVED",
+          "ATTACHING",
+          "DETACHING",
+          "IN_USE",
+          "MAINTENANCE",
+          "DELETING",
+          "AWAITING_TRANSFER",
+          "ERROR",
+          "ERROR_DELETING",
+          "BACKING_UP",
+          "RESTORING_BACKUP",
+          "ERROR_BACKING_UP",
+          "ERROR_RESTORING",
+          "ERROR_EXTENDING",
+          "DOWNLOADING",
+          "UPLOADING",
+          "RETYPING",
+          "EXTENDING"
+        ],
+        "title": "VolumeStatus"
+      },
+      "VolumesDetailResponse": {
+        "properties": {
+          "volumes": {
+            "items": {
+              "$ref": "#/components/schemas/VolumeDetailResponse"
+            },
+            "type": "array",
+            "title": "Volumes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "volumes"
+        ],
+        "title": "VolumesDetailResponse"
+      },
+      "router__floating_ip__response__ServerResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "서버 ID",
+            "examples": [
+              1
+            ]
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "서버 이름",
+            "examples": [
+              "server"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ServerResponse"
+      },
+      "router__project__response__ProjectResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "프로젝트 id",
+            "examples": [
+              1
+            ]
+          },
+          "openstack_id": {
+            "type": "string",
+            "title": "Openstack Id",
+            "description": "프로젝트 uuid",
+            "examples": [
+              "779b35a7173444e387a7f34134a56e31"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "프로젝트 이름"
+          },
+          "domain_id": {
+            "type": "integer",
+            "title": "Domain Id",
+            "description": "프로젝트가 속한 도메인 정보"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "생성일"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "수정일"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "삭제일"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "openstack_id",
+          "name",
+          "domain_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectResponse"
+      },
+      "router__security_group__response__ServerResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "서버 ID",
+            "examples": [
+              1
+            ]
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "서버 이름",
+            "examples": [
+              "server"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ServerResponse"
+      },
+      "router__user__response__ProjectResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "프로젝트 id",
+            "examples": [
+              1
+            ]
+          },
+          "openstack_id": {
+            "type": "string",
+            "title": "Openstack Id",
+            "description": "프로젝트 uuid",
+            "examples": [
+              "779b35a7173444e387a7f34134a56e31"
+            ]
+          },
+          "domain_id": {
+            "type": "integer",
+            "title": "Domain Id",
+            "description": "프로젝트가 속한 도메인 정보"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "생성일"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "수정일"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "삭제일"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "openstack_id",
+          "domain_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectResponse"
+      },
+      "router__volume__response__ServerResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Id of server"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Name of server",
+            "examples": [
+              "server-001"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Creation time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Last update time"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At",
+            "description": "Deletion time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ServerResponse"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
       }
     }
   }

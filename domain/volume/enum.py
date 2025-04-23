@@ -22,3 +22,8 @@ class VolumeStatus(Enum):
     UPLOADING = "UPLOADING"
     RETYPING = "RETYPING"
     EXTENDING = "EXTENDING"
+
+
+class VolumeSortOption(Enum):
+    CREATED_AT = "created_at"
+    NAME = "name"
