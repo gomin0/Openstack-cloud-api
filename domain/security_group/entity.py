@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 
+from async_property import async_property
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.entity import Base
 from domain.enum import LifecycleStatus
+from domain.server.entity import Server
 
 
 class SecurityGroup(Base):
@@ -14,7 +16,7 @@ class SecurityGroup(Base):
     openstack_id: Mapped[str] = mapped_column("openstack_id", CHAR(36), nullable=False)
     project_id: Mapped[int] = mapped_column("project_id", BigInteger, ForeignKey("project.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
-    description: Mapped[str] = mapped_column("description", String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column("description", String(255), nullable=True)
     lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
         Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
         nullable=False,
@@ -27,6 +29,15 @@ class SecurityGroup(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    _linked_servers: Mapped[list["server"]] = relationship(
+        "ServerSecurityGroup", lazy="select", back_populates="_security_group"
+    )
+
+    @async_property
+    async def servers(self) -> list[Server]:
+        linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
+        return [await link.server for link in linked_servers]
 
 
 class ServerSecurityGroup(Base):
@@ -43,3 +54,11 @@ class ServerSecurityGroup(Base):
     updated_at: Mapped[datetime] = mapped_column(
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
+
+    _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_security_groups")
+    _security_group: Mapped["SecurityGroup"] = relationship("SecurityGroup", lazy="select",
+                                                            back_populates="_linked_servers")
+
+    @async_property
+    async def server(self) -> Server:
+        return await self.awaitable_attrs._server

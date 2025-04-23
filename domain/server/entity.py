@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import CHAR, BigInteger, ForeignKey, String, Enum, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.entity import Base
 from domain.enum import LifecycleStatus
@@ -33,3 +33,9 @@ class Server(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    _linked_security_groups: Mapped[list["ServerSecurityGroup"]] = relationship(
+        "ServerSecurityGroup",
+        lazy="select",
+        back_populates="_server"
+    )
