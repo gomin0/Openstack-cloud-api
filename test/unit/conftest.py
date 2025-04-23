@@ -81,11 +81,9 @@ def auth_service(mock_user_repository, mock_keystone_client):
 @pytest.fixture(scope='function')
 def security_group_service(
     mock_security_group_repository,
-    mock_project_repository,
     mock_neutron_client
 ):
     return SecurityGroupService(
         security_group_repository=mock_security_group_repository,
-        project_repository=mock_project_repository,
         neutron_client=mock_neutron_client
     )

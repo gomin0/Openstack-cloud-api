@@ -35,6 +35,7 @@ async def find_security_groups(
         session=session,
         client=client,
         project_id=current_user.project_id,
+        project_openstack_id=current_user.project_openstack_id,
         keystone_token=current_user.keystone_token,
         sort_by=sort_by,
         sort_order=order,

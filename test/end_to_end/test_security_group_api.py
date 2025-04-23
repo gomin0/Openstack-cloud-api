@@ -47,18 +47,3 @@ async def test_find_security_groups_success(client, db_session, mock_async_clien
     data = response.json()
     assert "security_groups" in data
     assert len(data["security_groups"]) == 2
-
-
-async def test_find_security_groups_fail_project_not_found(client):
-    # given
-    access_token = create_access_token(user_id=1, project_id=1)
-
-    # when
-    response = await client.get(
-        "/security-groups",
-        headers={"Authorization": f"Bearer {access_token}"}
-    )
-
-    # then
-    assert response.status_code == 404
-    assert response.json()["code"] == "PROJECT_NOT_FOUND"
