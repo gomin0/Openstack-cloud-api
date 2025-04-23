@@ -10,6 +10,9 @@ from domain.domain.entity import Domain
 from domain.enum import LifecycleStatus
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
+from domain.security_group.entity import SecurityGroup, ServerSecurityGroup
+from domain.server.entity import Server
+from domain.server.enum import ServerStatus
 from domain.user.entity import User
 from test.util.random import random_string, random_int
 
@@ -140,6 +143,78 @@ def create_project_user(
     )
 
 
+def create_security_group(
+    security_group_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    name: str = random_string(),
+    description: str = random_string(),
+) -> SecurityGroup:
+    return SecurityGroup(
+        id=security_group_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        name=name,
+        description=description,
+    )
+
+
+def create_server(
+    server_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    flavor_openstack_id: str = random_string(),
+    name: str = random_string(),
+    description: str = random_string(),
+    status: ServerStatus = ServerStatus.ACTIVE,
+) -> Server:
+    return Server(
+        id=server_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        flavor_openstack_id=flavor_openstack_id,
+        name=name,
+        description=description,
+        status=status,
+    )
+
+
+def create_server_security_group(
+    server_id: int,
+    security_group_id: int,
+    ssg_id: int | None = None,
+) -> ServerSecurityGroup:
+    return ServerSecurityGroup(
+        id=ssg_id,
+        server_id=server_id,
+        security_group_id=security_group_id
+    )
+
+
+def create_security_group_stub(
+    security_group_id: int,
+    name: str = random_string(),
+    description: str = random_string(),
+    project_id: int = random_int(),
+    openstack_id: str = random_string(),
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None,
+    servers: list[Server] | None = None
+) -> SecurityGroup:
+    return SecurityGroupStub(
+        id=security_group_id,
+        name=name,
+        description=description,
+        project_id=project_id,
+        openstack_id=openstack_id,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
+        servers=servers or []
+    )
+
+
 def create_access_token(
     user_id: int = random_int(),
     user_openstack_id: str = random_string(),
@@ -193,3 +268,13 @@ class UserStub(User):
     @async_property
     async def projects(self) -> list[Project]:
         return self._mock_projects
+
+
+class SecurityGroupStub(SecurityGroup):
+    def __init__(self, servers: list[Server] | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self._mock_servers = servers
+
+    @async_property
+    async def servers(self):
+        return self._mock_servers
