@@ -1,5 +1,6 @@
 from httpx import AsyncClient, Response
 
+from application.security_group.dto import SecurityGroupRuleDTO
 from common.envs import get_envs
 from infrastructure.openstack_client import OpenStackClient
 
@@ -16,7 +17,7 @@ class NeutronClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
-    ) -> list[dict]:
+    ) -> list[SecurityGroupRuleDTO]:
         response: Response = await self.request(
             client=client,
             method="GET",
@@ -24,4 +25,5 @@ class NeutronClient(OpenStackClient):
             headers={"X-Auth-Token": keystone_token},
             params={"project_id": project_openstack_id}
         )
-        return response.json().get("security_group_rules", [])
+        rules: list[dict] = response.json().get("security_group_rules", [])
+        return [SecurityGroupRuleDTO.from_dict(rule) for rule in rules]

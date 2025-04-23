@@ -40,4 +40,4 @@ class SecurityGroupRepository:
         query = query.order_by(order_by_column)
 
         result: ScalarResult[SecurityGroup] = await session.scalars(query)
-        return result.all()
+        return list(result.all())

@@ -2,6 +2,7 @@ from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from application.security_group.dto import SecurityGroupRuleDTO
 from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from domain.enum import SortOrder
 from domain.security_group.entity import SecurityGroup
@@ -32,7 +33,7 @@ class SecurityGroupService:
         sort_order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
     ) -> SecurityGroupDetailsResponse:
-        security_groups: list[SecurityGroup] | None = await self.security_group_repository.find_all_by_project_id(
+        security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_project_id(
             session=session,
             project_id=project_id,
             sort_by=sort_by,
@@ -40,13 +41,13 @@ class SecurityGroupService:
             with_deleted=with_deleted,
         )
 
-        rules: list[dict] = await self.neutron_client.get_security_group_rules_in_project(
+        rules: list[SecurityGroupRuleDTO] = await self.neutron_client.get_security_group_rules_in_project(
             client=client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
         )
 
-        rule_map: dict[str, list[dict]] = {}
+        rule_map: dict[str, list[SecurityGroupRuleDTO]] = {}
         for rule in rules:
             security_group_openstack_id = rule.get("security_group_id")
             rule_map.setdefault(security_group_openstack_id, []).append(rule)
