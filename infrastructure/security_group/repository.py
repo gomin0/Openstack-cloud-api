@@ -43,3 +43,24 @@ class SecurityGroupRepository:
 
         result: ScalarResult[SecurityGroup] = await session.scalars(query)
         return list(result.all())
+
+    async def find_by_id(
+        self,
+        session: AsyncSession,
+        security_group_id: int,
+        with_deleted: bool = False,
+        with_relations: bool = False,
+    ) -> SecurityGroup | None:
+        query = select(SecurityGroup).where(SecurityGroup.id == security_group_id)
+
+        if not with_deleted:
+            query = query.where(
+                SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE
+            )
+
+        if with_relations:
+            query = query.options(
+                selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
+            )
+
+        return await session.scalar(query)
