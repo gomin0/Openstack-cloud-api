@@ -83,7 +83,7 @@ class SecurityGroupService:
         if project_id != security_group.project_id:
             raise SecurityGroupAccessDeniedException()
 
-        rules: list[dict] = await self.neutron_client.get_security_group_rules_in_security_group(
+        rules: list[SecurityGroupRuleDTO] = await self.neutron_client.get_security_group_rules_in_security_group(
             client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,

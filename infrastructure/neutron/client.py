@@ -33,11 +33,13 @@ class NeutronClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         security_group_openstack_id: str
-    ) -> list[dict]:
+    ) -> list[SecurityGroupRuleDTO]:
         response = await self.request(
             client=client,
             method="GET",
-            url=f"{self._NEUTRON_URL}/v2.0/security-group-rules?security_group_id={security_group_openstack_id}",
-            headers={"X-Auth-Token": keystone_token}
+            url=f"{self._NEUTRON_URL}/v2.0/security-group-rules",
+            headers={"X-Auth-Token": keystone_token},
+            params={"security_group_id": security_group_openstack_id}
         )
-        return response.json().get("security_group_rules", [])
+        rules: list[dict] = response.json().get("security_group_rules", [])
+        return [SecurityGroupRuleDTO.from_dict(rule) for rule in rules]
