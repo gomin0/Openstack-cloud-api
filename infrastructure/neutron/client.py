@@ -24,3 +24,17 @@ class NeutronClient(OpenStackClient):
             headers={"X-Auth-Token": keystone_token}
         )
         return response.json().get("security_group_rules", [])
+
+    async def get_security_group_rules_in_security_group(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        security_group_openstack_id: str
+    ) -> list[dict]:
+        response = await self.request(
+            client=client,
+            method="GET",
+            url=f"{self._NEUTRON_URL}/v2.0/security-group-rules?security_group_id={security_group_openstack_id}",
+            headers={"X-Auth-Token": keystone_token}
+        )
+        return response.json().get("security_group_rules", [])
