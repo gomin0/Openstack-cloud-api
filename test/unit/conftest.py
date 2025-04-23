@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.auth.service import AuthService
 from application.project.service import ProjectService
+from application.security_group.service import SecurityGroupService
 from application.user.service import UserService
 
 
@@ -48,6 +49,11 @@ def mock_keystone_client():
 
 
 @pytest.fixture(scope='function')
+def mock_neutron_client():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
 def project_service(mock_project_repository, mock_user_repository, mock_project_user_repository, mock_keystone_client):
     return ProjectService(
         project_repository=mock_project_repository,
@@ -65,3 +71,16 @@ def user_service(mock_user_repository, mock_keystone_client):
 @pytest.fixture(scope='function')
 def auth_service(mock_user_repository, mock_keystone_client):
     return AuthService(user_repository=mock_user_repository, keystone_client=mock_keystone_client)
+
+
+@pytest.fixture(scope='function')
+def security_group_service(
+    mock_security_group_repository,
+    mock_project_repository,
+    mock_neutron_client
+):
+    return SecurityGroupService(
+        security_group_repository=mock_security_group_repository,
+        project_repository=mock_project_repository,
+        neutron_client=mock_neutron_client
+    )
