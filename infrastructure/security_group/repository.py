@@ -9,7 +9,7 @@ from domain.security_group.enum import SecurityGroupSortOption
 
 
 class SecurityGroupRepository:
-    async def find_by_project_id(
+    async def find_all_by_project_id(
         self,
         session: AsyncSession,
         project_id: int,

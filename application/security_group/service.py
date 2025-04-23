@@ -33,7 +33,7 @@ class SecurityGroupService:
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> SecurityGroupDetailsResponse:
-        security_groups: list[SecurityGroup] | None = await self.security_group_repository.find_by_project_id(
+        security_groups: list[SecurityGroup] | None = await self.security_group_repository.find_all_by_project_id(
             session=session,
             project_id=project_id,
             sort_by=sort_by,
