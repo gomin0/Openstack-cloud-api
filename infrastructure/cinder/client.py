@@ -53,8 +53,4 @@ class CinderClient(OpenStackClient):
                 }
             }
         )
-        status_code = response.status_code
-        print(f"response.status_code={status_code}")
-        json = response.json()
-        print(f"response.json()={json}")
         return response.json().get("volume").get("id")
