@@ -7,6 +7,7 @@ from application.security_group.response import SecurityGroupDetailsResponse, Se
 from domain.enum import SortOrder
 from domain.security_group.entity import SecurityGroup
 from domain.security_group.enum import SecurityGroupSortOption
+from exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupAccessDeniedException
 from infrastructure.database import transactional
 from infrastructure.neutron.client import NeutronClient
 from infrastructure.security_group.repository import SecurityGroupRepository
@@ -58,3 +59,34 @@ class SecurityGroupService:
         ]
 
         return SecurityGroupDetailsResponse(security_groups=response_items)
+
+    @transactional()
+    async def get_security_group(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        project_id: int,
+        keystone_token: str,
+        security_group_id: int,
+        with_deleted: bool = False,
+        with_relations: bool = True,
+    ) -> SecurityGroupDetailResponse:
+        security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
+            session=session,
+            security_group_id=security_group_id,
+            with_deleted=with_deleted,
+            with_relations=with_relations
+        )
+        if not security_group:
+            raise SecurityGroupNotFoundException()
+
+        if project_id != security_group.project_id:
+            raise SecurityGroupAccessDeniedException()
+
+        rules: list[dict] = await self.neutron_client.get_security_group_rules_in_security_group(
+            client=client,
+            keystone_token=keystone_token,
+            security_group_openstack_id=security_group.openstack_id,
+        )
+
+        return await SecurityGroupDetailResponse.from_entity(security_group, rules)
