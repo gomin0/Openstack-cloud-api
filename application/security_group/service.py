@@ -2,10 +2,9 @@ from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.security_group.dto import SecurityGroupRuleDTO
 from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from domain.enum import SortOrder
-from domain.security_group.entity import SecurityGroup
+from domain.security_group.entity import SecurityGroup, SecurityGroupRule
 from domain.security_group.enum import SecurityGroupSortOption
 from exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupAccessDeniedException
 from infrastructure.database import transactional
@@ -42,16 +41,16 @@ class SecurityGroupService:
             with_deleted=with_deleted,
         )
 
-        rules: dict[str, list[SecurityGroupRuleDTO]] = await self.neutron_client.get_security_group_rules(
+        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
-            filter_by={"project_id": project_openstack_id}
+            project_openstack_id=project_openstack_id,
         )
 
         response_items: list[SecurityGroupDetailResponse] = [
             await SecurityGroupDetailResponse.from_entity(
                 security_group,
-                rules.get(security_group.openstack_id, [])
+                [rule for rule in rules if rule.security_group_openstack_id == security_group.openstack_id]
             )
             for security_group in security_groups
         ]
@@ -59,7 +58,7 @@ class SecurityGroupService:
         return SecurityGroupDetailsResponse(security_groups=response_items)
 
     @transactional()
-    async def get_security_group(
+    async def get_security_group_detail(
         self,
         session: AsyncSession,
         client: AsyncClient,
@@ -67,13 +66,11 @@ class SecurityGroupService:
         keystone_token: str,
         security_group_id: int,
         with_deleted: bool = False,
-        with_relations: bool = True,
     ) -> SecurityGroupDetailResponse:
         security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
             session=session,
             security_group_id=security_group_id,
             with_deleted=with_deleted,
-            with_relations=with_relations
         )
         if not security_group:
             raise SecurityGroupNotFoundException()
@@ -81,13 +78,10 @@ class SecurityGroupService:
         if project_id != security_group.project_id:
             raise SecurityGroupAccessDeniedException()
 
-        rules: dict[str, list[SecurityGroupRuleDTO]] = await self.neutron_client.get_security_group_rules(
+        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
-            filter_by={"security_group_id": security_group.openstack_id}
+            security_group_openstack_id=security_group.openstack_id,
         )
 
-        return await SecurityGroupDetailResponse.from_entity(
-            security_group,
-            rules.get(security_group.openstack_id, [])
-        )
+        return await SecurityGroupDetailResponse.from_entity(security_group, rules)

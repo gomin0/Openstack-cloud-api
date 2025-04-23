@@ -2,8 +2,7 @@ from datetime import datetime
 
 from pydantic import Field, BaseModel, ConfigDict
 
-from application.security_group.dto import SecurityGroupRuleDTO
-from domain.security_group.entity import SecurityGroup
+from domain.security_group.entity import SecurityGroup, SecurityGroupRule
 from domain.security_group.enum import SecurityGroupRuleDirection
 from domain.server.entity import Server
 
@@ -21,16 +20,16 @@ class SecurityGroupRuleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_entity(cls, data: SecurityGroupRuleDTO) -> "SecurityGroupRuleResponse":
+    def from_entity(cls, security_group_rule: SecurityGroupRule) -> "SecurityGroupRuleResponse":
         return cls(
-            id=data.id,
-            protocol=data.protocol,
-            direction=data.direction,
-            port_range_min=data.port_range_min,
-            port_range_max=data.port_range_max,
-            remote_ip_prefix=data.remote_ip_prefix,
-            created_at=data.created_at,
-            updated_at=data.updated_at,
+            id=security_group_rule.id,
+            protocol=security_group_rule.protocol,
+            direction=security_group_rule.direction,
+            port_range_min=security_group_rule.port_range_min,
+            port_range_max=security_group_rule.port_range_max,
+            remote_ip_prefix=security_group_rule.remote_ip_prefix,
+            created_at=security_group_rule.created_at,
+            updated_at=security_group_rule.updated_at,
         )
 
 
@@ -62,7 +61,7 @@ class SecurityGroupDetailResponse(BaseModel):
     async def from_entity(
         cls,
         security_group: SecurityGroup,
-        rules: list[SecurityGroupRuleDTO]
+        rules: list[SecurityGroupRule]
     ) -> "SecurityGroupDetailResponse":
         servers: list[Server] = await security_group.servers
         return cls(

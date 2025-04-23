@@ -59,7 +59,7 @@ async def get_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    return await security_group_service.get_security_group(
+    return await security_group_service.get_security_group_detail(
         session=session,
         client=client,
         project_id=current_user.project_id,

@@ -1,9 +1,7 @@
-from collections import defaultdict
-
 from httpx import AsyncClient, Response
 
-from application.security_group.dto import SecurityGroupRuleDTO
 from common.envs import get_envs
+from domain.security_group.entity import SecurityGroupRule
 from infrastructure.openstack_client import OpenStackClient
 
 envs = get_envs()
@@ -18,20 +16,21 @@ class NeutronClient(OpenStackClient):
         self,
         client: AsyncClient,
         keystone_token: str,
-        filter_by: dict
-    ) -> dict[str, list[SecurityGroupRuleDTO]]:
+        project_openstack_id: str | None = None,
+        security_group_openstack_id: str | None = None,
+    ) -> list[SecurityGroupRule]:
+        if project_openstack_id is not None:
+            parameter = {"project_id": project_openstack_id}
+        elif security_group_openstack_id is not None:
+            parameter = {"security_group_id": security_group_openstack_id}
+        else:
+            parameter = {}
         response: Response = await self.request(
             client=client,
             method="GET",
             url=f"{self._NEUTRON_URL}/v2.0/security-group-rules",
             headers={"X-Auth-Token": keystone_token},
-            params=filter_by,
+            params=parameter,
         )
         rules: list[dict] = response.json().get("security_group_rules", [])
-        grouped: dict[str, list[SecurityGroupRuleDTO]] = defaultdict(list)
-        for rule in rules:
-            security_group_openstack_id = rule["security_group_id"]
-            dto = SecurityGroupRuleDTO.from_dict(rule)
-            grouped[security_group_openstack_id].append(dto)
-
-        return grouped
+        return [SecurityGroupRule.from_dict(rule) for rule in rules]

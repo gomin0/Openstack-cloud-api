@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
+from pydantic import BaseModel
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.entity import Base
 from domain.enum import LifecycleStatus
+from domain.security_group.enum import SecurityGroupRuleDirection
 from domain.server.entity import Server
 
 
@@ -62,3 +64,29 @@ class ServerSecurityGroup(Base):
     @async_property
     async def server(self) -> Server:
         return await self.awaitable_attrs._server
+
+
+class SecurityGroupRule(BaseModel):
+    id: str
+    security_group_openstack_id: str
+    protocol: str | None
+    direction: SecurityGroupRuleDirection
+    port_range_min: int | None
+    port_range_max: int | None
+    remote_ip_prefix: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SecurityGroupRule":
+        return cls(
+            id=data.get("id"),
+            security_group_openstack_id=data.get("security_group_id"),
+            protocol=data.get("protocol"),
+            direction=SecurityGroupRuleDirection(data.get("direction")),
+            port_range_min=data.get("port_range_min"),
+            port_range_max=data.get("port_range_max"),
+            remote_ip_prefix=data.get("remote_ip_prefix"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at")
+        )
