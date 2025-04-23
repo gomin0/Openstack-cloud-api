@@ -70,14 +70,15 @@ async def create_volume(
     client: AsyncClient = Depends(get_async_client),
 ) -> VolumeResponse:
     volume: VolumeResponse = await volume_service.create_volume(
-        request_user=request_user,
+        session, client,
+        keystone_token=request_user.keystone_token,
+        project_id=request_user.project_id,
+        project_openstack_id=request_user.project_openstack_id,
         name=request.name,
         description=request.description,
         size=request.size,
         volume_type_openstack_id=request.volume_type_id,
         image_openstack_id=request.image_id,
-        session=session,
-        client=client,
     )
     run_background_task(
         background_tasks,

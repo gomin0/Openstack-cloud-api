@@ -38,7 +38,9 @@ class VolumeService:
         self,
         session: AsyncSession,
         client: AsyncClient,
-        request_user: CurrentUser,
+        keystone_token: str,
+        project_id: int,
+        project_openstack_id: str,
         name: str,
         description: str,
         size: int,
@@ -46,15 +48,15 @@ class VolumeService:
         image_openstack_id: str | None,
     ) -> VolumeResponse:
         is_name_exists: bool = await self.volume_repository.exists_by_name_and_project(
-            session, name=name, project_id=request_user.project_id
+            session, name=name, project_id=project_id
         )
         if is_name_exists:
             raise VolumeNameDuplicateException()
 
         new_volume_openstack_id: str = await self.cinder_client.create_volume(
             client,
-            keystone_token=request_user.keystone_token,
-            project_openstack_id=request_user.project_openstack_id,
+            keystone_token=keystone_token,
+            project_openstack_id=project_openstack_id,
             volume_type_openstack_id=volume_type_openstack_id,
             image_openstack_id=image_openstack_id,
             size=size,
@@ -62,7 +64,7 @@ class VolumeService:
 
         volume: Volume = Volume.create(
             openstack_id=new_volume_openstack_id,
-            project_id=request_user.project_id,
+            project_id=project_id,
             server_id=None,
             volume_type_openstack_id=volume_type_openstack_id,
             image_openstack_id=image_openstack_id,

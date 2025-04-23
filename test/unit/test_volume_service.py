@@ -1,11 +1,10 @@
 import pytest
 
 from application.volume.response import VolumeResponse
-from common.context import CurrentUser
 from domain.volume.entity import Volume
 from domain.volume.enum import VolumeStatus
 from exception.volume_exception import VolumeNameDuplicateException
-from test.util.factory import create_volume, create_current_user
+from test.util.factory import create_volume
 from test.util.random import random_string, random_int
 
 
@@ -17,7 +16,6 @@ async def test_create_volume_success(
     volume_service,
 ):
     # given
-    request_user: CurrentUser = create_current_user()
     name: str = random_string()
     description: str = random_string()
     size: int = random_int(max_val=10)
@@ -38,7 +36,9 @@ async def test_create_volume_success(
     actual_result = await volume_service.create_volume(
         session=mock_session,
         client=mock_async_client,
-        request_user=request_user,
+        keystone_token=random_string(),
+        project_id=random_int(),
+        project_openstack_id=random_string(),
         name=name,
         description=description,
         size=size,
@@ -68,7 +68,9 @@ async def test_create_volume_fail_when_name_already_exists(
         await volume_service.create_volume(
             session=mock_session,
             client=mock_async_client,
-            request_user=create_current_user(),
+            keystone_token=random_string(),
+            project_id=random_int(),
+            project_openstack_id=random_string(),
             name=random_string(),
             description=random_string(),
             size=random_int(max_val=10),

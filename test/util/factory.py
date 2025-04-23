@@ -5,7 +5,6 @@ import bcrypt
 from async_property import async_property
 
 from common import auth_token_manager
-from common.context import CurrentUser
 from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.enum import LifecycleStatus
@@ -172,22 +171,6 @@ def create_volume(
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
-    )
-
-
-def create_current_user(
-    user_id: int = random_int(),
-    user_openstack_id: str = random_string(),
-    project_id: int = random_int(),
-    project_openstack_id: str = random_string(),
-    keystone_token: str = random_string(),
-) -> CurrentUser:
-    return CurrentUser(
-        user_id=user_id,
-        user_openstack_id=user_openstack_id,
-        project_id=project_id,
-        project_openstack_id=project_openstack_id,
-        keystone_token=keystone_token,
     )
 
 
