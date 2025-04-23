@@ -31,7 +31,6 @@ class SecurityGroupService:
         sort_by: SecurityGroupSortOption = SecurityGroupSortOption.CREATED_AT,
         sort_order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
-        with_relations: bool = False,
     ) -> SecurityGroupDetailsResponse:
         security_groups: list[SecurityGroup] | None = await self.security_group_repository.find_all_by_project_id(
             session=session,
@@ -39,7 +38,6 @@ class SecurityGroupService:
             sort_by=sort_by,
             order=sort_order,
             with_deleted=with_deleted,
-            with_relations=with_relations,
         )
 
         rules: list[dict] = await self.neutron_client.get_security_group_rules_in_project(
