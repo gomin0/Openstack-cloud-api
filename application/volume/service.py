@@ -45,7 +45,9 @@ class VolumeService:
         volume_type_openstack_id: str,
         image_openstack_id: str | None,
     ) -> VolumeResponse:
-        is_name_exists: bool = await self.volume_repository.exists_by_name(session, name=name)
+        is_name_exists: bool = await self.volume_repository.exists_by_name_and_project(
+            session, name=name, project_id=request_user.project_id
+        )
         if is_name_exists:
             raise VolumeNameDuplicateException()
 

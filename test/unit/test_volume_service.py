@@ -30,7 +30,7 @@ async def test_create_volume_success(
         volume_type_openstack_id=volume_type_openstack_id,
         image_openstack_id=image_openstack_id,
     )
-    mock_volume_repository.exists_by_name.return_value = False
+    mock_volume_repository.exists_by_name_and_project.return_value = False
     mock_volume_repository.create.return_value = expected_result
     mock_cinder_client.create_volume.return_value = "new_volume_openstack_id"
 
@@ -47,7 +47,7 @@ async def test_create_volume_success(
     )
 
     # then
-    mock_volume_repository.exists_by_name.assert_called_once()
+    mock_volume_repository.exists_by_name_and_project.assert_called_once()
     mock_cinder_client.create_volume.assert_called_once()
     mock_volume_repository.create.assert_called_once()
     assert actual_result == VolumeResponse.from_entity(expected_result)
@@ -61,7 +61,7 @@ async def test_create_volume_fail_when_name_already_exists(
     volume_service,
 ):
     # given
-    mock_volume_repository.exists_by_name.return_value = True
+    mock_volume_repository.exists_by_name_and_project.return_value = True
 
     # when & then
     with pytest.raises(VolumeNameDuplicateException):
@@ -75,7 +75,7 @@ async def test_create_volume_fail_when_name_already_exists(
             volume_type_openstack_id=random_string(),
             image_openstack_id=random_string(),
         )
-    mock_volume_repository.exists_by_name.assert_called_once()
+    mock_volume_repository.exists_by_name_and_project.assert_called_once()
 
 
 async def test_sync_creating_volume_until_available_success(

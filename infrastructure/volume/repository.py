@@ -6,10 +6,13 @@ from domain.volume.entity import Volume
 
 
 class VolumeRepository:
-    async def exists_by_name(self, session: AsyncSession, name: str) -> bool:
+    async def exists_by_name_and_project(self, session: AsyncSession, name: str, project_id: int) -> bool:
         is_not_deleted: ColumnElement = Volume.lifecycle_status == LifecycleStatus.ACTIVE
         return await session.scalar(
-            select(exists().where(is_not_deleted, Volume.name == name))
+            select(
+                exists()
+                .where(is_not_deleted, Volume.name == name, Volume.project_id == project_id)
+            )
         )
 
     async def find_by_openstack_id(self, session: AsyncSession, openstack_id: str) -> Volume | None:
