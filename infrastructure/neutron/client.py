@@ -20,7 +20,8 @@ class NeutronClient(OpenStackClient):
         response: Response = await self.request(
             client=client,
             method="GET",
-            url=f"{self._NEUTRON_URL}/v2.0/security-group-rules?project_id={project_openstack_id}",
-            headers={"X-Auth-Token": keystone_token}
+            url=f"{self._NEUTRON_URL}/v2.0/security-group-rules",
+            headers={"X-Auth-Token": keystone_token},
+            params={"project_id": project_openstack_id}
         )
         return response.json().get("security_group_rules", [])

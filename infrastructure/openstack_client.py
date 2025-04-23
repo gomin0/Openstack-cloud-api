@@ -16,6 +16,7 @@ class OpenStackClient:
         url: str,
         json: dict[str, Any] | None = None,
         headers: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> Response:
         headers = headers or {"Content-Type": "application/json"}
         response: Response = await client.request(
@@ -23,6 +24,7 @@ class OpenStackClient:
             url=url,
             headers=headers,
             json=json,
+            params=params,
         )
 
         try:
