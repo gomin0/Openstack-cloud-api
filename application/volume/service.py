@@ -103,29 +103,33 @@ class VolumeService:
             )
             if status == VolumeStatus.CREATING:
                 await asyncio.sleep(self.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION)
-            elif status == VolumeStatus.AVAILABLE:
-                volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
+                continue
+
+            volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
+            if status == VolumeStatus.AVAILABLE:
                 volume.complete_creation(attached=False)
                 break
             elif status == VolumeStatus.ERROR:
-                volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
                 volume.fail_creation()
                 break
             else:
                 logger.error(f"볼륨 생성 중 정의되지 않은 볼륨 상태를 감지했습니다: {status!r} (volume_id={volume_openstack_id})")
-                raise ValueError(f"볼륨 생성 중 정의되지 않은 상태({status!r})가 반환되었습니다. volume_id={volume_openstack_id}")
+                volume.fail_creation()
+                break
         else:
-            raise TimeoutError(
+            logger.error(
                 f"생성중인 볼륨({volume_openstack_id})의 상태가 "
                 f"{self.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION * self.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION}초 동안 "
                 f"전환되지 않았습니다."
             )
+            volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
+            volume.fail_creation()
 
     async def _get_volume_by_openstack_id(
         self,
         session: AsyncSession,
         openstack_id: str,
-    ) -> Volume | None:
+    ) -> Volume:
         volume: Volume | None = await self.volume_repository.find_by_openstack_id(session, openstack_id=openstack_id)
         if volume is None:
             raise VolumeNotFoundException()

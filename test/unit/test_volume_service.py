@@ -139,16 +139,18 @@ async def test_sync_creating_volume_until_available_fail_when_updated_unexpected
     mock_cinder_client.get_volume_status.return_value = VolumeStatus.DOWNLOADING
     mock_volume_repository.find_by_openstack_id.return_value = create_volume()
 
-    # when & then
-    with pytest.raises(ValueError):
-        await volume_service.sync_creating_volume_until_available(
-            session=mock_session,
-            client=mock_async_client,
-            keystone_token=random_string(),
-            project_openstack_id=random_string(),
-            volume_openstack_id=random_string(),
-        )
+    # when
+    await volume_service.sync_creating_volume_until_available(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        project_openstack_id=random_string(),
+        volume_openstack_id=random_string(),
+    )
+
+    # then
     mock_cinder_client.get_volume_status.assert_called_once()
+    mock_volume_repository.find_by_openstack_id.assert_called_once()
 
 
 async def test_sync_creating_volume_until_available_fail_timeout(
@@ -163,13 +165,15 @@ async def test_sync_creating_volume_until_available_fail_timeout(
     volume_service.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION = 3
     volume_service.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION = 0
 
-    # when & then
-    with pytest.raises(TimeoutError):
-        await volume_service.sync_creating_volume_until_available(
-            session=mock_session,
-            client=mock_async_client,
-            keystone_token=random_string(),
-            project_openstack_id=random_string(),
-            volume_openstack_id=random_string(),
-        )
+    # when
+    await volume_service.sync_creating_volume_until_available(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        project_openstack_id=random_string(),
+        volume_openstack_id=random_string(),
+    )
+
+    # then
     assert mock_cinder_client.get_volume_status.call_count == volume_service.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION
+    mock_volume_repository.find_by_openstack_id.assert_called_once()
