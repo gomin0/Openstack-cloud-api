@@ -142,13 +142,17 @@ def create_project_user(
 
 def create_access_token(
     user_id: int = random_int(),
+    user_openstack_id: str = random_string(),
     project_id: int = random_int(),
+    project_openstack_id: str = random_string(),
     keystone_token: str = random_string(),
     keystone_token_expires_at: datetime = datetime.now(timezone.utc) + timedelta(minutes=60),
 ) -> str:
     return auth_token_manager.create_access_token(
         user_id=user_id,
+        user_openstack_id=user_openstack_id,
         project_id=project_id,
+        project_openstack_id=project_openstack_id,
         keystone_token=KeystoneToken(
             token=keystone_token,
             expires_at=keystone_token_expires_at

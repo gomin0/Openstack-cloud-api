@@ -19,7 +19,9 @@ _ACCESS_TOKEN_DURATION_MINUTES = envs.ACCESS_TOKEN_DURATION_MINUTES
 
 def create_access_token(
     user_id: int,
+    user_openstack_id: str,
     project_id: int,
+    project_openstack_id: str,
     keystone_token: KeystoneToken,
 ) -> str:
     now = datetime.now(tz=timezone.utc)
@@ -33,12 +35,17 @@ def create_access_token(
     return jwt.encode(
         claims={
             "sub": str(user_id),
+            "user": {
+                "id": user_id,
+                "openstack_id": user_openstack_id,
+            },
             "project": {
                 "id": project_id,
+                "openstack_id": project_openstack_id,
             },
             "keystone": {
                 "token": keystone_token.token,
-                "exp": int(keystone_token.expires_at.timestamp()),
+                "expires_at": int(keystone_token.expires_at.timestamp()),
             },
             "iat": int(issued_at.timestamp()),
             "exp": int(expires_at.timestamp()),
@@ -51,10 +58,13 @@ def create_access_token(
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
 ) -> CurrentUser:
+    # TODO: 유저, 프로젝트 등 데이터 유효성 검증 로직 추가
     payload = _decode_access_token(token=credentials.credentials)
     return CurrentUser(
-        user_id=int(payload.get("sub")),
+        user_id=int(payload.get("user").get("id")),
+        user_openstack_id=payload.get("user").get("openstack_id"),
         project_id=int(payload.get("project").get("id")),
+        project_openstack_id=payload.get("project").get("openstack_id"),
         keystone_token=payload.get("keystone").get("token"),
     )
 
