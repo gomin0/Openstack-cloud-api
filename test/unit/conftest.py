@@ -44,6 +44,11 @@ def mock_project_user_repository():
 
 
 @pytest.fixture(scope='function')
+def mock_security_group_repository():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
 def mock_keystone_client():
     return AsyncMock()
 
