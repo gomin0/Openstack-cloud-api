@@ -19,7 +19,7 @@ async def test_find_security_groups_success(
     mock_security_group_repository.find_all_by_project_id.return_value = [
         create_security_group_stub(security_group_id=security_group_id)
     ]
-    mock_neutron_client.get_security_group_rules_in_project.return_value = []
+    mock_neutron_client.get_security_group_rules.return_value = []
 
     # when
     result = await security_group_service.find_security_groups_details(
@@ -34,7 +34,7 @@ async def test_find_security_groups_success(
     assert len(result.security_groups) == 1
     assert isinstance(result, SecurityGroupDetailsResponse)
     mock_security_group_repository.find_all_by_project_id.assert_called_once()
-    mock_neutron_client.get_security_group_rules_in_project.assert_called_once()
+    mock_neutron_client.get_security_group_rules.assert_called_once()
 
 
 async def test_get_security_group_success(
@@ -54,7 +54,7 @@ async def test_get_security_group_success(
         project_id=1
     )
     mock_security_group_repository.find_by_id.return_value = security_group
-    mock_neutron_client.get_security_group_rules_in_security_group.return_value = []
+    mock_neutron_client.get_security_group_rules.return_value = []
 
     # when
     result = await security_group_service.get_security_group(
@@ -70,7 +70,7 @@ async def test_get_security_group_success(
     assert result.id == security_group_id
     assert result.rules == []
     mock_security_group_repository.find_by_id.assert_called_once()
-    mock_neutron_client.get_security_group_rules_in_security_group.assert_called_once_with(
+    mock_neutron_client.get_security_group_rules.assert_called_once_with(
         client=mock_async_client,
         keystone_token=token,
         security_group_openstack_id=security_group_openstack_id

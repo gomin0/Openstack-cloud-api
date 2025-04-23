@@ -42,19 +42,17 @@ class SecurityGroupService:
             with_deleted=with_deleted,
         )
 
-        rules: list[SecurityGroupRuleDTO] = await self.neutron_client.get_security_group_rules_in_project(
+        rules: dict[str, list[SecurityGroupRuleDTO]] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
-            project_openstack_id=project_openstack_id,
+            filter_by={"project_id": project_openstack_id}
         )
 
-        rule_map: dict[str, list[SecurityGroupRuleDTO]] = {}
-        for rule in rules:
-            security_group_openstack_id = rule.get("security_group_id")
-            rule_map.setdefault(security_group_openstack_id, []).append(rule)
-
         response_items: list[SecurityGroupDetailResponse] = [
-            await SecurityGroupDetailResponse.from_entity(security_group, rule_map.get(security_group.openstack_id, []))
+            await SecurityGroupDetailResponse.from_entity(
+                security_group,
+                rules.get(security_group.openstack_id, [])
+            )
             for security_group in security_groups
         ]
 
@@ -83,10 +81,13 @@ class SecurityGroupService:
         if project_id != security_group.project_id:
             raise SecurityGroupAccessDeniedException()
 
-        rules: list[SecurityGroupRuleDTO] = await self.neutron_client.get_security_group_rules_in_security_group(
+        rules: dict[str, list[SecurityGroupRuleDTO]] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
-            security_group_openstack_id=security_group.openstack_id,
+            filter_by={"security_group_id": security_group.openstack_id}
         )
 
-        return await SecurityGroupDetailResponse.from_entity(security_group, rules)
+        return await SecurityGroupDetailResponse.from_entity(
+            security_group,
+            rules.get(security_group.openstack_id, [])
+        )
