@@ -11,7 +11,7 @@ from exception.project_exception import ProjectNotFoundException
 from infrastructure.database import transactional
 from infrastructure.neutron.client import NeutronClient
 from infrastructure.project.repository import ProjectRepository
-from infrastructure.security_group import SecurityGroupRepository
+from infrastructure.security_group.repository import SecurityGroupRepository
 
 
 class SecurityGroupService:
