@@ -9,14 +9,13 @@ from domain.security_group.enum import SecurityGroupSortOption
 
 
 class SecurityGroupRepository:
-    async def find_by_project_id(
+    async def find_all_by_project_id(
         self,
         session: AsyncSession,
         project_id: int,
         sort_by: SecurityGroupSortOption = SecurityGroupSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
-        with_relations: bool = False,
     ) -> list[SecurityGroup] | None:
         query: Select[tuple[SecurityGroup]] = select(SecurityGroup).where(
             SecurityGroup.project_id == project_id
@@ -25,11 +24,10 @@ class SecurityGroupRepository:
         if not with_deleted:
             query = query.where(SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE)
 
-        if with_relations:
-            query = query.options(
-                selectinload(SecurityGroup._linked_servers)
-                .selectinload(ServerSecurityGroup._server)
-            )
+        query = query.options(
+            selectinload(SecurityGroup._linked_servers)
+            .selectinload(ServerSecurityGroup._server)
+        )
 
         order_by_column = {
             SecurityGroupSortOption.NAME: SecurityGroup.name,

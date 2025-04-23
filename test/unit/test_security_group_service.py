@@ -16,7 +16,7 @@ async def test_find_security_groups_success(
     # given
     security_group_id = 1
     project = Project(id=1, name="project", openstack_id="pos", domain_id=1)
-    mock_security_group_repository.find_by_project_id.return_value = [
+    mock_security_group_repository.find_all_by_project_id.return_value = [
         create_security_group_stub(security_group_id=security_group_id)
     ]
     mock_neutron_client.get_security_group_rules_in_project.return_value = []
@@ -33,7 +33,7 @@ async def test_find_security_groups_success(
     # then
     assert len(result.security_groups) == 1
     assert isinstance(result, SecurityGroupDetailsResponse)
-    mock_security_group_repository.find_by_project_id.assert_called_once()
+    mock_security_group_repository.find_all_by_project_id.assert_called_once()
     mock_neutron_client.get_security_group_rules_in_project.assert_called_once()
 
 

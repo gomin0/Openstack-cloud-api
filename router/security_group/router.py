@@ -39,7 +39,6 @@ async def find_security_groups(
         keystone_token=current_user.keystone_token,
         sort_by=sort_by,
         sort_order=order,
-        with_relations=True
     )
 
 

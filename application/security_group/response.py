@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import Field, BaseModel, ConfigDict
 
+from application.security_group.dto import SecurityGroupRuleDTO
 from domain.security_group.entity import SecurityGroup
 from domain.security_group.enum import SecurityGroupRuleDirection
 from domain.server.entity import Server
@@ -20,16 +21,16 @@ class SecurityGroupRuleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_entity(cls, data: dict) -> "SecurityGroupRuleResponse":
+    def from_entity(cls, data: SecurityGroupRuleDTO) -> "SecurityGroupRuleResponse":
         return cls(
-            id=data["id"],
-            protocol=data.get("protocol"),
-            direction=data["direction"],
-            port_range_min=data.get("port_range_min"),
-            port_range_max=data.get("port_range_max"),
-            remote_ip_prefix=data.get("remote_ip_prefix"),
-            created_at=data["created_at"],
-            updated_at=data["updated_at"],
+            id=data.id,
+            protocol=data.protocol,
+            direction=data.direction,
+            port_range_min=data.port_range_min,
+            port_range_max=data.port_range_max,
+            remote_ip_prefix=data.remote_ip_prefix,
+            created_at=data.created_at,
+            updated_at=data.updated_at,
         )
 
 
@@ -41,10 +42,7 @@ class ServerResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, server: Server) -> "ServerResponse":
-        return cls(
-            id=server.id,
-            name=server.name
-        )
+        return cls.model_validate(server)
 
 
 class SecurityGroupDetailResponse(BaseModel):
@@ -64,7 +62,7 @@ class SecurityGroupDetailResponse(BaseModel):
     async def from_entity(
         cls,
         security_group: SecurityGroup,
-        rules: list[dict]
+        rules: list[SecurityGroupRuleDTO]
     ) -> "SecurityGroupDetailResponse":
         servers: list[Server] = await security_group.servers
         return cls(
