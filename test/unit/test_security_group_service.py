@@ -100,7 +100,7 @@ async def test_get_security_group_success(
     mock_neutron_client.get_security_group_rules.assert_called_once_with(
         client=mock_async_client,
         keystone_token=token,
-        filter_by={"security_group_id": security_group_openstack_id}
+        security_group_openstack_id=security_group_openstack_id
     )
 
 
