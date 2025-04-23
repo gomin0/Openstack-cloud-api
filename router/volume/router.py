@@ -1,11 +1,17 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from application.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
+from application.volume.service import VolumeService
 from common.auth_token_manager import get_current_user
+from common.background_task_runner import run_background_task
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.volume.enum import VolumeSortOption
+from infrastructure.async_client import get_async_client
+from infrastructure.database import get_db_session
 from router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
 
 router = APIRouter(prefix="/volumes", tags=["volume"])
@@ -57,9 +63,30 @@ async def get_volume_detail(
 )
 async def create_volume(
     request: CreateVolumeRequest,
-    _: CurrentUser = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    request_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
 ) -> VolumeResponse:
-    raise NotImplementedError()
+    volume: VolumeResponse = await volume_service.create_volume(
+        request_user=request_user,
+        name=request.name,
+        description=request.description,
+        size=request.size,
+        volume_type_openstack_id=request.volume_type_id,
+        image_openstack_id=request.image_id,
+        session=session,
+        client=client,
+    )
+    run_background_task(
+        background_tasks,
+        volume_service.sync_creating_volume_until_available,
+        keystone_token=request_user.keystone_token,
+        project_openstack_id=request_user.project_openstack_id,
+        volume_openstack_id=volume.openstack_id,
+    )
+    return volume
 
 
 @router.put(

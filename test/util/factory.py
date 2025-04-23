@@ -5,12 +5,15 @@ import bcrypt
 from async_property import async_property
 
 from common import auth_token_manager
+from common.context import CurrentUser
 from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.enum import LifecycleStatus
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
 from domain.user.entity import User
+from domain.volume.entity import Volume
+from domain.volume.enum import VolumeStatus
 from test.util.random import random_string, random_int
 
 envs: Envs = get_envs()
@@ -137,6 +140,54 @@ def create_project_user(
         id=project_user_id,
         user_id=user_id,
         project_id=project_id,
+    )
+
+
+def create_volume(
+    volume_id: int = random_int(),
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    server_id: int | None = None,
+    volume_type_openstack_id: str = random_string(),
+    image_openstack_id: str | None = None,
+    name: str = random_string(),
+    description: str = random_string(),
+    status: VolumeStatus = VolumeStatus.AVAILABLE,
+    size: int = random_int(),
+    is_root_volume: bool = False,
+) -> Volume:
+    return Volume(
+        id=volume_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        server_id=server_id,
+        volume_type_openstack_id=volume_type_openstack_id,
+        image_openstack_id=image_openstack_id,
+        name=name,
+        description=description,
+        status=status,
+        size=size,
+        is_root_volume=is_root_volume,
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
+    )
+
+
+def create_current_user(
+    user_id: int = random_int(),
+    user_openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    project_openstack_id: str = random_string(),
+    keystone_token: str = random_string(),
+) -> CurrentUser:
+    return CurrentUser(
+        user_id=user_id,
+        user_openstack_id=user_openstack_id,
+        project_id=project_id,
+        project_openstack_id=project_openstack_id,
+        keystone_token=keystone_token,
     )
 
 

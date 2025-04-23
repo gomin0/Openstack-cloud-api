@@ -37,3 +37,44 @@ class Volume(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        server_id: int | None,
+        volume_type_openstack_id: str,
+        image_openstack_id: str | None,
+        name: str,
+        description: str,
+        status: VolumeStatus,
+        size: int,
+        is_root_volume: bool,
+    ) -> "Volume":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            server_id=server_id,
+            volume_type_openstack_id=volume_type_openstack_id,
+            image_openstack_id=image_openstack_id,
+            name=name,
+            description=description,
+            status=status,
+            size=size,
+            is_root_volume=is_root_volume,
+            lifecycle_status=LifecycleStatus.ACTIVE,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            deleted_at=None,
+        )
+
+    def complete_creation(self, attached: bool):
+        if attached:
+            self.status = VolumeStatus.IN_USE
+        else:
+            self.status = VolumeStatus.AVAILABLE
+
+    def fail_creation(self):
+        self.status = VolumeStatus.ERROR
