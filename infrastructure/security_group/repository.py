@@ -1,4 +1,4 @@
-from sqlalchemy import select, ScalarResult, Select
+from sqlalchemy import select, ScalarResult, Select, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -64,3 +64,28 @@ class SecurityGroupRepository:
             )
 
         return await session.scalar(query)
+
+    async def exists_by_project_and_name(
+        self,
+        session: AsyncSession,
+        project_id: int,
+        name: str,
+    ) -> bool:
+        result: bool = await session.scalar(
+            select(exists().where(
+                SecurityGroup.project_id == project_id,
+                SecurityGroup.name == name,
+                SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE
+            ))
+        )
+        return result
+
+    async def create(
+        self,
+        session: AsyncSession,
+        security_group: SecurityGroup,
+    ) -> SecurityGroup:
+        session.add(security_group)
+        await session.flush()
+
+        return security_group
