@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Query, Depends
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
+from application.security_group.service import SecurityGroupService
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.security_group.enum import SecurityGroupSortOption
+from infrastructure.async_client import get_async_client
+from infrastructure.database import get_db_session
 from router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
 
 router = APIRouter(prefix="/security-groups", tags=["security-group"])
@@ -21,9 +26,20 @@ router = APIRouter(prefix="/security-groups", tags=["security-group"])
 async def find_security_groups(
     sort_by: SecurityGroupSortOption = Query(default=SecurityGroupSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailsResponse:
-    raise NotImplementedError()
+    return await security_group_service.find_security_groups_details(
+        session=session,
+        client=client,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+        sort_by=sort_by,
+        sort_order=order,
+        with_relations=True
+    )
 
 
 @router.get(
