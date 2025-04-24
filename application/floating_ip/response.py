@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from domain.floating_ip.entity import FloatingIp
 from domain.floating_ip.enum import FloatingIpStatus
 
 
@@ -23,6 +24,10 @@ class FloatingIpResponse(BaseModel):
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, floating_ip: FloatingIp) -> "FloatingIpResponse":
+        return cls.model_validate(floating_ip)
 
 
 class FloatingIpDetailResponse(BaseModel):
