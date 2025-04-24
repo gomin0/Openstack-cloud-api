@@ -39,6 +39,7 @@ class SecurityGroupService:
             sort_by=sort_by,
             order=sort_order,
             with_deleted=with_deleted,
+            with_relations=True,
         )
 
         rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
@@ -71,6 +72,7 @@ class SecurityGroupService:
             session=session,
             security_group_id=security_group_id,
             with_deleted=with_deleted,
+            with_relations=True
         )
         if not security_group:
             raise SecurityGroupNotFoundException()

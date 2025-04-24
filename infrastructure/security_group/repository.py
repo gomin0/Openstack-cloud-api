@@ -16,6 +16,7 @@ class SecurityGroupRepository:
         sort_by: SecurityGroupSortOption = SecurityGroupSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
+        with_relations: bool = False,
     ) -> list[SecurityGroup]:
         query: Select[tuple[SecurityGroup]] = select(SecurityGroup).where(
             SecurityGroup.project_id == project_id
@@ -24,10 +25,11 @@ class SecurityGroupRepository:
         if not with_deleted:
             query = query.where(SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE)
 
-        query = query.options(
-            selectinload(SecurityGroup._linked_servers)
-            .selectinload(ServerSecurityGroup._server)
-        )
+        if with_relations:
+            query = query.options(
+                selectinload(SecurityGroup._linked_servers)
+                .selectinload(ServerSecurityGroup._server)
+            )
 
         order_by_column = {
             SecurityGroupSortOption.NAME: SecurityGroup.name,
@@ -47,6 +49,7 @@ class SecurityGroupRepository:
         session: AsyncSession,
         security_group_id: int,
         with_deleted: bool = False,
+        with_relations: bool = False,
     ) -> SecurityGroup | None:
         query = select(SecurityGroup).where(SecurityGroup.id == security_group_id)
 
@@ -55,8 +58,9 @@ class SecurityGroupRepository:
                 SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE
             )
 
-        query = query.options(
-            selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
-        )
+        if with_relations:
+            query = query.options(
+                selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
+            )
 
         return await session.scalar(query)
