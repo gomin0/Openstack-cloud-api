@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +45,7 @@ class SecurityGroupService:
             sort_by=sort_by,
             order=sort_order,
             with_deleted=with_deleted,
+            with_relations=True,
         )
 
         rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
@@ -51,10 +54,14 @@ class SecurityGroupService:
             project_openstack_id=project_openstack_id,
         )
 
+        rule_map: dict[str, list[SecurityGroupRule]] = defaultdict(list)
+        for rule in rules:
+            rule_map[rule.security_group_openstack_id].append(rule)
+
         response_items: list[SecurityGroupDetailResponse] = [
             await SecurityGroupDetailResponse.from_entity(
                 security_group,
-                [rule for rule in rules if rule.security_group_openstack_id == security_group.openstack_id]
+                rule_map.get(security_group.openstack_id, [])
             )
             for security_group in security_groups
         ]
@@ -75,6 +82,7 @@ class SecurityGroupService:
             session=session,
             security_group_id=security_group_id,
             with_deleted=with_deleted,
+            with_relations=True
         )
         if not security_group:
             raise SecurityGroupNotFoundException()
@@ -87,7 +95,6 @@ class SecurityGroupService:
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,
         )
-
         return await SecurityGroupDetailResponse.from_entity(security_group, rules)
 
     @transactional()
