@@ -66,9 +66,9 @@ class SecurityGroupService:
         self,
         session: AsyncSession,
         project_id: int,
-        sort_by: SecurityGroupSortOption = SecurityGroupSortOption.CREATED_AT,
-        sort_order: SortOrder = SortOrder.DESC,
-        with_deleted: bool = False,
+        sort_by: SecurityGroupSortOption,
+        sort_order: SortOrder,
+        with_deleted: bool
     ) -> list[SecurityGroup]:
         security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_project_id(
             session=session,
