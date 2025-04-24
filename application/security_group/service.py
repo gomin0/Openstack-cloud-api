@@ -62,7 +62,7 @@ class SecurityGroupService:
         return SecurityGroupDetailsResponse(security_groups=response_items)
 
     @transactional()
-    async def find_security_groups(
+    async def _find_security_groups_by_project_id(
         self,
         session: AsyncSession,
         project_id: int,
