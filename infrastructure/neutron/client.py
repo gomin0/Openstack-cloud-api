@@ -2,6 +2,7 @@ from httpx import AsyncClient, Response
 
 from common.envs import get_envs
 from domain.security_group.entity import SecurityGroupRule
+from domain.security_group.enum import SecurityGroupRuleDirection
 from infrastructure.openstack_client import OpenStackClient
 
 envs = get_envs()
@@ -33,4 +34,18 @@ class NeutronClient(OpenStackClient):
             params=parameter,
         )
         rules: list[dict] = response.json().get("security_group_rules", [])
-        return [SecurityGroupRule.from_dict(rule) for rule in rules]
+
+        return [
+            SecurityGroupRule(
+                id=rule["id"],
+                security_group_openstack_id=rule["security_group_id"],
+                protocol=rule.get("protocol"),
+                direction=SecurityGroupRuleDirection(rule["direction"]),
+                port_range_min=rule.get("port_range_min"),
+                port_range_max=rule.get("port_range_max"),
+                remote_ip_prefix=rule.get("remote_ip_prefix"),
+                created_at=rule["created_at"],
+                updated_at=rule["updated_at"]
+            )
+            for rule in rules
+        ]

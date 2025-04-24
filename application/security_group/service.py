@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,10 +50,14 @@ class SecurityGroupService:
             project_openstack_id=project_openstack_id,
         )
 
+        rule_map: dict[str, list[SecurityGroupRule]] = defaultdict(list)
+        for rule in rules:
+            rule_map[rule.security_group_openstack_id].append(rule)
+
         response_items: list[SecurityGroupDetailResponse] = [
             await SecurityGroupDetailResponse.from_entity(
                 security_group,
-                [rule for rule in rules if rule.security_group_openstack_id == security_group.openstack_id]
+                rule_map.get(security_group.openstack_id, [])
             )
             for security_group in security_groups
         ]

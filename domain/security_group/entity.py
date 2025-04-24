@@ -76,17 +76,3 @@ class SecurityGroupRule(BaseModel):
     remote_ip_prefix: str | None
     created_at: datetime
     updated_at: datetime
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "SecurityGroupRule":
-        return cls(
-            id=data.get("id"),
-            security_group_openstack_id=data.get("security_group_id"),
-            protocol=data.get("protocol"),
-            direction=SecurityGroupRuleDirection(data.get("direction")),
-            port_range_min=data.get("port_range_min"),
-            port_range_max=data.get("port_range_max"),
-            remote_ip_prefix=data.get("remote_ip_prefix"),
-            created_at=data.get("created_at"),
-            updated_at=data.get("updated_at")
-        )
