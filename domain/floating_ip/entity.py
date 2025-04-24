@@ -31,3 +31,25 @@ class FloatingIp(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        server_id: int | None,
+        status: FloatingIpStatus,
+        address: str,
+    ) -> "FloatingIp":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            server_id=server_id,
+            status=status,
+            address=address,
+            lifecycle_status=LifecycleStatus.ACTIVE,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            deleted_at=None,
+        )
