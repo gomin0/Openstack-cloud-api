@@ -6,7 +6,7 @@ from application.security_group.dto import SecurityGroupRuleDTO
 from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.compensating_transaction import CompensationManager
 from domain.enum import SortOrder
-from domain.security_group.entity import SecurityGroup
+from domain.security_group.entity import SecurityGroup, SecurityGroupRule
 from domain.security_group.enum import SecurityGroupSortOption
 from exception.openstack_exception import OpenStackException
 from exception.security_group_exception import SecurityGroupAccessDeniedException, SecurityGroupRuleDuplicatedException
@@ -36,37 +36,33 @@ class SecurityGroupService:
         sort_by: SecurityGroupSortOption = SecurityGroupSortOption.CREATED_AT,
         sort_order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
-        with_relations: bool = False,
     ) -> SecurityGroupDetailsResponse:
-        security_groups: list[SecurityGroup] | None = await self.security_group_repository.find_by_project_id(
+        security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_project_id(
             session=session,
             project_id=project_id,
             sort_by=sort_by,
             order=sort_order,
             with_deleted=with_deleted,
-            with_relations=with_relations,
         )
 
-        rules: list[dict] = await self.neutron_client.get_security_group_rules_in_project(
+        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
         )
 
-        rule_map: dict[str, list[dict]] = {}
-        for rule in rules:
-            security_group_openstack_id = rule.get("security_group_id")
-            rule_map.setdefault(security_group_openstack_id, []).append(rule)
-
         response_items: list[SecurityGroupDetailResponse] = [
-            await SecurityGroupDetailResponse.from_entity(security_group, rule_map.get(security_group.openstack_id, []))
+            await SecurityGroupDetailResponse.from_entity(
+                security_group,
+                [rule for rule in rules if rule.security_group_openstack_id == security_group.openstack_id]
+            )
             for security_group in security_groups
         ]
 
         return SecurityGroupDetailsResponse(security_groups=response_items)
 
     @transactional()
-    async def get_security_group(
+    async def get_security_group_detail(
         self,
         session: AsyncSession,
         client: AsyncClient,
@@ -74,13 +70,11 @@ class SecurityGroupService:
         keystone_token: str,
         security_group_id: int,
         with_deleted: bool = False,
-        with_relations: bool = True,
     ) -> SecurityGroupDetailResponse:
         security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
             session=session,
             security_group_id=security_group_id,
             with_deleted=with_deleted,
-            with_relations=with_relations
         )
         if not security_group:
             raise SecurityGroupNotFoundException()
@@ -88,7 +82,7 @@ class SecurityGroupService:
         if project_id != security_group.project_id:
             raise SecurityGroupAccessDeniedException()
 
-        rules: list[dict] = await self.neutron_client.get_security_group_rules_in_security_group(
+        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,
@@ -176,7 +170,7 @@ class SecurityGroupService:
                 raise ex
 
         # 생성 된 룰 조회(생성한 룰셋 + default rule)
-        security_group_rules = await self.neutron_client.get_security_group_rules_in_security_group(
+        security_group_rules = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group_openstack_id
