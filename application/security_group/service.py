@@ -34,7 +34,7 @@ class SecurityGroupService:
         sort_order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
     ) -> SecurityGroupDetailsResponse:
-        security_groups: list[SecurityGroup] = await self.find_security_groups(
+        security_groups: list[SecurityGroup] = await self._find_security_groups_by_project_id(
             session=session,
             project_id=project_id,
             sort_by=sort_by,
