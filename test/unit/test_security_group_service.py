@@ -113,7 +113,7 @@ async def test_get_security_group_not_found(
     # given
     mock_security_group_repository.find_by_id.return_value = None
 
-    # when / then
+    # when & then
     with pytest.raises(SecurityGroupNotFoundException):
         await security_group_service.get_security_group_detail(
             session=mock_session,
