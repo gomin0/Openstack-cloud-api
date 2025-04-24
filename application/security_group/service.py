@@ -137,14 +137,16 @@ class SecurityGroupService:
                 raise SecurityGroupNameDuplicatedException()
             raise ex
 
+        security_group: SecurityGroup = SecurityGroup.create(
+            openstack_id=security_group_openstack_id,
+            project_id=project_id,
+            name=name,
+            description=description,
+        )
+
         security_group: SecurityGroup = await self.security_group_repository.create(
             session=session,
-            security_group=SecurityGroup(
-                openstack_id=security_group_openstack_id,
-                project_id=project_id,
-                name=name,
-                description=description,
-            )
+            security_group=security_group
         )
 
         if rules:

@@ -39,6 +39,26 @@ class SecurityGroup(Base):
         linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
         return [await link.server for link in linked_servers]
 
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        name: str,
+        description: str | None,
+    ) -> "SecurityGroup":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            name=name,
+            description=description,
+            lifecycle_status=LifecycleStatus.ACTIVE,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            deleted_at=None,
+        )
+
 
 class ServerSecurityGroup(Base):
     __tablename__ = "server_security_group"
