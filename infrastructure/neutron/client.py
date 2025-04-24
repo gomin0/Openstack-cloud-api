@@ -19,12 +19,12 @@ class NeutronClient(OpenStackClient):
         project_openstack_id: str | None = None,
         security_group_openstack_id: str | None = None,
     ) -> list[SecurityGroupRule]:
+        parameter: dict[str, str] = {}
         if project_openstack_id is not None:
-            parameter = {"project_id": project_openstack_id}
-        elif security_group_openstack_id is not None:
-            parameter = {"security_group_id": security_group_openstack_id}
-        else:
-            parameter = {}
+            parameter["project_id"] = project_openstack_id
+        if security_group_openstack_id is not None:
+            parameter["security_group_id"] = security_group_openstack_id
+
         response: Response = await self.request(
             client=client,
             method="GET",
