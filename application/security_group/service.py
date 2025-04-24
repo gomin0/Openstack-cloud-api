@@ -117,14 +117,12 @@ class SecurityGroupService:
             raise SecurityGroupNameDuplicatedException()
 
         try:
-            openstack_security_group: dict = await self.neutron_client.create_security_group(
+            security_group_openstack_id: str = await self.neutron_client.create_security_group(
                 client=client,
                 keystone_token=keystone_token,
                 name=name,
                 description=description
             )
-
-            security_group_openstack_id: str = openstack_security_group["id"]
 
             compensating_tx.add_task(
                 lambda: self.neutron_client.delete_security_group(

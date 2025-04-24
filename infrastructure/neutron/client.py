@@ -56,7 +56,7 @@ class NeutronClient(OpenStackClient):
         keystone_token: str,
         name: str,
         description: str
-    ) -> dict:
+    ) -> str:
         response: Response = await self.request(
             client=client,
             method="POST",
@@ -69,7 +69,9 @@ class NeutronClient(OpenStackClient):
                 }
             }
         )
-        return response.json()["security_group"]
+
+        openstack_security_group = response.json()["security_group"]
+        return openstack_security_group["id"]
 
     async def delete_security_group(
         self,
