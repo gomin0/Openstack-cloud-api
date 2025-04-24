@@ -1,8 +1,9 @@
 from unittest.mock import Mock
 
+from domain.security_group.entity import ServerSecurityGroup
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_project_user, create_security_group, \
-    create_server, create_server_security_group, create_access_token
+    create_server, create_access_token
 
 
 async def test_find_security_groups_success(client, db_session, mock_async_client):
@@ -15,7 +16,7 @@ async def test_find_security_groups_success(client, db_session, mock_async_clien
     security_group2 = await add_to_db(db_session, create_security_group(project_id=project.id))
 
     server = await add_to_db(db_session, create_server(project_id=project.id))
-    await add_to_db(db_session, create_server_security_group(server_id=server.id, security_group_id=security_group1.id))
+    await add_to_db(db_session, ServerSecurityGroup(server_id=server.id, security_group_id=security_group1.id))
 
     await db_session.commit()
     access_token = create_access_token(user_id=user.id, project_id=project.id)
@@ -58,7 +59,7 @@ async def test_get_security_group_success(client, db_session, mock_async_client)
 
     security_group = await add_to_db(db_session, create_security_group(project_id=project.id, name="security_group"))
     server = await add_to_db(db_session, create_server(project_id=project.id))
-    await add_to_db(db_session, create_server_security_group(server_id=server.id, security_group_id=security_group.id))
+    await add_to_db(db_session, ServerSecurityGroup(server_id=server.id, security_group_id=security_group.id))
     await db_session.commit()
 
     access_token = create_access_token(user_id=user.id, project_id=project.id)

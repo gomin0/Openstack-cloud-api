@@ -10,7 +10,7 @@ from domain.domain.entity import Domain
 from domain.enum import LifecycleStatus
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project, ProjectUser
-from domain.security_group.entity import SecurityGroup, ServerSecurityGroup
+from domain.security_group.entity import SecurityGroup
 from domain.server.entity import Server
 from domain.server.enum import ServerStatus
 from domain.user.entity import User
@@ -176,18 +176,6 @@ def create_server(
         name=name,
         description=description,
         status=status,
-    )
-
-
-def create_server_security_group(
-    server_id: int,
-    security_group_id: int,
-    ssg_id: int | None = None,
-) -> ServerSecurityGroup:
-    return ServerSecurityGroup(
-        id=ssg_id,
-        server_id=server_id,
-        security_group_id=security_group_id
     )
 
 
