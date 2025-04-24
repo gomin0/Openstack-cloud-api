@@ -23,7 +23,6 @@ class SecurityGroupService:
         self.security_group_repository = security_group_repository
         self.neutron_client = neutron_client
 
-    @transactional()
     async def find_security_groups_details(
         self,
         session: AsyncSession,
@@ -35,15 +34,13 @@ class SecurityGroupService:
         sort_order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
     ) -> SecurityGroupDetailsResponse:
-        security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_project_id(
+        security_groups: list[SecurityGroup] = await self.find_security_groups(
             session=session,
             project_id=project_id,
             sort_by=sort_by,
-            order=sort_order,
+            sort_order=sort_order,
             with_deleted=with_deleted,
-            with_relations=True,
         )
-
         rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
@@ -63,6 +60,26 @@ class SecurityGroupService:
         ]
 
         return SecurityGroupDetailsResponse(security_groups=response_items)
+
+    @transactional()
+    async def find_security_groups(
+        self,
+        session: AsyncSession,
+        project_id: int,
+        sort_by: SecurityGroupSortOption = SecurityGroupSortOption.CREATED_AT,
+        sort_order: SortOrder = SortOrder.DESC,
+        with_deleted: bool = False,
+    ) -> list[SecurityGroup]:
+        security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_project_id(
+            session=session,
+            project_id=project_id,
+            sort_by=sort_by,
+            order=sort_order,
+            with_deleted=with_deleted,
+            with_relations=True,
+        )
+
+        return security_groups
 
     @transactional()
     async def get_security_group_detail(
