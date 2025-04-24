@@ -91,5 +91,4 @@ class SecurityGroupService:
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,
         )
-
         return await SecurityGroupDetailResponse.from_entity(security_group, rules)

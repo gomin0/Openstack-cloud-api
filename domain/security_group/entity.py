@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,7 +32,7 @@ class SecurityGroup(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
-    _linked_servers: Mapped[list["server"]] = relationship(
+    _linked_servers: Mapped[list[Server]] = relationship(
         "ServerSecurityGroup", lazy="select", back_populates="_security_group"
     )
 
@@ -40,6 +40,19 @@ class SecurityGroup(Base):
     async def servers(self) -> list[Server]:
         linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
         return [await link.server for link in linked_servers]
+
+
+@dataclass
+class SecurityGroupRule:
+    id: str
+    security_group_openstack_id: str
+    protocol: str | None
+    direction: SecurityGroupRuleDirection
+    port_range_min: int | None
+    port_range_max: int | None
+    remote_ip_prefix: str | None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ServerSecurityGroup(Base):
@@ -64,15 +77,3 @@ class ServerSecurityGroup(Base):
     @async_property
     async def server(self) -> Server:
         return await self.awaitable_attrs._server
-
-
-class SecurityGroupRule(BaseModel):
-    id: str
-    security_group_openstack_id: str
-    protocol: str | None
-    direction: SecurityGroupRuleDirection
-    port_range_min: int | None
-    port_range_max: int | None
-    remote_ip_prefix: str | None
-    created_at: datetime
-    updated_at: datetime
