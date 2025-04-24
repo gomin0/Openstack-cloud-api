@@ -24,6 +24,7 @@ class Envs(BaseSettings):
 
     OPENSTACK_SERVER_URL: str
     KEYSTONE_PORT: int
+    NEUTRON_PORT: int
 
 
 @lru_cache
