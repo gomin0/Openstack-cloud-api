@@ -1,9 +1,9 @@
 import pytest
 
-from application.volume.response import VolumeResponse
-from domain.volume.entity import Volume
-from domain.volume.enum import VolumeStatus
-from exception.volume_exception import VolumeNameDuplicateException
+from common.application.volume.response import VolumeResponse
+from common.domain.volume.entity import Volume
+from common.domain.volume.enum import VolumeStatus
+from common.exception.volume_exception import VolumeNameDuplicateException
 from test.util.factory import create_volume
 from test.util.random import random_string, random_int
 
