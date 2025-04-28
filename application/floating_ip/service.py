@@ -33,11 +33,14 @@ class FloatingIpService:
         floating_network_id: str,
     ) -> FloatingIpResponse:
         try:
-            floating_id_openstack_id, floating_ip_address = await self.neutron_client.create_floating_ip(
+            floating_ip_info: tuple[str, str] = await self.neutron_client.create_floating_ip(
                 client=client,
                 floating_network_id=floating_network_id,
                 keystone_token=keystone_token,
             )
+            floating_id_openstack_id: str = floating_ip_info[0]
+            floating_ip_address: str = floating_ip_info[1]
+
             compensating_tx.add_task(
                 lambda: self.neutron_client.delete_floating_ip(
                     client=client,
