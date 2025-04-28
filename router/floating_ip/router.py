@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, FloatingIpResponse
+from application.floating_ip.service import FloatingIpService
 from common.auth_token_manager import get_current_user
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.floating_ip.enum import FloatingIpSortOption
+from infrastructure.database import get_db_session
 from router.floating_ip.request import CreateFloatingIpRequest
 
 router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
@@ -22,9 +25,16 @@ router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
 async def find_floating_ips(
     sort_by: FloatingIpSortOption = Query(default=FloatingIpSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    floating_ip_service: FloatingIpService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> FloatingIpDetailsResponse:
-    raise NotImplementedError()
+    return await floating_ip_service.find_floating_ips_details(
+        session=session,
+        project_id=current_user.project_id,
+        sort_by=sort_by,
+        order=order
+    )
 
 
 @router.get(
