@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 
+from async_property import async_property
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, DateTime, Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from domain.entity import Base
 from domain.enum import LifecycleStatus
 from domain.floating_ip.enum import FloatingIpStatus
+from domain.server.entity import Server
 
 
 class FloatingIp(Base):
@@ -31,3 +33,9 @@ class FloatingIp(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    _server: Mapped[Server] = relationship("Server", lazy="select")
+
+    @async_property
+    async def server(self) -> Server:
+        return await self.awaitable_attrs._server
