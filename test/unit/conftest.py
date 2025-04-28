@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.auth.service import AuthService
+from application.floating_ip.service import FloatingIpService
 from application.project.service import ProjectService
 from application.user.service import UserService
 
@@ -43,6 +44,11 @@ def mock_project_user_repository():
 
 
 @pytest.fixture(scope='function')
+def mock_floating_ip_repository():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
 def mock_keystone_client():
     return AsyncMock()
 
@@ -65,3 +71,8 @@ def user_service(mock_user_repository, mock_keystone_client):
 @pytest.fixture(scope='function')
 def auth_service(mock_user_repository, mock_keystone_client):
     return AuthService(user_repository=mock_user_repository, keystone_client=mock_keystone_client)
+
+
+@pytest.fixture(scope='function')
+def floating_ip_service(mock_floating_ip_repository):
+    return FloatingIpService(floating_ip_repository=mock_floating_ip_repository)
