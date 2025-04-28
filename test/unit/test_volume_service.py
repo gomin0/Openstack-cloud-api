@@ -1,10 +1,12 @@
 import pytest
 
 from common.application.volume.response import VolumeResponse
+from common.domain.enum import LifecycleStatus
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
-    VolumeNameDuplicateException, VolumeUpdatePermissionDeniedException, VolumeNotFoundException
+    VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
+    VolumeAlreadyDeletedException, VolumeStatusInvalidForDeletionException, AttachedVolumeDeletionException, VolumeUpdatePermissionDeniedException
 )
 from test.util.factory import create_volume
 from test.util.random import random_string, random_int
@@ -276,3 +278,133 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(
         )
     mock_volume_repository.find_by_id.assert_called_once()
     mock_volume_repository.exists_by_name_and_project.assert_called_once()
+
+
+async def test_mark_volume_as_deleted_success(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.AVAILABLE)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when
+    await volume_service.mark_volume_as_deleted(
+        session=mock_session,
+        current_project_id=project_id,
+        volume_id=volume.id,
+    )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    assert volume.lifecycle_status == LifecycleStatus.MARK_DELETED
+
+
+async def test_mark_volume_as_deleted_fail_volume_not_found(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    mock_volume_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(VolumeNotFoundException):
+        await volume_service.mark_volume_as_deleted(
+            session=mock_session,
+            current_project_id=random_int(),
+            volume_id=random_int(),
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_mark_volume_as_deleted_fail_when_has_not_permission_to_delete_volume(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    requesting_project_id: int = 1
+    volume: Volume = create_volume(project_id=2, status=VolumeStatus.AVAILABLE)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when & then
+    with pytest.raises(VolumeDeletePermissionDeniedException):
+        await volume_service.mark_volume_as_deleted(
+            session=mock_session,
+            current_project_id=requesting_project_id,
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_mark_volume_as_deleted_fail_volume_is_linked_to_server(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, server_id=random_int())
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when & then
+    with pytest.raises(AttachedVolumeDeletionException):
+        await volume_service.mark_volume_as_deleted(
+            session=mock_session,
+            current_project_id=project_id,
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_mark_volume_as_deleted_fail_volume_status_is_not_deletable(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.CREATING)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when & then
+    with pytest.raises(VolumeStatusInvalidForDeletionException):
+        await volume_service.mark_volume_as_deleted(
+            session=mock_session,
+            current_project_id=project_id,
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_mark_volume_as_deleted_fail_volume_is_already_deleted(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(
+        project_id=project_id,
+        status=VolumeStatus.ERROR,
+        lifecycle_status=LifecycleStatus.DELETED
+    )
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when & then
+    with pytest.raises(VolumeAlreadyDeletedException):
+        await volume_service.mark_volume_as_deleted(
+            session=mock_session,
+            current_project_id=project_id,
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()

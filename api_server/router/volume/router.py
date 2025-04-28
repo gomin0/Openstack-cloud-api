@@ -152,6 +152,12 @@ async def update_volume_size(
 )
 async def delete_volume(
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    raise NotImplementedError()
+    await volume_service.mark_volume_as_deleted(
+        session,
+        current_project_id=current_user.project_id,
+        volume_id=volume_id,
+    )

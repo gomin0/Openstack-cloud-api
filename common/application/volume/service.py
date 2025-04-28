@@ -10,7 +10,7 @@ from common.application.volume.response import VolumeResponse
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
-    VolumeNameDuplicateException, VolumeNotFoundException, VolumeUpdatePermissionDeniedException
+    VolumeNameDuplicateException, VolumeNotFoundException, VolumeUpdatePermissionDeniedException, VolumeDeletePermissionDeniedException
 )
 from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
@@ -153,6 +153,22 @@ class VolumeService:
 
         volume.update_info(name=name, description=description)
         return VolumeResponse.from_entity(volume)
+
+    @transactional()
+    async def mark_volume_as_deleted(
+        self,
+        session: AsyncSession,
+        current_project_id: int,
+        volume_id: int,
+    ) -> None:
+        volume: Volume | None = await self.volume_repository.find_by_id(session, volume_id=volume_id)
+        if volume is None:
+            raise VolumeNotFoundException()
+        if not volume.is_owned_by(current_project_id):
+            raise VolumeDeletePermissionDeniedException()
+        volume.validate_deletable()
+
+        volume.mark_as_deleted()
 
     async def _get_volume_by_openstack_id(
         self,

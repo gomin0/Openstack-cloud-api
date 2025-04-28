@@ -6,9 +6,20 @@ from sqlalchemy.orm import Mapped, mapped_column
 from common.domain.entity import Base
 from common.domain.enum import LifecycleStatus
 from common.domain.volume.enum import VolumeStatus
+from common.exception.volume_exception import (
+    AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException
+)
 
 
 class Volume(Base):
+    DELETABLE_STATUSES: list[VolumeStatus] = [
+        VolumeStatus.AVAILABLE,
+        VolumeStatus.IN_USE,
+        VolumeStatus.ERROR,
+        VolumeStatus.ERROR_RESTORING,
+        VolumeStatus.ERROR_EXTENDING,
+    ]
+
     __tablename__ = "volume"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
@@ -77,11 +88,25 @@ class Volume(Base):
         self.name = name
         self.description = description
 
+
+    def validate_deletable(self):
+        if self.server_id is not None:
+            raise AttachedVolumeDeletionException()
+        if self.status not in self.DELETABLE_STATUSES:
+            raise VolumeStatusInvalidForDeletionException(self.status)
+        if self.lifecycle_status != LifecycleStatus.ACTIVE:
+            raise VolumeAlreadyDeletedException()
+
     def complete_creation(self, attached: bool):
         if attached:
             self.status = VolumeStatus.IN_USE
         else:
             self.status = VolumeStatus.AVAILABLE
 
-    def fail_creation(self):
+    def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR
+
+    def mark_as_deleted(self) -> None:
+        self.status = VolumeStatus.DELETING
+        self.lifecycle_status = LifecycleStatus.MARK_DELETED
+        self.deleted_at = datetime.now(timezone.utc)
