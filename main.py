@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm.exc import StaleDataError
 
+from domain.server.entity import Server
 from exception.base_exception import CustomException
 from exception.exception_handler import (
     custom_validation_error_handler,
@@ -17,6 +18,8 @@ from router.project.router import router as project_router
 from router.security_group.router import router as security_group_router
 from router.user.router import router as user_router
 from router.volume.router import router as volume_router
+
+Server
 
 
 @asynccontextmanager

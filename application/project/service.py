@@ -5,8 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
 from application.project.response import ProjectDetailsResponse, ProjectDetailResponse, ProjectResponse
-from common.compensating_transaction import CompensationManager
-from common.envs import Envs, get_envs
 from domain.enum import SortOrder
 from domain.project.entity import Project, ProjectUser
 from domain.project.enum import ProjectSortOption
@@ -20,6 +18,8 @@ from infrastructure.keystone.client import KeystoneClient
 from infrastructure.project.repository import ProjectRepository
 from infrastructure.project_user.repository import ProjectUserRepository
 from infrastructure.user.repository import UserRepository
+from util.compensating_transaction import CompensationManager
+from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 

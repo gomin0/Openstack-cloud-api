@@ -6,8 +6,6 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.auth.response import LoginResponse, UserResponse
-from common.auth_token_manager import create_access_token
-from common.envs import Envs, get_envs
 from domain.keystone.model import KeystoneToken
 from domain.project.entity import Project
 from domain.user.entity import User
@@ -17,6 +15,8 @@ from exception.user_exception import UserNotJoinedAnyProjectException
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
 from infrastructure.user.repository import UserRepository
+from util.auth_token_manager import create_access_token
+from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 

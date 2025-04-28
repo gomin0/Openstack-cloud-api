@@ -1,7 +1,7 @@
 from httpx import AsyncClient, Response
 
-from common.envs import get_envs
 from infrastructure.openstack_client import OpenStackClient
+from util.envs import get_envs
 
 envs = get_envs()
 

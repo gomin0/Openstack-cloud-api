@@ -1,8 +1,8 @@
 from httpx import AsyncClient, Response
 
-from common.envs import get_envs, Envs
 from domain.volume.enum import VolumeStatus
 from infrastructure.openstack_client import OpenStackClient
+from util.envs import get_envs, Envs
 
 envs: Envs = get_envs()
 

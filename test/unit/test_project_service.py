@@ -4,7 +4,6 @@ from unittest.mock import call
 import pytest
 
 from application.project.response import ProjectDetailResponse
-from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.enum import SortOrder
 from domain.project.entity import Project, ProjectUser
@@ -16,6 +15,7 @@ from exception.project_exception import (ProjectNotFoundException, ProjectNameDu
                                          UserNotInProjectException)
 from exception.user_exception import UserNotFoundException
 from test.util.factory import create_project_stub
+from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 

@@ -4,8 +4,6 @@ from typing import Any
 import bcrypt
 from async_property import async_property
 
-from common import auth_token_manager
-from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.enum import LifecycleStatus
 from domain.keystone.model import KeystoneToken
@@ -14,6 +12,8 @@ from domain.user.entity import User
 from domain.volume.entity import Volume
 from domain.volume.enum import VolumeStatus
 from test.util.random import random_string, random_int
+from util import auth_token_manager
+from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 

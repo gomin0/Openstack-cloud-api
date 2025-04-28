@@ -4,14 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.user.response import UserDetailsResponse, UserResponse, UserDetailResponse
 from application.user.service import UserService
-from common.auth_token_manager import get_current_user
-from common.compensating_transaction import compensating_transaction
-from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.user.enum import UserSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.user.request import CreateUserRequest, UpdateUserInfoRequest
+from util.auth_token_manager import get_current_user
+from util.compensating_transaction import compensating_transaction
+from util.context import CurrentUser
 
 router = APIRouter(prefix="/users", tags=["user"])
 

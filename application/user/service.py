@@ -6,8 +6,6 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.user.response import UserDetailResponse, UserResponse
-from common.compensating_transaction import CompensationManager
-from common.envs import get_envs, Envs
 from domain.enum import SortOrder
 from domain.user.entity import User
 from domain.user.enum import UserSortOption
@@ -20,6 +18,8 @@ from exception.user_exception import (
 from infrastructure.database import transactional
 from infrastructure.keystone.client import KeystoneClient
 from infrastructure.user.repository import UserRepository
+from util.compensating_transaction import CompensationManager
+from util.envs import get_envs, Envs
 
 envs: Envs = get_envs()
 

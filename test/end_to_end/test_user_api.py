@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 from sqlalchemy import select
 
-from common.envs import Envs, get_envs
 from domain.domain.entity import Domain
 from domain.project.entity import Project, ProjectUser
 from domain.user.entity import User
@@ -11,6 +10,7 @@ from router.user.request import CreateUserRequest
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_access_token
 from test.util.random import random_string
+from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 

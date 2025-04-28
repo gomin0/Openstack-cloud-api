@@ -5,14 +5,14 @@ from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from application.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
 from application.volume.service import VolumeService
-from common.auth_token_manager import get_current_user
-from common.background_task_runner import run_background_task
-from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.volume.enum import VolumeSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
+from util.auth_token_manager import get_current_user
+from util.background_task_runner import run_background_task
+from util.context import CurrentUser
 
 router = APIRouter(prefix="/volumes", tags=["volume"])
 

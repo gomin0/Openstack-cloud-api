@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Query, Depends
 
 from application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, FloatingIpResponse
-from common.auth_token_manager import get_current_user
-from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.floating_ip.enum import FloatingIpSortOption
 from router.floating_ip.request import CreateFloatingIpRequest
+from util.auth_token_manager import get_current_user
+from util.context import CurrentUser
 
 router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
 

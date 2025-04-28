@@ -7,14 +7,13 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.volume.response import VolumeResponse
-from common.context import CurrentUser
-from common.envs import Envs, get_envs
 from domain.volume.entity import Volume
 from domain.volume.enum import VolumeStatus
 from exception.volume_exception import VolumeNameDuplicateException, VolumeNotFoundException
 from infrastructure.cinder.client import CinderClient
 from infrastructure.database import transactional
 from infrastructure.volume.repository import VolumeRepository
+from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 logger: Logger = logging.getLogger(__name__)

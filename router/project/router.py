@@ -4,14 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from application.project.response import ProjectDetailsResponse, ProjectResponse, ProjectDetailResponse
 from application.project.service import ProjectService
-from common.auth_token_manager import get_current_user
-from common.compensating_transaction import compensating_transaction
-from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.project.enum import ProjectSortOption
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.project.request import ProjectUpdateRequest
+from util.auth_token_manager import get_current_user
+from util.compensating_transaction import compensating_transaction
+from util.context import CurrentUser
 
 router = APIRouter(prefix="/projects", tags=["project"])
 

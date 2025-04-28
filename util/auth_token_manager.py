@@ -5,10 +5,10 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
-from common.context import CurrentUser
-from common.envs import get_envs
 from domain.keystone.model import KeystoneToken
 from exception.auth_exception import InvalidAccessTokenException
+from util.context import CurrentUser
+from util.envs import get_envs
 
 envs = get_envs()
 
