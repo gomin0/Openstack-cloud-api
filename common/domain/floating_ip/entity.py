@@ -1,8 +1,11 @@
+from datetime import datetime, timezone
+
 from async_property import async_property
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
+from common.domain.enum import LifecycleStatus
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.server.entity import Server
 

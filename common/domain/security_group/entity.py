@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String, DateTime
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
+from common.domain.enum import LifecycleStatus
 from common.domain.server.entity import Server
 
 
@@ -53,13 +55,10 @@ class ServerSecurityGroup(BaseEntity):
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
     server_id: Mapped[int] = mapped_column("server_id", BigInteger, ForeignKey("server.id"), nullable=False)
     security_group_id: Mapped[int] = mapped_column(
-        "security_group_id", BigInteger, ForeignKey("security_group.id"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
+        "security_group_id",
+        BigInteger,
+        ForeignKey("security_group.id"),
+        nullable=False
     )
 
     _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_security_groups")
