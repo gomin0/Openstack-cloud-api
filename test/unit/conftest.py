@@ -7,6 +7,7 @@ from application.auth.service import AuthService
 from application.project.service import ProjectService
 from application.security_group.service import SecurityGroupService
 from application.user.service import UserService
+from application.volume.service import VolumeService
 
 
 @pytest.fixture(scope="session")
@@ -43,6 +44,11 @@ def mock_project_user_repository():
     return AsyncMock()
 
 
+@pytest.fixture(scope="function")
+def mock_volume_repository():
+    return AsyncMock()
+
+
 @pytest.fixture(scope='function')
 def mock_security_group_repository():
     return AsyncMock()
@@ -55,6 +61,10 @@ def mock_keystone_client():
 
 @pytest.fixture(scope='function')
 def mock_neutron_client():
+
+
+@pytest.fixture(scope='function')
+def mock_cinder_client():
     return AsyncMock()
 
 
@@ -87,3 +97,8 @@ def security_group_service(
         security_group_repository=mock_security_group_repository,
         neutron_client=mock_neutron_client
     )
+
+
+@pytest.fixture(scope='function')
+def volume_service(mock_volume_repository, mock_cinder_client):
+    return VolumeService(volume_repository=mock_volume_repository, cinder_client=mock_cinder_client)
