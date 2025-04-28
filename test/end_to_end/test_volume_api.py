@@ -2,9 +2,9 @@ from urllib.request import Request
 
 from httpx import Response
 
-from domain.domain.entity import Domain
-from domain.project.entity import Project
-from domain.volume.enum import VolumeStatus
+from common.domain.domain.entity import Domain
+from common.domain.project.entity import Project
+from common.domain.volume.enum import VolumeStatus
 from test.util.database import add_to_db
 from test.util.factory import create_access_token, create_volume, create_project, create_domain
 from test.util.random import random_string
@@ -18,8 +18,8 @@ async def test_create_volume_success(
     mock_async_client
 ):
     # given
-    mocker.patch("util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("util.background_task_runner.AsyncSessionLocal", new_callable=lambda: async_session_maker)
+    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
+    mocker.patch("common.util.background_task_runner.AsyncSessionLocal", new_callable=lambda: async_session_maker)
 
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))

@@ -1,9 +1,9 @@
 from datetime import datetime
 from unittest.mock import Mock
 
+from common.util.envs import Envs, get_envs
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_project_user, create_access_token
-from util.envs import Envs, get_envs
 
 envs: Envs = get_envs()
 

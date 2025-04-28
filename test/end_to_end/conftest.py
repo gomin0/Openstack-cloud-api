@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from testcontainers.mysql import MySqlContainer
 
-from domain.entity import Base
-from infrastructure.async_client import get_async_client
-from infrastructure.database import get_db_session
-from main import app
+from api_server.main import app
+from common.domain.entity import Base
+from common.infrastructure.async_client import get_async_client
+from common.infrastructure.database import get_db_session
 
 
 @pytest.fixture(scope="session")
