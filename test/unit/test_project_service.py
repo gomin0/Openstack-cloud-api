@@ -3,18 +3,18 @@ from unittest.mock import call
 
 import pytest
 
-from application.project.response import ProjectDetailResponse
-from common.envs import Envs, get_envs
-from domain.domain.entity import Domain
-from domain.enum import SortOrder
-from domain.project.entity import Project, ProjectUser
-from domain.project.enum import ProjectSortOption
-from domain.user.entity import User
-from exception.openstack_exception import OpenStackException
-from exception.project_exception import (ProjectNotFoundException, ProjectNameDuplicatedException,
-                                         ProjectAccessDeniedException, UserAlreadyInProjectException,
-                                         UserNotInProjectException)
-from exception.user_exception import UserNotFoundException
+from common.application.project.response import ProjectDetailResponse
+from common.domain.domain.entity import Domain
+from common.domain.enum import SortOrder
+from common.domain.project.entity import Project, ProjectUser
+from common.domain.project.enum import ProjectSortOption
+from common.domain.user.entity import User
+from common.exception.openstack_exception import OpenStackException
+from common.exception.project_exception import (ProjectNotFoundException, ProjectNameDuplicatedException,
+                                                ProjectAccessDeniedException, UserAlreadyInProjectException,
+                                                UserNotInProjectException)
+from common.exception.user_exception import UserNotFoundException
+from common.util.envs import Envs, get_envs
 from test.util.factory import create_project_stub
 
 envs: Envs = get_envs()

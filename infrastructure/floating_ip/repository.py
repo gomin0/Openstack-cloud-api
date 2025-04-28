@@ -2,9 +2,9 @@ from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from domain.enum import SortOrder, LifecycleStatus
-from domain.floating_ip.entity import FloatingIp
-from domain.floating_ip.enum import FloatingIpSortOption
+from common.domain.enum import SortOrder, LifecycleStatus
+from common.domain.floating_ip.entity import FloatingIp
+from common.domain.floating_ip.enum import FloatingIpSortOption
 
 
 class FloatingIpRepository:

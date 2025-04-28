@@ -1,4 +1,4 @@
-from common.envs import get_envs
+from common.util.envs import get_envs
 from test.util.database import add_to_db
 from test.util.factory import (
     create_domain,

@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.auth.service import AuthService
-from application.floating_ip.service import FloatingIpService
-from application.project.service import ProjectService
-from application.user.service import UserService
-from application.volume.service import VolumeService
+from common.application.auth.service import AuthService
+from common.application.floating_ip.service import FloatingIpService
+from common.application.project.service import ProjectService
+from common.application.user.service import UserService
+from common.application.volume.service import VolumeService
 
 
 @pytest.fixture(scope="session")
