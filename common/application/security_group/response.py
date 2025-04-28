@@ -21,16 +21,7 @@ class SecurityGroupRuleResponse(BaseModel):
 
     @classmethod
     def from_entity(cls, security_group_rule: SecurityGroupRule) -> "SecurityGroupRuleResponse":
-        return cls(
-            id=security_group_rule.id,
-            protocol=security_group_rule.protocol,
-            direction=security_group_rule.direction,
-            port_range_min=security_group_rule.port_range_min,
-            port_range_max=security_group_rule.port_range_max,
-            remote_ip_prefix=security_group_rule.remote_ip_prefix,
-            created_at=security_group_rule.created_at,
-            updated_at=security_group_rule.updated_at,
-        )
+        return cls.model_validate(security_group_rule)
 
 
 class ServerResponse(BaseModel):
