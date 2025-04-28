@@ -1,11 +1,11 @@
 import pytest
 
-from application.auth.response import LoginResponse
-from domain.project.entity import Project
-from domain.user.entity import User
-from exception.auth_exception import InvalidAuthException
-from exception.project_exception import ProjectAccessDeniedException
-from exception.user_exception import UserNotJoinedAnyProjectException
+from common.application.auth.response import LoginResponse
+from common.domain.project.entity import Project
+from common.domain.user.entity import User
+from common.exception.auth_exception import InvalidAuthException
+from common.exception.project_exception import ProjectAccessDeniedException
+from common.exception.user_exception import UserNotJoinedAnyProjectException
 from test.util.factory import create_project, create_user_stub
 from test.util.random import random_int, random_string
 

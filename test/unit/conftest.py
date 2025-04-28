@@ -3,10 +3,11 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from application.auth.service import AuthService
-from application.floating_ip.service import FloatingIpService
-from application.project.service import ProjectService
-from application.user.service import UserService
+from common.application.auth.service import AuthService
+from common.application.floating_ip.service import FloatingIpService
+from common.application.project.service import ProjectService
+from common.application.user.service import UserService
+from common.application.volume.service import VolumeService
 
 
 @pytest.fixture(scope="session")
@@ -43,6 +44,11 @@ def mock_project_user_repository():
     return AsyncMock()
 
 
+@pytest.fixture(scope="function")
+def mock_volume_repository():
+    return AsyncMock()
+
+
 @pytest.fixture(scope='function')
 def mock_floating_ip_repository():
     return AsyncMock()
@@ -50,6 +56,11 @@ def mock_floating_ip_repository():
 
 @pytest.fixture(scope='function')
 def mock_keystone_client():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
+def mock_cinder_client():
     return AsyncMock()
 
 
@@ -76,6 +87,11 @@ def user_service(mock_user_repository, mock_keystone_client):
 @pytest.fixture(scope='function')
 def auth_service(mock_user_repository, mock_keystone_client):
     return AuthService(user_repository=mock_user_repository, keystone_client=mock_keystone_client)
+
+
+@pytest.fixture(scope='function')
+def volume_service(mock_volume_repository, mock_cinder_client):
+    return VolumeService(volume_repository=mock_volume_repository, cinder_client=mock_cinder_client)
 
 
 @pytest.fixture(scope='function')
