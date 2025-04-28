@@ -7,7 +7,7 @@ from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpSortOption
 from common.exception.floating_ip_exception import FloatingIpNotFoundException, FloatingIpAccessDeniedException
 from common.infrastructure.database import transactional
-from infrastructure.floating_ip.repository import FloatingIpRepository
+from common.infrastructure.floating_ip.repository import FloatingIpRepository
 
 
 class FloatingIpService:

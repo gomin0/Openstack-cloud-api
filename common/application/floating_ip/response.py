@@ -14,7 +14,7 @@ class ServerResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_entity(cls, server: Server | None) -> "ServerResponse":
+    def from_entity(cls, server: Server) -> "ServerResponse":
         return cls.model_validate(server)
 
 
