@@ -5,10 +5,8 @@ import pytest
 from application.security_group.dto import SecurityGroupRuleDTO
 from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from domain.project.entity import Project
-from domain.security_group.entity import SecurityGroupRule
-from domain.security_group.enum import SecurityGroupRuleDirection
-from exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupAccessDeniedException
 from domain.security_group.entity import SecurityGroup
+from domain.security_group.entity import SecurityGroupRule
 from domain.security_group.enum import SecurityGroupRuleDirection
 from exception.openstack_exception import OpenStackException
 from exception.security_group_exception import SecurityGroupAccessDeniedException
@@ -182,9 +180,9 @@ async def test_create_security_group_success(
     )
 
     mock_security_group_repository.exists_by_project_and_name.return_value = False
-    mock_neutron_client.create_security_group.return_value = {"id": "sg-os-id"}
+    mock_neutron_client.create_security_group.return_value = "sgos"
     mock_security_group_repository.create.return_value = security_group
-    mock_neutron_client.get_security_group_rules_in_security_group.return_value = []
+    mock_neutron_client.get_security_group_rules.return_value = []
 
     rules = [
         SecurityGroupRuleDTO(
@@ -215,7 +213,7 @@ async def test_create_security_group_success(
     mock_security_group_repository.create.assert_called_once()
     mock_neutron_client.create_security_group.assert_called_once()
     mock_neutron_client.create_security_group_rules.assert_called_once()
-    mock_neutron_client.get_security_group_rules_in_security_group.assert_called_once()
+    mock_neutron_client.get_security_group_rules.assert_called_once()
 
 
 async def test_create_security_group_fail_name_duplicated(
@@ -294,7 +292,7 @@ async def test_create_security_group_fail_openstack_404(
 ):
     # given
     mock_security_group_repository.exists_by_project_and_name.return_value = False
-    mock_neutron_client.create_security_group.return_value = {"id": "sgos"}
+    mock_neutron_client.create_security_group.return_value = "sgos"
     mock_security_group_repository.create.return_value = SecurityGroup(
         id=1,
         name="test",
