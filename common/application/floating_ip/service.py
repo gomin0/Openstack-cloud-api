@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.floating_ip.response import FloatingIpResponse
 from common.domain.floating_ip.entity import FloatingIp
-from common.domain.floating_ip.enum import FloatingIpStatus
 from common.infrastructure.database import transactional
 from common.infrastructure.floating_ip.repository import FloatingIpRepository
 from common.infrastructure.neutron.client import NeutronClient
@@ -49,8 +48,6 @@ class FloatingIpService:
         floating_ip: FloatingIp = FloatingIp.create(
             openstack_id=floating_ip_openstack_id,
             project_id=project_id,
-            server_id=None,
-            status=FloatingIpStatus.DOWN,
             address=floating_ip_address,
         )
         floating_ip: FloatingIp = await self.floating_ip_repository.create(session, floating_ip=floating_ip)

@@ -37,16 +37,14 @@ class FloatingIp(Base):
         cls,
         openstack_id: str,
         project_id: int,
-        server_id: int | None,
-        status: FloatingIpStatus,
         address: str,
     ) -> "FloatingIp":
         return cls(
             id=None,
             openstack_id=openstack_id,
             project_id=project_id,
-            server_id=server_id,
-            status=status,
+            server_id=None,
+            status=FloatingIpStatus.DOWN,
             address=address,
             lifecycle_status=LifecycleStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
