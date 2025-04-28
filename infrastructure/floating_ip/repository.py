@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from domain.floating_ip.entity import FloatingIp
+from common.domain.floating_ip.entity import FloatingIp
 
 
 class FloatingIpRepository:

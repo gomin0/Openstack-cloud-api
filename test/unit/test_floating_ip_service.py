@@ -1,7 +1,7 @@
 import pytest
 
-from exception.floating_ip_exception import FloatingNetworkNotFound
-from exception.openstack_exception import OpenStackException
+from common.exception.floating_ip_exception import FloatingNetworkNotFound
+from common.exception.openstack_exception import OpenStackException
 from test.util.factory import create_floating_ip_stub
 
 
