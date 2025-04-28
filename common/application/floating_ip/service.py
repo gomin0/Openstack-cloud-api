@@ -8,9 +8,9 @@ from common.domain.floating_ip.enum import FloatingIpStatus
 from common.exception.floating_ip_exception import FloatingNetworkNotFound
 from common.exception.openstack_exception import OpenStackException
 from common.infrastructure.database import transactional
+from common.infrastructure.floating_ip import FloatingIpRepository
+from common.infrastructure.neutron.client import NeutronClient
 from common.util.compensating_transaction import CompensationManager
-from infrastructure.floating_ip.repository import FloatingIpRepository
-from infrastructure.neutron.client import NeutronClient
 
 
 class FloatingIpService:
