@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime, timezone
 
 from fastapi import Depends
 from httpx import AsyncClient
@@ -167,15 +168,18 @@ class SecurityGroupService:
 
         if rules:
             try:
-                security_group_rules = [
-                    {
-                        "direction": rule.direction.value,
-                        "protocol": rule.protocol,
-                        "port_range_min": rule.port_range_min,
-                        "port_range_max": rule.port_range_max,
-                        "remote_ip_prefix": rule.remote_ip_prefix,
-                        "security_group_id": security_group_openstack_id,
-                    }
+                security_group_rules: list[SecurityGroupRule] = [
+                    SecurityGroupRule(
+                        id="",
+                        security_group_openstack_id=security_group_openstack_id,
+                        protocol=rule.protocol,
+                        direction=rule.direction,
+                        port_range_min=rule.port_range_min,
+                        port_range_max=rule.port_range_max,
+                        remote_ip_prefix=rule.remote_ip_prefix,
+                        created_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc),
+                    )
                     for rule in rules
                 ]
 

@@ -90,12 +90,26 @@ class NeutronClient(OpenStackClient):
         self,
         client: AsyncClient,
         keystone_token: str,
-        security_group_rules: list[dict]
+        security_group_rules: list[SecurityGroupRule]
     ) -> None:
+        rules = {
+            "security_group_rules": [
+                {
+                    "direction": rule.direction.value,
+                    "protocol": rule.protocol,
+                    "port_range_min": rule.port_range_min,
+                    "port_range_max": rule.port_range_max,
+                    "remote_ip_prefix": rule.remote_ip_prefix,
+                    "security_group_id": rule.security_group_openstack_id,
+                }
+                for rule in security_group_rules
+            ]
+        }
+
         await self.request(
             client=client,
             method="POST",
             url=f"{self._NEUTRON_URL}/v2.0/security-group-rules",
             headers={"X-Auth-Token": keystone_token},
-            json={"security_group_rules": security_group_rules}
+            json=rules
         )
