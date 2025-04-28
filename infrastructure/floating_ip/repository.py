@@ -40,3 +40,26 @@ class FloatingIpRepository:
         result: ScalarResult[FloatingIp] = await session.scalars(query)
 
         return result.all()
+
+    async def find_by_id(
+        self,
+        session: AsyncSession,
+        floating_ip_id: int,
+        with_deleted: bool = False,
+        with_relations: bool = False
+    ) -> FloatingIp | None:
+        query: Select[tuple[FloatingIp]] = select(FloatingIp).where(FloatingIp.id == floating_ip_id)
+
+        if not with_deleted:
+            query = query.where(
+                FloatingIp.lifecycle_status == LifecycleStatus.ACTIVE
+            )
+
+        if with_relations:
+            query = query.options(
+                joinedload(FloatingIp._server),
+            )
+
+        result: FloatingIp | None = await session.scalar(query)
+
+        return result

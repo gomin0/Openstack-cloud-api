@@ -5,6 +5,7 @@ from application.floating_ip.response import FloatingIpDetailsResponse, Floating
 from domain.enum import SortOrder
 from domain.floating_ip.entity import FloatingIp
 from domain.floating_ip.enum import FloatingIpSortOption
+from exception.floating_ip_exception import FloatingIpNotFoundException, FloatingIpAccessDeniedException
 from infrastructure.database import transactional
 from infrastructure.floating_ip.repository import FloatingIpRepository
 
@@ -37,3 +38,25 @@ class FloatingIpService:
         return FloatingIpDetailsResponse(
             floating_ips=[await FloatingIpDetailResponse.from_entity(floating_ip) for floating_ip in floating_ips]
         )
+
+    @transactional()
+    async def get_floating_ip_detail(
+        self,
+        session: AsyncSession,
+        project_id: int,
+        floating_ip_id: int,
+        with_deleted: bool = False,
+    ) -> FloatingIpDetailResponse:
+        floating_ip: FloatingIp | None = await self.floating_ip_repository.find_by_id(
+            session=session,
+            floating_ip_id=floating_ip_id,
+            with_deleted=with_deleted,
+            with_relations=True
+        )
+        if not floating_ip:
+            raise FloatingIpNotFoundException()
+
+        if project_id != floating_ip.project_id:
+            raise FloatingIpAccessDeniedException()
+
+        return await FloatingIpDetailResponse.from_entity(floating_ip)
