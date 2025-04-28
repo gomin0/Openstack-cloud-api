@@ -61,6 +61,7 @@ def mock_keystone_client():
 
 @pytest.fixture(scope='function')
 def mock_neutron_client():
+    return AsyncMock()
 
 
 @pytest.fixture(scope='function')

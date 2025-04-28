@@ -202,6 +202,7 @@ def create_security_group_stub(
         updated_at=updated_at,
         deleted_at=deleted_at,
         servers=servers or []
+    )
 
 
 def create_volume(
