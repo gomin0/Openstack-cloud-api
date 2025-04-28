@@ -4,6 +4,9 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm.exc import StaleDataError
 
+from api_server.exception_handler import (
+    custom_validation_error_handler, custom_exception_handler, stale_data_error_handler,
+)
 from api_server.router.auth.router import router as auth_router
 from api_server.router.floating_ip.router import router as floating_ip_router
 from api_server.router.project.router import router as project_router
@@ -12,9 +15,6 @@ from api_server.router.user.router import router as user_router
 from api_server.router.volume.router import router as volume_router
 from common.domain.server.entity import Server
 from common.exception.base_exception import CustomException
-from common.exception.exception_handler import (
-    custom_validation_error_handler, custom_exception_handler, stale_data_error_handler,
-)
 from common.infrastructure.async_client import (init_async_client, close_async_client)
 
 Server  # TODO: 추후 삭제 필요
