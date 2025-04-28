@@ -26,10 +26,7 @@ class SecurityGroupRepository:
             query = query.where(SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE)
 
         if with_relations:
-            query = query.options(
-                selectinload(SecurityGroup._linked_servers)
-                .selectinload(ServerSecurityGroup._server)
-            )
+            query = query.options(self._with_relations())
 
         order_by_column = {
             SecurityGroupSortOption.NAME: SecurityGroup.name,
@@ -59,8 +56,10 @@ class SecurityGroupRepository:
             )
 
         if with_relations:
-            query = query.options(
-                selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
-            )
+            query = query.options(self._with_relations())
 
         return await session.scalar(query)
+
+    @staticmethod
+    def _with_relations():
+        return selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
