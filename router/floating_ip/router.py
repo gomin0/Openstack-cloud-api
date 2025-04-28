@@ -9,7 +9,6 @@ from common.compensating_transaction import compensating_transaction
 from common.context import CurrentUser
 from domain.enum import SortOrder
 from domain.floating_ip.enum import FloatingIpSortOption
-from domain.server.entity import Server
 from infrastructure.async_client import get_async_client
 from infrastructure.database import get_db_session
 from router.floating_ip.request import CreateFloatingIpRequest
@@ -49,9 +48,6 @@ async def get_floating_ip(
     _: CurrentUser = Depends(get_current_user),
 ) -> FloatingIpDetailResponse:
     raise NotImplementedError()
-
-
-Server
 
 
 @router.post(
