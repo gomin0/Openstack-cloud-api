@@ -1,5 +1,7 @@
 import inspect
+import logging
 from functools import wraps
+from logging import Logger
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
@@ -8,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from common.envs import get_envs
 
 envs = get_envs()
+logger: Logger = logging.getLogger(__name__)
 
 DATABASE_URL = (
     "mysql+aiomysql://"
@@ -61,7 +64,8 @@ def transactional():
                 result = await func(*args, **kwargs)
                 await session.commit()
                 return result
-            except Exception:
+            except Exception as ex:
+                logger.error(f"[transactional] '{func.__name__}' 실행 중 예외 발생: {type(ex).__name__}: {ex}")
                 await session.rollback()
                 raise
 
