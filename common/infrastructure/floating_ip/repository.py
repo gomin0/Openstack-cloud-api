@@ -25,9 +25,7 @@ class FloatingIpRepository:
             query = query.where(FloatingIp.lifecycle_status == LifecycleStatus.ACTIVE)
 
         if with_relations:
-            query = query.options(
-                joinedload(FloatingIp._server)
-            )
+            query = query.options(self._with_relations())
 
         order_by_column = {
             FloatingIpSortOption.ADDRESS: FloatingIp.address,
@@ -56,10 +54,12 @@ class FloatingIpRepository:
             )
 
         if with_relations:
-            query = query.options(
-                joinedload(FloatingIp._server),
-            )
+            query = query.options(self._with_relations())
 
         result: FloatingIp | None = await session.scalar(query)
 
         return result
+
+    @staticmethod
+    def _with_relations():
+        return joinedload(FloatingIp._server)
