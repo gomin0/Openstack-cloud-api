@@ -1,17 +1,19 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer, Enum, DateTime, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from async_property import async_property
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer, Enum, Boolean
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from common.domain.entity import Base
+from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.enum import LifecycleStatus
+from common.domain.project.entity import Project
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException
 )
 
 
-class Volume(Base):
+class Volume(SoftDeleteBaseEntity):
     DELETABLE_STATUSES: list[VolumeStatus] = [
         VolumeStatus.AVAILABLE,
         VolumeStatus.IN_USE,
@@ -36,18 +38,12 @@ class Volume(Base):
     )
     size: Mapped[int] = mapped_column("size", Integer, nullable=False)
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
-    lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
-        nullable=False,
-        default=LifecycleStatus.ACTIVE
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    _project: Mapped["Project"] = relationship("Project", lazy="select")
+
+    @async_property
+    async def project(self) -> "Project":
+        return await self.awaitable_attrs._project
 
     @classmethod
     def create(
@@ -107,6 +103,5 @@ class Volume(Base):
         self.status = VolumeStatus.ERROR
 
     def mark_as_deleted(self) -> None:
+        super().mark_as_deleted()
         self.status = VolumeStatus.DELETING
-        self.lifecycle_status = LifecycleStatus.MARK_DELETED
-        self.deleted_at = datetime.now(timezone.utc)
