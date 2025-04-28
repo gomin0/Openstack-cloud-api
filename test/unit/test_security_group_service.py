@@ -2,11 +2,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
-from domain.project.entity import Project
-from domain.security_group.entity import SecurityGroupRule
-from domain.security_group.enum import SecurityGroupRuleDirection
-from exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupAccessDeniedException
+from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
+from common.domain.project.entity import Project
+from common.domain.security_group.entity import SecurityGroupRule
+from common.domain.security_group.enum import SecurityGroupRuleDirection
+from common.exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupAccessDeniedException
 from test.util.factory import create_security_group_stub
 
 

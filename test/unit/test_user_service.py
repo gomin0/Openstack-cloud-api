@@ -1,13 +1,11 @@
 import pytest
 
-from domain.enum import SortOrder
-from domain.user.entity import User
-from domain.user.enum import UserSortOption
-from exception.openstack_exception import OpenStackException
-from exception.user_exception import (
-    UserNotFoundException,
-    UserAccountIdDuplicateException,
-    UserUpdatePermissionDeniedException
+from common.domain.enum import SortOrder
+from common.domain.user.entity import User
+from common.domain.user.enum import UserSortOption
+from common.exception.openstack_exception import OpenStackException
+from common.exception.user_exception import (
+    UserNotFoundException, UserAccountIdDuplicateException, UserUpdatePermissionDeniedException
 )
 from test.unit.conftest import mock_session, mock_user_repository, user_service, mock_keystone_client
 from test.util.factory import create_user

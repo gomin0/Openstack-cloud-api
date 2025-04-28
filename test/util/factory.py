@@ -4,18 +4,18 @@ from typing import Any
 import bcrypt
 from async_property import async_property
 
-from common import auth_token_manager
-from common.envs import Envs, get_envs
-from domain.domain.entity import Domain
-from domain.enum import LifecycleStatus
-from domain.keystone.model import KeystoneToken
-from domain.project.entity import Project, ProjectUser
-from domain.security_group.entity import SecurityGroup
-from domain.server.entity import Server
-from domain.server.enum import ServerStatus
-from domain.user.entity import User
-from domain.volume.entity import Volume
-from domain.volume.enum import VolumeStatus
+from common.domain.domain.entity import Domain
+from common.domain.enum import LifecycleStatus
+from common.domain.keystone.model import KeystoneToken
+from common.domain.project.entity import Project, ProjectUser
+from common.domain.user.entity import User
+from common.domain.volume.entity import Volume
+from common.domain.volume.enum import VolumeStatus
+from common.domain.security_group.entity import SecurityGroup
+from common.domain.server.entity import Server
+from common.domain.server.enum import ServerStatus
+from common.util import auth_token_manager
+from common.util.envs import Envs, get_envs
 from test.util.random import random_string, random_int
 
 envs: Envs = get_envs()
