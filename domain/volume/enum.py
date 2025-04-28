@@ -23,6 +23,14 @@ class VolumeStatus(Enum):
     RETYPING = "RETYPING"
     EXTENDING = "EXTENDING"
 
+    @classmethod
+    def parse(cls, status: str) -> "VolumeStatus":
+        normalized_val = status.replace("-", "_").replace(" ", "_").upper()
+        try:
+            return cls[normalized_val]
+        except KeyError:
+            raise ValueError(f"Unknown OpenStack volume status: {status} → normalized: {normalized_val}")
+
 
 class VolumeSortOption(Enum):
     CREATED_AT = "created_at"
