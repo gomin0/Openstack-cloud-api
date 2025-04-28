@@ -19,7 +19,7 @@ async def test_create_volume_success(
 ):
     # given
     mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.AsyncSessionLocal", new_callable=lambda: async_session_maker)
+    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
 
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
