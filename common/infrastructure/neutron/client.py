@@ -98,26 +98,25 @@ class NeutronClient(OpenStackClient):
         security_group_openstack_id: str,
         new_rules: list[CreateSecurityGroupRuleDTO]
     ) -> list[SecurityGroupRuleDTO]:
-        rules = {
-            "security_group_rules": [
-                {
-                    "protocol": rule.protocol,
-                    "direction": rule.direction.value,
-                    "port_range_min": rule.port_range_min,
-                    "port_range_max": rule.port_range_max,
-                    "remote_ip_prefix": rule.remote_ip_prefix,
-                    "security_group_id": security_group_openstack_id,
-                }
-                for rule in new_rules
-            ]
-        }
 
         response: Response = await self.request(
             client=client,
             method="POST",
             url=f"{self._NEUTRON_URL}/v2.0/security-group-rules",
             headers={"X-Auth-Token": keystone_token},
-            json=rules
+            json={
+                "security_group_rules": [
+                    {
+                        "protocol": rule.protocol,
+                        "direction": rule.direction.value,
+                        "port_range_min": rule.port_range_min,
+                        "port_range_max": rule.port_range_max,
+                        "remote_ip_prefix": rule.remote_ip_prefix,
+                        "security_group_id": security_group_openstack_id,
+                    }
+                    for rule in new_rules
+                ]
+            }
         )
         created_rules_data = response.json().get("security_group_rules", [])
 
