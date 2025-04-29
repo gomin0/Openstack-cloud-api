@@ -41,7 +41,7 @@ class SecurityGroupService:
             sort_order=sort_order,
             with_deleted=with_deleted,
         )
-        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
+        rules: list[SecurityGroupRule] = await self.neutron_client.find_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
@@ -103,7 +103,7 @@ class SecurityGroupService:
         if project_id != security_group.project_id:
             raise SecurityGroupAccessDeniedException()
 
-        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
+        rules: list[SecurityGroupRule] = await self.neutron_client.find_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,

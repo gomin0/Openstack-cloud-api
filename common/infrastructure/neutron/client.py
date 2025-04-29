@@ -1,5 +1,6 @@
 from httpx import AsyncClient, Response
 
+from common.domain.floating_ip.dto import CreateFloatingIpDTO
 from common.domain.security_group.entity import SecurityGroupRule
 from common.domain.security_group.enum import SecurityGroupRuleDirection
 from common.infrastructure.openstack_client import OpenStackClient
@@ -13,7 +14,7 @@ class NeutronClient(OpenStackClient):
     _NEUTRON_PORT: int = envs.NEUTRON_PORT
     _NEUTRON_URL: str = f"{_OPEN_STACK_URL}:{_NEUTRON_PORT}"
 
-    async def get_security_group_rules(
+    async def find_security_group_rules(
         self,
         client: AsyncClient,
         keystone_token: str,
@@ -55,7 +56,7 @@ class NeutronClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         floating_network_id: str,
-    ) -> tuple[str, str]:
+    ) -> CreateFloatingIpDTO:
         response: Response = await self.request(
             client=client,
             method="POST",
@@ -65,7 +66,11 @@ class NeutronClient(OpenStackClient):
         )
         data = response.json()["floatingip"]
 
-        return data["id"], data["floating_ip_address"]
+        return CreateFloatingIpDTO(
+            openstack_id=data["id"],
+            status=data["status"],
+            address=data["floating_ip_address"],
+        )
 
     async def delete_floating_ip(
         self,

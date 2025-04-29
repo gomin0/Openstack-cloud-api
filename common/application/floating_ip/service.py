@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, \
     FloatingIpResponse
 from common.domain.enum import SortOrder
+from common.domain.floating_ip.dto import CreateFloatingIpDTO
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpSortOption
 from common.exception.floating_ip_exception import FloatingIpNotFoundException, FloatingIpAccessDeniedException
@@ -77,13 +78,13 @@ class FloatingIpService:
         keystone_token: str,
         floating_network_id: str,
     ) -> FloatingIpResponse:
-        floating_ip_info: tuple[str, str] = await self.neutron_client.create_floating_ip(
+        floating_ip_info: CreateFloatingIpDTO = await self.neutron_client.create_floating_ip(
             client=client,
             floating_network_id=floating_network_id,
             keystone_token=keystone_token,
         )
-        floating_ip_openstack_id: str = floating_ip_info[0]
-        floating_ip_address: str = floating_ip_info[1]
+        floating_ip_openstack_id: str = floating_ip_info.openstack_id
+        floating_ip_address: str = floating_ip_info.address
 
         compensating_tx.add_task(
             lambda: self.neutron_client.delete_floating_ip(

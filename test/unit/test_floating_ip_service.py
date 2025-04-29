@@ -2,7 +2,8 @@ import pytest
 
 from common.application.floating_ip.response import FloatingIpDetailResponse
 from common.domain.enum import SortOrder
-from common.domain.floating_ip.enum import FloatingIpSortOption
+from common.domain.floating_ip.dto import CreateFloatingIpDTO
+from common.domain.floating_ip.enum import FloatingIpSortOption, FloatingIpStatus
 from common.exception.floating_ip_exception import FloatingIpAccessDeniedException, FloatingIpNotFoundException
 from test.util.factory import create_floating_ip_stub
 
@@ -124,9 +125,10 @@ async def test_create_floating_ip_success(
     floating_ip_openstack_id = "openstack-id"
     floating_ip_address = "10.0.0.1"
 
-    floating_ip_service.neutron_client.create_floating_ip.return_value = (
-        floating_ip_openstack_id,
-        floating_ip_address
+    floating_ip_service.neutron_client.create_floating_ip.return_value = CreateFloatingIpDTO(
+        openstack_id=floating_ip_openstack_id,
+        status=FloatingIpStatus.DOWN,
+        address=floating_ip_address,
     )
     mock_floating_ip_repository.create.return_value = create_floating_ip_stub(
         project_id=project_id,

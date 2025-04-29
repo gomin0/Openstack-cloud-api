@@ -129,6 +129,7 @@ async def test_create_floating_ip_success(client, db_session, mock_async_client)
             mock_response.json.return_value = {
                 "floatingip": {
                     "id": "fios",
+                    "status": "DOWN",
                     "floating_ip_address": "10.0.0.1"
                 }
             }
