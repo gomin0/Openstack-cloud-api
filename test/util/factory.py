@@ -10,7 +10,9 @@ from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.keystone.model import KeystoneToken
 from common.domain.project.entity import Project, ProjectUser
+from common.domain.security_group.entity import SecurityGroup
 from common.domain.server.entity import Server
+from common.domain.server.enum import ServerStatus
 from common.domain.user.entity import User
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
@@ -142,6 +144,66 @@ def create_project_user(
         id=project_user_id,
         user_id=user_id,
         project_id=project_id,
+    )
+
+
+def create_security_group(
+    security_group_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    name: str = random_string(),
+    description: str = random_string(),
+) -> SecurityGroup:
+    return SecurityGroup(
+        id=security_group_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        name=name,
+        description=description,
+    )
+
+
+def create_server(
+    server_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    flavor_openstack_id: str = random_string(),
+    name: str = random_string(),
+    description: str = random_string(),
+    status: ServerStatus = ServerStatus.ACTIVE,
+) -> Server:
+    return Server(
+        id=server_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        flavor_openstack_id=flavor_openstack_id,
+        name=name,
+        description=description,
+        status=status,
+    )
+
+
+def create_security_group_stub(
+    security_group_id: int,
+    name: str = random_string(),
+    description: str = random_string(),
+    project_id: int = random_int(),
+    openstack_id: str = random_string(),
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None,
+    servers: list[Server] | None = None
+) -> SecurityGroup:
+    return SecurityGroupStub(
+        id=security_group_id,
+        name=name,
+        description=description,
+        project_id=project_id,
+        openstack_id=openstack_id,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
+        servers=servers or []
     )
 
 
@@ -286,3 +348,13 @@ class FloatingIpStub(FloatingIp):
     @async_property
     async def server(self) -> Server | None:
         return self._mock_server
+
+
+class SecurityGroupStub(SecurityGroup):
+    def __init__(self, servers: list[Server] | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self._mock_servers = servers
+
+    @async_property
+    async def servers(self):
+        return self._mock_servers

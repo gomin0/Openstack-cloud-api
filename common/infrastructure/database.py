@@ -18,7 +18,7 @@ DATABASE_URL = (
     "/cloud"
 )
 async_engine: AsyncEngine = create_async_engine(DATABASE_URL, echo=True)
-AsyncSessionLocal: sessionmaker[AsyncSession] = sessionmaker(
+session_factory = sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
     autocommit=False,
@@ -28,7 +28,7 @@ AsyncSessionLocal: sessionmaker[AsyncSession] = sessionmaker(
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSessionLocal() as session:
+    async with session_factory() as session:
         yield session
 
 

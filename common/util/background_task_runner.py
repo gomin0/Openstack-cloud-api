@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.infrastructure.async_client import get_async_client
-from common.infrastructure.database import AsyncSessionLocal
+from common.infrastructure.database import session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def run_background_task(background_task: BackgroundTasks, task: Callable[..., An
             raise ValueError(f"{task.__name__}()에서 AsyncSession 타입의 parameter는 하나만 선언할 수 있습니다.")
         if session_param_names:
             session_param_name = session_param_names[0]
-            async with AsyncSessionLocal() as session:
+            async with session_factory() as session:
                 logger.debug(
                     f"[background_task_runner] injecting AsyncSession into {task.__name__}({session_param_name})"
                 )

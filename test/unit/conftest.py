@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.application.auth.service import AuthService
 from common.application.floating_ip.service import FloatingIpService
 from common.application.project.service import ProjectService
+from common.application.security_group.service import SecurityGroupService
 from common.application.user.service import UserService
 from common.application.volume.service import VolumeService
 
@@ -50,12 +51,22 @@ def mock_volume_repository():
 
 
 @pytest.fixture(scope='function')
+def mock_security_group_repository():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
 def mock_floating_ip_repository():
     return AsyncMock()
 
 
 @pytest.fixture(scope='function')
 def mock_keystone_client():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
+def mock_neutron_client():
     return AsyncMock()
 
 
@@ -82,6 +93,17 @@ def user_service(mock_user_repository, mock_keystone_client):
 @pytest.fixture(scope='function')
 def auth_service(mock_user_repository, mock_keystone_client):
     return AuthService(user_repository=mock_user_repository, keystone_client=mock_keystone_client)
+
+
+@pytest.fixture(scope='function')
+def security_group_service(
+    mock_security_group_repository,
+    mock_neutron_client
+):
+    return SecurityGroupService(
+        security_group_repository=mock_security_group_repository,
+        neutron_client=mock_neutron_client
+    )
 
 
 @pytest.fixture(scope='function')

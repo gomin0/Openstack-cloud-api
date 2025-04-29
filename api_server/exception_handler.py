@@ -2,7 +2,6 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm.exc import StaleDataError
-from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
 
 from common.exception.base_exception import CustomException
 
@@ -18,7 +17,7 @@ async def custom_validation_error_handler(request: Request, exc: RequestValidati
         })
 
     return JSONResponse(
-        status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=422,
         content={
             "code": "VALIDATION_FAILED",
             "message": "Validation Failed",
