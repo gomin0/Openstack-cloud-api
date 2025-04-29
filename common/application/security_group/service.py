@@ -144,7 +144,6 @@ class SecurityGroupService:
             name=name,
             description=description
         )
-
         compensating_tx.add_task(
             lambda: self.neutron_client.delete_security_group(
                 client=client,
@@ -159,12 +158,12 @@ class SecurityGroupService:
             name=name,
             description=description,
         )
-
         security_group: SecurityGroup = await self.security_group_repository.create(
             session=session,
             security_group=security_group
         )
 
+        security_group_rules = []
         if rules:
             default_rules: list[SecurityGroupRuleDTO] = openstack_security_group.rules
 
@@ -180,15 +179,12 @@ class SecurityGroupService:
                     for default_rule in default_rules
                 )
             ]
-
             security_group_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
                 client=client,
                 keystone_token=keystone_token,
                 new_rules=new_rules,
                 security_group_openstack_id=security_group.openstack_id,
             )
-        else:
-            security_group_rules = []
 
         security_group_rules: list[SecurityGroupRuleDTO] = security_group_rules + openstack_security_group.rules
 
