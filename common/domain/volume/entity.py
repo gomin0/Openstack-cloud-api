@@ -101,7 +101,3 @@ class Volume(SoftDeleteBaseEntity):
 
     def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR
-
-    def mark_as_deleted(self) -> None:
-        super().mark_as_deleted()
-        self.status = VolumeStatus.DELETING
