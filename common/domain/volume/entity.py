@@ -39,10 +39,10 @@ class Volume(SoftDeleteBaseEntity):
     size: Mapped[int] = mapped_column("size", Integer, nullable=False)
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
 
-    _project: Mapped["Project"] = relationship("Project", lazy="select")
+    _project: Mapped[Project] = relationship("Project", lazy="select")
 
     @async_property
-    async def project(self) -> "Project":
+    async def project(self) -> Project:
         return await self.awaitable_attrs._project
 
     @classmethod
