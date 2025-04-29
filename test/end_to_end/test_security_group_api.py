@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from domain.security_group.entity import ServerSecurityGroup
+from common.domain.security_group.entity import ServerSecurityGroup
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_project_user, create_security_group, \
     create_server, create_access_token

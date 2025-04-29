@@ -2,15 +2,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from application.security_group.dto import SecurityGroupRuleDTO
-from application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
-from domain.project.entity import Project
-from domain.security_group.entity import SecurityGroup
-from domain.security_group.entity import SecurityGroupRule
-from domain.security_group.enum import SecurityGroupRuleDirection
-from exception.openstack_exception import OpenStackException
-from exception.security_group_exception import SecurityGroupAccessDeniedException
-from exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupNameDuplicatedException
+from common.application.security_group.dto import SecurityGroupRuleDTO
+from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
+from common.domain.project.entity import Project
+from common.domain.security_group.entity import SecurityGroupRule, SecurityGroup
+from common.domain.security_group.enum import SecurityGroupRuleDirection
+from common.exception.openstack_exception import OpenStackException
+from common.exception.security_group_exception import SecurityGroupNotFoundException, \
+    SecurityGroupAccessDeniedException, SecurityGroupNameDuplicatedException
 from test.util.factory import create_security_group_stub
 
 
