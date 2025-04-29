@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Query, Depends
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
+from common.application.security_group.service import SecurityGroupService
 from common.domain.enum import SortOrder
 from common.domain.security_group.enum import SecurityGroupSortOption
+from common.infrastructure.async_client import get_async_client
+from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.context import CurrentUser
 
@@ -21,9 +26,20 @@ router = APIRouter(prefix="/security-groups", tags=["security-group"])
 async def find_security_groups(
     sort_by: SecurityGroupSortOption = Query(default=SecurityGroupSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailsResponse:
-    raise NotImplementedError()
+    return await security_group_service.find_security_groups_details(
+        session=session,
+        client=client,
+        project_id=current_user.project_id,
+        project_openstack_id=current_user.project_openstack_id,
+        keystone_token=current_user.keystone_token,
+        sort_by=sort_by,
+        sort_order=order,
+    )
 
 
 @router.get(
@@ -38,9 +54,18 @@ async def find_security_groups(
 )
 async def get_security_group(
     security_group_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    raise NotImplementedError()
+    return await security_group_service.get_security_group_detail(
+        session=session,
+        client=client,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+        security_group_id=security_group_id
+    )
 
 
 @router.post(
