@@ -1,22 +1,26 @@
+import logging
 from collections import defaultdict
-from datetime import datetime, timezone
 
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.application.security_group.dto import SecurityGroupRuleDTO
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.domain.enum import SortOrder
-from common.domain.security_group.entity import SecurityGroup, SecurityGroupRule
+from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, SecurityGroupRuleDTO, SecurityGroupDTO
+from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
-from common.exception.openstack_exception import OpenStackException
-from common.exception.security_group_exception import SecurityGroupNotFoundException, \
-    SecurityGroupAccessDeniedException, SecurityGroupNameDuplicatedException, SecurityGroupRuleDuplicatedException
+from common.exception.security_group_exception import (
+    SecurityGroupNotFoundException,
+    SecurityGroupAccessDeniedException,
+    SecurityGroupNameDuplicatedException
+)
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
 from common.util.compensating_transaction import CompensationManager
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class SecurityGroupService:
@@ -46,13 +50,13 @@ class SecurityGroupService:
             sort_order=sort_order,
             with_deleted=with_deleted,
         )
-        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
+        rules: list[SecurityGroupRuleDTO] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
         )
 
-        rule_map: dict[str, list[SecurityGroupRule]] = defaultdict(list)
+        rule_map: dict[str, list[SecurityGroupRuleDTO]] = defaultdict(list)
         for rule in rules:
             rule_map[rule.security_group_openstack_id].append(rule)
 
@@ -108,7 +112,7 @@ class SecurityGroupService:
         if project_id != security_group.project_id:
             raise SecurityGroupAccessDeniedException()
 
-        rules: list[SecurityGroupRule] = await self.neutron_client.get_security_group_rules(
+        rules: list[SecurityGroupRuleDTO] = await self.neutron_client.get_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,
@@ -125,7 +129,7 @@ class SecurityGroupService:
         project_id: int,
         name: str,
         description: str | None,
-        rules: list[SecurityGroupRuleDTO]
+        rules: list[CreateSecurityGroupRuleDTO]
     ) -> SecurityGroupDetailResponse:
         if await self.security_group_repository.exists_by_project_and_name(
             session=session,
@@ -134,28 +138,23 @@ class SecurityGroupService:
         ):
             raise SecurityGroupNameDuplicatedException()
 
-        try:
-            security_group_openstack_id: str = await self.neutron_client.create_security_group(
+        openstack_security_group: SecurityGroupDTO = await self.neutron_client.create_security_group(
+            client=client,
+            keystone_token=keystone_token,
+            name=name,
+            description=description
+        )
+
+        compensating_tx.add_task(
+            lambda: self.neutron_client.delete_security_group(
                 client=client,
                 keystone_token=keystone_token,
-                name=name,
-                description=description
+                security_group_openstack_id=openstack_security_group.openstack_id
             )
-
-            compensating_tx.add_task(
-                lambda: self.neutron_client.delete_security_group(
-                    client=client,
-                    keystone_token=keystone_token,
-                    security_group_openstack_id=security_group_openstack_id
-                )
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 409:
-                raise SecurityGroupNameDuplicatedException()
-            raise ex
+        )
 
         security_group: SecurityGroup = SecurityGroup.create(
-            openstack_id=security_group_openstack_id,
+            openstack_id=openstack_security_group.openstack_id,
             project_id=project_id,
             name=name,
             description=description,
@@ -167,39 +166,30 @@ class SecurityGroupService:
         )
 
         if rules:
-            try:
-                security_group_rules: list[SecurityGroupRule] = [
-                    SecurityGroupRule(
-                        id="",
-                        security_group_openstack_id=security_group_openstack_id,
-                        protocol=rule.protocol,
-                        direction=rule.direction,
-                        port_range_min=rule.port_range_min,
-                        port_range_max=rule.port_range_max,
-                        remote_ip_prefix=rule.remote_ip_prefix,
-                        created_at=datetime.now(timezone.utc),
-                        updated_at=datetime.now(timezone.utc),
-                    )
-                    for rule in rules
-                ]
+            default_rules: list[SecurityGroupRuleDTO] = openstack_security_group.rules
 
-                await self.neutron_client.create_security_group_rules(
-                    client=client,
-                    keystone_token=keystone_token,
-                    security_group_rules=security_group_rules
+            # 자동으로 생성된 default rule 과 동일한 룰 제외
+            new_rules: list[CreateSecurityGroupRuleDTO] = [
+                rule for rule in rules
+                if not any(
+                    default_rule.protocol == rule.protocol and
+                    default_rule.direction == rule.direction and
+                    default_rule.port_range_min == rule.port_range_min and
+                    default_rule.port_range_max == rule.port_range_max and
+                    default_rule.remote_ip_prefix == rule.remote_ip_prefix
+                    for default_rule in default_rules
                 )
-            except OpenStackException as ex:
-                if ex.openstack_status_code == 404:
-                    raise SecurityGroupNotFoundException()
-                if ex.openstack_status_code == 409:
-                    raise SecurityGroupRuleDuplicatedException()
-                raise ex
+            ]
 
-        # 생성 된 룰 조회(생성한 룰셋 + default rule)
-        security_group_rules = await self.neutron_client.get_security_group_rules(
-            client=client,
-            keystone_token=keystone_token,
-            security_group_openstack_id=security_group_openstack_id
-        )
+            security_group_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
+                client=client,
+                keystone_token=keystone_token,
+                new_rules=new_rules,
+                security_group_openstack_id=security_group.openstack_id,
+            )
+        else:
+            security_group_rules = []
+
+        security_group_rules: list[SecurityGroupRuleDTO] = security_group_rules + openstack_security_group.rules
 
         return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
