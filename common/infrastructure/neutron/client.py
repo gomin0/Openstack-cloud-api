@@ -1,6 +1,6 @@
 from httpx import AsyncClient, Response
 
-from common.domain.floating_ip.dto import CreateFloatingIpDTO
+from common.domain.floating_ip.dto import FloatingIpDTO
 from common.domain.security_group.entity import SecurityGroupRule
 from common.domain.security_group.enum import SecurityGroupRuleDirection
 from common.infrastructure.openstack_client import OpenStackClient
@@ -56,7 +56,7 @@ class NeutronClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         floating_network_id: str,
-    ) -> CreateFloatingIpDTO:
+    ) -> FloatingIpDTO:
         response: Response = await self.request(
             client=client,
             method="POST",
@@ -66,7 +66,7 @@ class NeutronClient(OpenStackClient):
         )
         data = response.json()["floatingip"]
 
-        return CreateFloatingIpDTO(
+        return FloatingIpDTO(
             openstack_id=data["id"],
             status=data["status"],
             address=data["floating_ip_address"],
