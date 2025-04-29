@@ -1,4 +1,3 @@
-import logging
 from collections import defaultdict
 
 from fastapi import Depends
@@ -19,8 +18,6 @@ from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
 from common.util.compensating_transaction import CompensationManager
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 class SecurityGroupService:
@@ -138,6 +135,7 @@ class SecurityGroupService:
         ):
             raise SecurityGroupNameDuplicatedException()
 
+        # (OpenStack) 보안 그룹 생성
         openstack_security_group: SecurityGroupDTO = await self.neutron_client.create_security_group(
             client=client,
             keystone_token=keystone_token,
@@ -152,6 +150,7 @@ class SecurityGroupService:
             )
         )
 
+        # (DB) 보안 그룹 생성
         security_group: SecurityGroup = SecurityGroup.create(
             openstack_id=openstack_security_group.openstack_id,
             project_id=project_id,
@@ -163,28 +162,26 @@ class SecurityGroupService:
             security_group=security_group
         )
 
-        security_group_rules = []
+        # 보안 그룹 rule 생성(default rule 과 다른 룰만)
+        security_group_rules: list[SecurityGroupRuleDTO] = []
         if rules:
-            default_rules: list[SecurityGroupRuleDTO] = openstack_security_group.rules
-
-            # 자동으로 생성된 default rule 과 동일한 룰 제외
-            new_rules: list[CreateSecurityGroupRuleDTO] = [
-                rule for rule in rules
-                if not any(
-                    default_rule.protocol == rule.protocol and
-                    default_rule.direction == rule.direction and
-                    default_rule.port_range_min == rule.port_range_min and
-                    default_rule.port_range_max == rule.port_range_max and
-                    default_rule.remote_ip_prefix == rule.remote_ip_prefix
-                    for default_rule in default_rules
-                )
+            default_rule_keys = {
+                (r.protocol, r.direction, r.port_range_min, r.port_range_max, r.remote_ip_prefix)
+                for r in openstack_security_group.rules
+            }
+            new_rules = [
+                r for r in rules
+                if (r.protocol, r.direction, r.port_range_min, r.port_range_max, r.remote_ip_prefix)
+                   not in default_rule_keys
             ]
-            security_group_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
-                client=client,
-                keystone_token=keystone_token,
-                new_rules=new_rules,
-                security_group_openstack_id=security_group.openstack_id,
-            )
+
+            if new_rules:
+                security_group_rules = await self.neutron_client.create_security_group_rules(
+                    client=client,
+                    keystone_token=keystone_token,
+                    new_rules=new_rules,
+                    security_group_openstack_id=security_group.openstack_id,
+                )
 
         security_group_rules: list[SecurityGroupRuleDTO] = security_group_rules + openstack_security_group.rules
 
