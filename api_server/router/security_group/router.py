@@ -3,10 +3,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
-from common.application.security_group.dto import SecurityGroupRuleDTO
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.application.security_group.service import SecurityGroupService
 from common.domain.enum import SortOrder
+from common.domain.security_group.dto import CreateSecurityGroupRuleDTO
 from common.domain.security_group.enum import SecurityGroupSortOption
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
@@ -86,8 +86,8 @@ async def create_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    rules = [
-        SecurityGroupRuleDTO(
+    rules: list[CreateSecurityGroupRuleDTO] = [
+        CreateSecurityGroupRuleDTO(
             protocol=rule.protocol,
             direction=rule.direction,
             port_range_min=rule.port_range_min,

@@ -2,13 +2,14 @@ from datetime import datetime
 
 from pydantic import Field, BaseModel, ConfigDict
 
-from common.domain.security_group.entity import SecurityGroup, SecurityGroupRule
+from common.domain.security_group.dto import SecurityGroupRuleDTO
+from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupRuleDirection
 from common.domain.server.entity import Server
 
 
 class SecurityGroupRuleResponse(BaseModel):
-    id: str = Field(description="룰셋 ID")
+    openstack_id: str = Field(description="룰셋 ID")
     protocol: str | None = Field(default=None, description="프로토콜", examples=["tcp"])
     direction: SecurityGroupRuleDirection = Field(description="방향", examples=["ingress"])
     port_range_min: int | None = Field(default=None, description="시작 포트", examples=[22])
@@ -20,7 +21,7 @@ class SecurityGroupRuleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_entity(cls, security_group_rule: SecurityGroupRule) -> "SecurityGroupRuleResponse":
+    def from_entity(cls, security_group_rule: SecurityGroupRuleDTO) -> "SecurityGroupRuleResponse":
         return cls.model_validate(security_group_rule)
 
 
@@ -52,7 +53,7 @@ class SecurityGroupDetailResponse(BaseModel):
     async def from_entity(
         cls,
         security_group: SecurityGroup,
-        rules: list[SecurityGroupRule]
+        rules: list[SecurityGroupRuleDTO]
     ) -> "SecurityGroupDetailResponse":
         servers: list[Server] = await security_group.servers
         return cls(

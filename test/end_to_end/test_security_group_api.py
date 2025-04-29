@@ -152,7 +152,14 @@ async def test_create_security_group_success(client, db_session, mock_async_clie
     def request_side_effect(method, url, *args, **kwargs):
         mock_response = Mock()
         if method == "POST" and "/v2.0/security-groups" in url:
-            mock_response.json.return_value = {"security_group": {"id": "openstack-sg-id"}}
+            mock_response.json.return_value = {
+                "security_group": {
+                    "id": "openstack-sg-id",
+                    "name": "sg",
+                    "description": "test",
+                    "security_group_rules": []
+                }
+            }
         elif method == "POST" and "/v2.0/security-group-rules" in url:
             mock_response.json.return_value = {}
         elif method == "GET" and "/v2.0/security-group-rules" in url:
