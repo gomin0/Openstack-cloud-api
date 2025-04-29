@@ -207,6 +207,52 @@ def create_security_group_stub(
     )
 
 
+def create_floating_ip(
+    floating_ip_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    status: FloatingIpStatus = FloatingIpStatus.DOWN,
+    address: str = random_string()
+) -> FloatingIp:
+    return FloatingIp(
+        id=floating_ip_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        status=status,
+        address=address,
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
+    )
+
+
+def create_floating_ip_stub(
+    project_id: int,
+    server: Server | None = None,
+    floating_ip_id: int = random_int(),
+    openstack_id: str = random_string(),
+    status: FloatingIpStatus = FloatingIpStatus.DOWN,
+    address: str = random_string(),
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None,
+) -> FloatingIp:
+    return FloatingIpStub(
+        id=floating_ip_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        server_id=server.id if server else None,
+        status=status,
+        address=address,
+        lifecycle_status=LifecycleStatus.ACTIVE,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
+        server=server
+    )
+
+
 def create_volume(
     volume_id: int = random_int(),
     openstack_id: str = random_string(),
@@ -318,6 +364,16 @@ class UserStub(User):
     @async_property
     async def projects(self) -> list[Project]:
         return self._mock_projects
+
+
+class FloatingIpStub(FloatingIp):
+    def __init__(self, server: Server | None = None, **kwargs: Any):
+        super().__init__(**kwargs)
+        self._mock_server: Server | None = server
+
+    @async_property
+    async def server(self) -> Server | None:
+        return self._mock_server
 
 
 class SecurityGroupStub(SecurityGroup):

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpStatus
+from common.domain.server.entity import Server
 
 
 class ServerResponse(BaseModel):
@@ -11,6 +12,10 @@ class ServerResponse(BaseModel):
     name: str = Field(description="서버 이름", examples=["server"])
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, server: Server) -> "ServerResponse":
+        return cls.model_validate(server)
 
 
 class FloatingIpResponse(BaseModel):
@@ -41,6 +46,20 @@ class FloatingIpDetailResponse(BaseModel):
     deleted_at: datetime | None = Field(default=None, description="삭제일")
 
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    async def from_entity(cls, floating_ip: FloatingIp) -> "FloatingIpDetailResponse":
+        server: Server = await floating_ip.server
+        return cls(
+            id=floating_ip.id,
+            address=floating_ip.address,
+            project_id=floating_ip.project_id,
+            status=floating_ip.status,
+            server=ServerResponse.from_entity(server) if server else None,
+            created_at=floating_ip.created_at,
+            updated_at=floating_ip.updated_at,
+            deleted_at=floating_ip.deleted_at
+        )
 
 
 class FloatingIpDetailsResponse(BaseModel):

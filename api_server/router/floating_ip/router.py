@@ -29,9 +29,16 @@ router = APIRouter(prefix="/floating-ips", tags=["floating-ip"])
 async def find_floating_ips(
     sort_by: FloatingIpSortOption = Query(default=FloatingIpSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    floating_ip_service: FloatingIpService = Depends(),
+    session: AsyncSession = Depends(get_db_session)
 ) -> FloatingIpDetailsResponse:
-    raise NotImplementedError()
+    return await floating_ip_service.find_floating_ips_details(
+        session=session,
+        project_id=current_user.project_id,
+        sort_by=sort_by,
+        order=order
+    )
 
 
 @router.get(
@@ -46,9 +53,15 @@ async def find_floating_ips(
 )
 async def get_floating_ip(
     floating_ip_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    floating_ip_service: FloatingIpService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
 ) -> FloatingIpDetailResponse:
-    raise NotImplementedError()
+    return await floating_ip_service.get_floating_ip_detail(
+        session=session,
+        project_id=current_user.project_id,
+        floating_ip_id=floating_ip_id,
+    )
 
 
 @router.post(
