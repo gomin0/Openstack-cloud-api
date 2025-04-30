@@ -104,6 +104,15 @@ async def create_floating_ip(
 )
 async def delete_floating_ip(
     floating_ip_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    floating_ip_service: FloatingIpService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
 ) -> None:
-    raise NotImplementedError()
+    await floating_ip_service.delete_floating_ip(
+        session=session,
+        client=client,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+        floating_ip_id=floating_ip_id,
+    )
