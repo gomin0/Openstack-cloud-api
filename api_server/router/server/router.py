@@ -100,7 +100,7 @@ async def delete_server(
     raise NotImplementedError()
 
 
-@router.put(
+@router.post(
     path="/{server_id}/status",
     status_code=202,
     summary="서버 상태 변경",
@@ -108,6 +108,7 @@ async def delete_server(
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "서버에 대한 접근 권한이 없는 경우"},
         404: {"description": "서버를 찾을 수 없는 경우"},
+        409: {"description": "서버를 시작/정지할 수 없는 상태인 경우"},
     }
 )
 async def change_server_status(
