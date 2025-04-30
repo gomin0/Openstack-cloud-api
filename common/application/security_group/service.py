@@ -109,3 +109,33 @@ class SecurityGroupService:
             security_group_openstack_id=security_group.openstack_id,
         )
         return await SecurityGroupDetailResponse.from_entity(security_group, rules)
+
+    @transactional()
+    async def delete_security_group(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        project_id: int,
+        keystone_token: str,
+        security_group_id: int,
+    ) -> None:
+        security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
+            session=session,
+            security_group_id=security_group_id,
+        )
+        if not security_group:
+            raise SecurityGroupNotFoundException()
+
+        if security_group.project_id != project_id:
+            raise SecurityGroupDeletePermissionDeniedException()
+
+        if await self.server_security_group_repository.exists_by_security_group(
+            session=session,
+            security_group_id=security_group_id,
+        ):
+            raise AttachedSecurityGroupDeletionException()
+
+        # OpenStack 삭제 요청 -> 삭제 되었는지 polling
+
+        # 삭제된 경우
+        security_group.delete()
