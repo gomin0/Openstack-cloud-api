@@ -30,6 +30,10 @@ class FloatingIpResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @classmethod
+    def from_entity(cls, floating_ip: FloatingIp) -> "FloatingIpResponse":
+        return cls.model_validate(floating_ip)
+
 
 class FloatingIpDetailResponse(BaseModel):
     id: int = Field(description="플로팅 IP ID", examples=[1])

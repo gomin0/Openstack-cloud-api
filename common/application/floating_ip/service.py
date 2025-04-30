@@ -1,21 +1,28 @@
 from fastapi import Depends
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse
+from common.application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, \
+    FloatingIpResponse
 from common.domain.enum import SortOrder
+from common.domain.floating_ip.dto import FloatingIpDTO
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpSortOption
 from common.exception.floating_ip_exception import FloatingIpNotFoundException, FloatingIpAccessDeniedException
 from common.infrastructure.database import transactional
 from common.infrastructure.floating_ip.repository import FloatingIpRepository
+from common.infrastructure.neutron.client import NeutronClient
+from common.util.compensating_transaction import CompensationManager
 
 
 class FloatingIpService:
     def __init__(
         self,
-        floating_ip_repository: FloatingIpRepository = Depends()
+        floating_ip_repository: FloatingIpRepository = Depends(),
+        neutron_client: NeutronClient = Depends(),
     ):
         self.floating_ip_repository = floating_ip_repository
+        self.neutron_client = neutron_client
 
     @transactional()
     async def find_floating_ips_details(
@@ -60,3 +67,38 @@ class FloatingIpService:
             raise FloatingIpAccessDeniedException()
 
         return await FloatingIpDetailResponse.from_entity(floating_ip)
+
+    @transactional()
+    async def create_floating_ip(
+        self,
+        compensating_tx: CompensationManager,
+        session: AsyncSession,
+        client: AsyncClient,
+        project_id: int,
+        keystone_token: str,
+        floating_network_id: str,
+    ) -> FloatingIpResponse:
+        floating_ip_info: FloatingIpDTO = await self.neutron_client.create_floating_ip(
+            client=client,
+            floating_network_id=floating_network_id,
+            keystone_token=keystone_token,
+        )
+        floating_ip_openstack_id: str = floating_ip_info.openstack_id
+        floating_ip_address: str = floating_ip_info.address
+
+        compensating_tx.add_task(
+            lambda: self.neutron_client.delete_floating_ip(
+                client=client,
+                floating_ip_openstack_id=floating_ip_openstack_id,
+                keystone_token=keystone_token,
+            )
+        )
+
+        floating_ip: FloatingIp = FloatingIp.create(
+            openstack_id=floating_ip_openstack_id,
+            project_id=project_id,
+            address=floating_ip_address,
+        )
+        floating_ip: FloatingIp = await self.floating_ip_repository.create(session, floating_ip=floating_ip)
+
+        return FloatingIpResponse.from_entity(floating_ip)

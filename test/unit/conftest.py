@@ -112,5 +112,8 @@ def volume_service(mock_volume_repository, mock_cinder_client):
 
 
 @pytest.fixture(scope='function')
-def floating_ip_service(mock_floating_ip_repository):
-    return FloatingIpService(floating_ip_repository=mock_floating_ip_repository)
+def floating_ip_service(mock_floating_ip_repository, mock_neutron_client):
+    return FloatingIpService(
+        floating_ip_repository=mock_floating_ip_repository,
+        neutron_client=mock_neutron_client
+    )

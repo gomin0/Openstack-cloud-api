@@ -29,6 +29,7 @@ class Envs(BaseSettings):
     KEYSTONE_PORT: int
     NEUTRON_PORT: int
     CINDER_PORT: int
+    NEUTRON_PORT: int
 
 
 @lru_cache

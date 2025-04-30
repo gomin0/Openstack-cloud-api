@@ -39,3 +39,23 @@ class FloatingIp(Base):
     @async_property
     async def server(self) -> Server:
         return await self.awaitable_attrs._server
+
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        address: str,
+    ) -> "FloatingIp":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            server_id=None,
+            status=FloatingIpStatus.DOWN,
+            address=address,
+            lifecycle_status=LifecycleStatus.ACTIVE,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            deleted_at=None,
+        )

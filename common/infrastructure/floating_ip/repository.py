@@ -60,6 +60,15 @@ class FloatingIpRepository:
 
         return result
 
+    async def create(
+        self,
+        session: AsyncSession,
+        floating_ip: FloatingIp
+    ) -> FloatingIp:
+        session.add(floating_ip)
+        await session.flush()
+        return floating_ip
+
     @staticmethod
     def _with_relations():
         return joinedload(FloatingIp._server)
