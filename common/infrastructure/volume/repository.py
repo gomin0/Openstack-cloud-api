@@ -15,6 +15,14 @@ class VolumeRepository:
             )
         )
 
+    async def find_by_id(self, session: AsyncSession, volume_id: int) -> Volume | None:
+        return await session.scalar(
+            select(Volume).where(
+                Volume.lifecycle_status == LifecycleStatus.ACTIVE,
+                Volume.id == volume_id
+            )
+        )
+
     async def find_by_openstack_id(self, session: AsyncSession, openstack_id: str) -> Volume | None:
         return await session.scalar(
             select(Volume).where(

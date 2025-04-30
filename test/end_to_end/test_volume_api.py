@@ -4,6 +4,7 @@ from httpx import Response
 
 from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
+from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from test.util.database import add_to_db
 from test.util.factory import create_access_token, create_volume, create_project, create_domain
@@ -89,6 +90,120 @@ async def test_create_volume_fail_when_name_already_exists(client, db_session):
             "description": "This volume is...",
             "size": 1,
             "volume_type_id": "64abcd22-a30b-4982-8f82-332e89ff4bf7",
+        }
+    )
+
+    # then
+    response_body: dict = response.json()
+    assert response.status_code == 409
+    assert response_body["code"] == "VOLUME_NAME_DUPLICATE"
+
+
+async def test_update_volume_info_success(client, db_session):
+    # given
+    new_name: str = random_string()
+    new_description: str = random_string()
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.put(
+        url=f"/volumes/{volume.id}/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={
+            "name": new_name,
+            "description": new_description,
+        }
+    )
+
+    # then
+    response_body: dict = response.json()
+    assert response.status_code == 200
+    assert response_body["name"] == new_name
+    assert response_body["description"] == new_description
+
+
+async def test_update_volume_info_fail_volume_not_found(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.put(
+        url=f"/volumes/1/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={
+            "name": random_string(),
+            "description": random_string(),
+        }
+    )
+
+    # then
+    response_body: dict = response.json()
+    assert response.status_code == 404
+    assert response_body["code"] == "VOLUME_NOT_FOUND"
+
+
+async def test_update_volume_info_fail_when_has_not_permission_to_update_volume(client, db_session):
+    # given
+    project_id: int = 1
+    requesting_project_id: int = 2
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(project_id=project_id, domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=requesting_project_id)
+    response: Response = await client.put(
+        url=f"/volumes/{volume.id}/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={
+            "name": random_string(),
+            "description": random_string(),
+        }
+    )
+
+    # then
+    response_body: dict = response.json()
+    assert response.status_code == 403
+    assert response_body["code"] == "VOLUME_UPDATE_PERMISSION_DENIED"
+
+
+async def test_update_volume_info_fail_when_new_name_is_already_exists(client, db_session):
+    # given
+    new_name: str = random_string()
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_volume(volume_id=1, project_id=project.id, name=new_name))
+    volume: Volume = await add_to_db(db_session, create_volume(volume_id=2, project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.put(
+        url=f"/volumes/{volume.id}/info",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={
+            "name": new_name,
+            "description": random_string(),
         }
     )
 
