@@ -70,6 +70,13 @@ class Volume(Base):
             deleted_at=None,
         )
 
+    def is_owned_by(self, project_id: int) -> bool:
+        return self.project_id == project_id
+
+    def update_info(self, name: str, description: str):
+        self.name = name
+        self.description = description
+
     def complete_creation(self, attached: bool):
         if attached:
             self.status = VolumeStatus.IN_USE

@@ -105,9 +105,17 @@ async def create_volume(
 async def update_volume_info(
     volume_id: int,
     request: UpdateVolumeInfoRequest,
-    _: CurrentUser = Depends(get_current_user),
+    request_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
 ) -> VolumeResponse:
-    raise NotImplementedError()
+    return await volume_service.update_volume_info(
+        session,
+        current_project_id=request_user.project_id,
+        volume_id=volume_id,
+        name=request.name,
+        description=request.description,
+    )
 
 
 @router.put(

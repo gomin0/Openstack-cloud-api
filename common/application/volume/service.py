@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.application.volume.response import VolumeResponse
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
-from common.exception.volume_exception import VolumeNameDuplicateException, VolumeNotFoundException
+from common.exception.volume_exception import (
+    VolumeNameDuplicateException, VolumeNotFoundException, VolumeUpdatePermissionDeniedException
+)
 from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
 from common.infrastructure.volume.repository import VolumeRepository
@@ -125,6 +127,32 @@ class VolumeService:
             )
             volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
             volume.fail_creation()
+
+    @transactional()
+    async def update_volume_info(
+        self,
+        session: AsyncSession,
+        current_project_id: int,
+        volume_id: int,
+        name: str,
+        description: str,
+    ) -> VolumeResponse:
+        volume: Volume | None = await self.volume_repository.find_by_id(session=session, volume_id=volume_id)
+        if volume is None:
+            raise VolumeNotFoundException()
+
+        if not volume.is_owned_by(project_id=current_project_id):
+            raise VolumeUpdatePermissionDeniedException()
+
+        if volume.name != name and await self.volume_repository.exists_by_name_and_project(
+            session=session,
+            name=name,
+            project_id=current_project_id
+        ):
+            raise VolumeNameDuplicateException()
+
+        volume.update_info(name=name, description=description)
+        return VolumeResponse.from_entity(volume)
 
     async def _get_volume_by_openstack_id(
         self,
