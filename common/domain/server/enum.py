@@ -27,8 +27,3 @@ class ServerStatus(Enum):
 class ServerSortOption(Enum):
     NAME = "name"
     CREATED_AT = "created_at"
-
-
-class ServerAction(Enum):
-    START = "START"
-    STOP = "STOP"

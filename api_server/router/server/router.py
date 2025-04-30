@@ -4,7 +4,7 @@ from api_server.router.server.request import UpdateServerInfoRequest, CreateServ
 from common.application.server.response import ServerResponse, ServerDetailResponse, ServerDetailsResponse, \
     ServerVncUrlResponse
 from common.domain.enum import SortOrder
-from common.domain.server.enum import ServerSortOption, ServerAction
+from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.util.auth_token_manager import get_current_user
 from common.util.context import CurrentUser
 
@@ -21,8 +21,8 @@ router = APIRouter(prefix="/servers", tags=["server"])
 )
 async def find_servers(
     ids: list[int] | None = Query(default=None, description="ID 검색"),
+    is_exclude_ids: bool = Query(default=False, description="ID 포함 검색, 제외 검색 여부"),
     name: str | None = Query(default=None, description="이름 검색"),
-    name_like: str | None = Query(default=None),
     sort_by: ServerSortOption = Query(default=ServerSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.DESC),
     _: CurrentUser = Depends(get_current_user),
@@ -51,7 +51,7 @@ async def find_servers(
     summary="서버 생성",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
-        409: {"description": "사용하려는 서버 이름이 이미 사용중인 볼륨 이름인 경우"},
+        409: {"description": "사용하려는 서버 이름이 이미 사용중인 이름인 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
     }
 )
@@ -74,7 +74,7 @@ async def create_server(
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
     }
 )
-async def update_volume_info(
+async def update_server_info(
     server_id: int,
     request: UpdateServerInfoRequest,
     _: CurrentUser = Depends(get_current_user),
@@ -100,7 +100,7 @@ async def delete_server(
     raise NotImplementedError()
 
 
-@router.post(
+@router.put(
     path="/{server_id}/status",
     status_code=202,
     summary="서버 상태 변경",
@@ -111,16 +111,16 @@ async def delete_server(
         409: {"description": "서버를 시작/정지할 수 없는 상태인 경우"},
     }
 )
-async def change_server_status(
+async def update_server_status(
     server_id: int,
-    action: ServerAction = Query(),
+    action: ServerStatus = Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)"),
     _: CurrentUser = Depends(get_current_user),
 ) -> None:
     raise NotImplementedError()
 
 
 @router.get(
-    path="/{server_id}/vnc",
+    path="/{server_id}/vnc-url",
     status_code=200,
     summary="서버 VNC 접속 기능(링크) 제공",
     responses={
