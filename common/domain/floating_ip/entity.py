@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import timezone, datetime
 
 from async_property import async_property
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum
