@@ -22,3 +22,13 @@ class ServerStatus(Enum):
     SUSPENDED = "SUSPENDED"
     UNKNOWN = "UNKNOWN"
     VERIFY_RESIZE = "VERIFY_RESIZE"
+
+
+class ServerSortOption(Enum):
+    NAME = "name"
+    CREATED_AT = "created_at"
+
+
+class ServerAction(Enum):
+    START = "START"
+    STOP = "STOP"
