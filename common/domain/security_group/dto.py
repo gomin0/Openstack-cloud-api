@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from pydantic.dataclasses import dataclass
 
@@ -14,8 +14,8 @@ class SecurityGroupRuleDTO:
     port_range_min: int | None
     port_range_max: int | None
     remote_ip_prefix: str | None
-    created_at: datetime = datetime.now(timezone.utc)
-    updated_at: datetime = datetime.now(timezone.utc)
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass
