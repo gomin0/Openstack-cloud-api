@@ -1,5 +1,6 @@
 from httpx import AsyncClient, Response
 
+from common.domain.floating_ip.dto import FloatingIpDTO
 from common.domain.security_group.dto import SecurityGroupRuleDTO, SecurityGroupDTO, CreateSecurityGroupRuleDTO
 from common.domain.security_group.enum import SecurityGroupRuleDirection
 from common.infrastructure.openstack_client import OpenStackClient
@@ -13,7 +14,7 @@ class NeutronClient(OpenStackClient):
     _NEUTRON_PORT: int = envs.NEUTRON_PORT
     _NEUTRON_URL: str = f"{_OPEN_STACK_URL}:{_NEUTRON_PORT}"
 
-    async def get_security_group_rules(
+    async def find_security_group_rules(
         self,
         client: AsyncClient,
         keystone_token: str,
@@ -146,4 +147,38 @@ class NeutronClient(OpenStackClient):
             method="DELETE",
             url=f"{self._NEUTRON_URL}/v2.0/security-groups/{security_group_openstack_id}",
             headers={"X-Auth-Token": keystone_token}
+        )
+
+    async def create_floating_ip(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        floating_network_id: str,
+    ) -> FloatingIpDTO:
+        response: Response = await self.request(
+            client=client,
+            method="POST",
+            url=f"{self._NEUTRON_URL}/v2.0/floatingips",
+            headers={"X-Auth-Token": keystone_token},
+            json={"floatingip": {"floating_network_id": floating_network_id}}
+        )
+        data = response.json()["floatingip"]
+
+        return FloatingIpDTO(
+            openstack_id=data["id"],
+            status=data["status"],
+            address=data["floating_ip_address"],
+        )
+
+    async def delete_floating_ip(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        floating_ip_openstack_id: str,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="DELETE",
+            url=f"{self._NEUTRON_URL}/v2.0/floatingips/{floating_ip_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
         )

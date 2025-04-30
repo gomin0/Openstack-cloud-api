@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.auth.service import AuthService
+from common.application.floating_ip.service import FloatingIpService
 from common.application.project.service import ProjectService
 from common.application.security_group.service import SecurityGroupService
 from common.application.user.service import UserService
@@ -51,6 +52,11 @@ def mock_volume_repository():
 
 @pytest.fixture(scope='function')
 def mock_security_group_repository():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
+def mock_floating_ip_repository():
     return AsyncMock()
 
 
@@ -103,3 +109,11 @@ def security_group_service(
 @pytest.fixture(scope='function')
 def volume_service(mock_volume_repository, mock_cinder_client):
     return VolumeService(volume_repository=mock_volume_repository, cinder_client=mock_cinder_client)
+
+
+@pytest.fixture(scope='function')
+def floating_ip_service(mock_floating_ip_repository, mock_neutron_client):
+    return FloatingIpService(
+        floating_ip_repository=mock_floating_ip_repository,
+        neutron_client=mock_neutron_client
+    )

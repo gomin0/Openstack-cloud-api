@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
@@ -21,7 +23,7 @@ async def test_find_security_groups_success(
     project = Project(id=1, name="project", openstack_id="pos", domain_id=1)
     security_group = create_security_group_stub(security_group_id=security_group_id)
     mock_security_group_repository.find_all_by_project_id.return_value = [security_group]
-    mock_neutron_client.get_security_group_rules.return_value = [
+    mock_neutron_client.find_security_group_rules.return_value = [
         SecurityGroupRuleDTO(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
@@ -30,6 +32,8 @@ async def test_find_security_groups_success(
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
     ]
 
@@ -46,7 +50,7 @@ async def test_find_security_groups_success(
     assert len(result.security_groups) == 1
     assert isinstance(result, SecurityGroupDetailsResponse)
     mock_security_group_repository.find_all_by_project_id.assert_called_once()
-    mock_neutron_client.get_security_group_rules.assert_called_once()
+    mock_neutron_client.find_security_group_rules.assert_called_once()
 
 
 async def test_get_security_group_success(
@@ -66,7 +70,7 @@ async def test_get_security_group_success(
         project_id=1
     )
     mock_security_group_repository.find_by_id.return_value = security_group
-    mock_neutron_client.get_security_group_rules.return_value = [
+    mock_neutron_client.find_security_group_rules.return_value = [
         SecurityGroupRuleDTO(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
@@ -75,6 +79,8 @@ async def test_get_security_group_success(
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
     ]
 
@@ -92,7 +98,7 @@ async def test_get_security_group_success(
     assert result.id == security_group_id
     assert len(result.rules) == 1
     mock_security_group_repository.find_by_id.assert_called_once()
-    mock_neutron_client.get_security_group_rules.assert_called_once_with(
+    mock_neutron_client.find_security_group_rules.assert_called_once_with(
         client=mock_async_client,
         keystone_token=token,
         security_group_openstack_id=security_group_openstack_id
