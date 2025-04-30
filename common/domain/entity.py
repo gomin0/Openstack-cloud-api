@@ -37,6 +37,7 @@ class SoftDeleteMixin:
 
     def delete(self) -> None:
         self.lifecycle_status = LifecycleStatus.DELETED
+        self.deleted_at = datetime.now(timezone.utc)
 
 
 class BaseEntity(AsyncAttrs, DeclarativeBase, TimestampMixin):

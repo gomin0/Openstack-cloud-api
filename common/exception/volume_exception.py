@@ -62,3 +62,12 @@ class VolumeAlreadyDeletedException(CustomException):
             status_code=409,
             message="이미 삭제된 볼륨입니다.",
         )
+
+
+class VolumeDeletionFailedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="VOLUME_DELETION_FAILED_EXCEPTION",
+            status_code=500,
+            message="볼륨 삭제 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
+        )
