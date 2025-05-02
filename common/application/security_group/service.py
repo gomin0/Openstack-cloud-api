@@ -1,4 +1,3 @@
-import logging
 from collections import defaultdict
 
 import backoff
@@ -23,8 +22,6 @@ from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
 from common.util.compensating_transaction import CompensationManager
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 class SecurityGroupService:
