@@ -42,7 +42,7 @@ async def find_servers(
         404: {"description": "해당 ID의 서버를 찾을 수 없는 경우"}
     }
 )
-async def find_servers(
+async def get_server(
     server_id: int,
     _: CurrentUser = Depends(get_current_user),
 ) -> ServerDetailResponse:
