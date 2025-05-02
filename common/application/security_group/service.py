@@ -218,9 +218,12 @@ class SecurityGroupService:
         if not security_group.is_owned_by(project_id):
             raise SecurityGroupUpdatePermissionDeniedException()
 
-        if security_group.name != name:
-            if await self.security_group_repository.exists_by_project_and_name(session, project_id, name):
-                raise SecurityGroupNameDuplicatedException()
+        if security_group.name != name and await self.security_group_repository.exists_by_project_and_name(
+            session=session,
+            project_id=project_id,
+            name=name
+        ):
+            raise SecurityGroupNameDuplicatedException()
 
         existing_name: str = security_group.name
 
