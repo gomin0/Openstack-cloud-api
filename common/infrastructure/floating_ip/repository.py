@@ -2,7 +2,7 @@ from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from common.domain.enum import SortOrder, LifecycleStatus
+from common.domain.enum import SortOrder
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpSortOption
 
@@ -22,7 +22,7 @@ class FloatingIpRepository:
         )
 
         if not with_deleted:
-            query = query.where(FloatingIp.lifecycle_status == LifecycleStatus.ACTIVE)
+            query = query.where(FloatingIp.deleted_at.is_(None))
 
         if with_relations:
             query = query.options(self._with_relations())
@@ -50,7 +50,7 @@ class FloatingIpRepository:
 
         if not with_deleted:
             query = query.where(
-                FloatingIp.lifecycle_status == LifecycleStatus.ACTIVE
+                FloatingIp.deleted_at.is_(None)
             )
 
         if with_relations:
