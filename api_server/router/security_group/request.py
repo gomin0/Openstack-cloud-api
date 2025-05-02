@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, UpdateSecurityGroupRuleDTO
 from common.domain.security_group.enum import SecurityGroupRuleDirection
 
 
@@ -9,6 +10,24 @@ class SecurityGroupRuleRequest(BaseModel):
     port_range_min: int | None = Field(default=None, description="시작 포트", examples=[22])
     port_range_max: int | None = Field(default=None, description="종료 포트", examples=[22])
     remote_ip_prefix: str | None = Field(max_length=43, default=None, description="CIDR", examples=["0.0.0.0/0"])
+
+    def to_create_dto(self) -> CreateSecurityGroupRuleDTO:
+        return CreateSecurityGroupRuleDTO(
+            protocol=self.protocol,
+            direction=self.direction,
+            port_range_min=self.port_range_min,
+            port_range_max=self.port_range_max,
+            remote_ip_prefix=self.remote_ip_prefix
+        )
+
+    def to_update_dto(self) -> UpdateSecurityGroupRuleDTO:
+        return UpdateSecurityGroupRuleDTO(
+            protocol=self.protocol,
+            direction=self.direction,
+            port_range_min=self.port_range_min,
+            port_range_max=self.port_range_max,
+            remote_ip_prefix=self.remote_ip_prefix
+        )
 
 
 class CreateSecurityGroupRequest(BaseModel):

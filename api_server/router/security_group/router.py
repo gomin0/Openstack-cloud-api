@@ -86,16 +86,7 @@ async def create_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    rules: list[CreateSecurityGroupRuleDTO] = [
-        CreateSecurityGroupRuleDTO(
-            protocol=rule.protocol,
-            direction=rule.direction,
-            port_range_min=rule.port_range_min,
-            port_range_max=rule.port_range_max,
-            remote_ip_prefix=rule.remote_ip_prefix
-        )
-        for rule in request.rules
-    ]
+    rules: list[CreateSecurityGroupRuleDTO] = [rule.to_create_dto() for rule in request.rules]
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.create_security_group(
             compensating_tx=compensating_tx,
@@ -129,16 +120,7 @@ async def update_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    rules = [
-        UpdateSecurityGroupRuleDTO(
-            protocol=rule.protocol,
-            direction=rule.direction,
-            port_range_min=rule.port_range_min,
-            port_range_max=rule.port_range_max,
-            remote_ip_prefix=rule.remote_ip_prefix
-        )
-        for rule in request.rules
-    ]
+    rules: list[UpdateSecurityGroupRuleDTO] = [rule.to_update_dto() for rule in request.rules]
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.update_security_group_detail(
             compensating_tx=compensating_tx,

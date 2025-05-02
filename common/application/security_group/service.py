@@ -242,24 +242,13 @@ class SecurityGroupService:
         rules_to_delete: list[SecurityGroupRuleDTO] = []
         rules_to_keep: list[SecurityGroupRuleDTO] = []
         for rule in existing_rules:
-            if UpdateSecurityGroupRuleDTO(
-                protocol=rule.protocol,
-                direction=rule.direction,
-                port_range_min=rule.port_range_min,
-                port_range_max=rule.port_range_max,
-                remote_ip_prefix=rule.remote_ip_prefix
-            ) not in rules:
+            if rule.to_dto() not in rules:
                 rules_to_delete.append(rule)
-            else:
-                rules_to_keep.append(rule)
+                continue
+            rules_to_keep.append(rule)
+
         existing_rules_to_compare: list[UpdateSecurityGroupRuleDTO] = [
-            UpdateSecurityGroupRuleDTO(
-                protocol=existing_rule.protocol,
-                direction=existing_rule.direction,
-                port_range_min=existing_rule.port_range_min,
-                port_range_max=existing_rule.port_range_max,
-                remote_ip_prefix=existing_rule.remote_ip_prefix
-            ) for existing_rule in existing_rules
+            existing_rule.to_update_dto() for existing_rule in existing_rules
         ]
         rules_to_add: list[UpdateSecurityGroupRuleDTO] = [
             rule for rule in rules
@@ -301,10 +290,11 @@ class SecurityGroupService:
         # 추가할 새로운 룰셋 생성
         created_rules: list[SecurityGroupRuleDTO] = []
         if rules_to_add:
+            new_rules = [rule.to_create_dto() for rule in rules_to_add]
             created_rules = await self._create_security_group_rules(
                 client=client,
                 keystone_token=keystone_token,
-                rules_to_add=rules_to_add,
+                rules_to_add=new_rules,
                 security_group_openstack_id=security_group_openstack_id,
                 compensating_tx=compensating_tx
             )
@@ -351,23 +341,13 @@ class SecurityGroupService:
         client: AsyncClient,
         security_group_openstack_id: str,
         keystone_token: str,
-        rules_to_add: list[UpdateSecurityGroupRuleDTO],
+        rules_to_add: list[CreateSecurityGroupRuleDTO],
     ) -> list[SecurityGroupRuleDTO]:
-        rules = [
-            CreateSecurityGroupRuleDTO(
-                protocol=rule.protocol,
-                direction=rule.direction,
-                port_range_min=rule.port_range_min,
-                port_range_max=rule.port_range_max,
-                remote_ip_prefix=rule.remote_ip_prefix
-            )
-            for rule in rules_to_add
-        ]
         created_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
             client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group_openstack_id,
-            security_group_rules=rules
+            security_group_rules=rules_to_add
         )
         for rule in created_rules:
             compensating_tx.add_task(
