@@ -105,7 +105,7 @@ async def delete_server(
 
 @router.put(
     path="/{server_id}/status",
-    status_code=HTTP_200_OK,
+    status_code=HTTP_202_ACCEPTED,
     summary="서버 상태 변경",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
