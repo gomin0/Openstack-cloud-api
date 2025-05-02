@@ -15,8 +15,6 @@ class SecurityGroupRuleResponse(BaseModel):
     port_range_min: int | None = Field(default=None, description="시작 포트", examples=[22])
     port_range_max: int | None = Field(default=None, description="종료 포트", examples=[22])
     remote_ip_prefix: str | None = Field(default=None, description="CIDR", examples=["0.0.0.0/0"])
-    created_at: datetime = Field(description="생성일")
-    updated_at: datetime = Field(description="수정일")
 
     model_config = ConfigDict(from_attributes=True)
 
