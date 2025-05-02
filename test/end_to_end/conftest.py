@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from testcontainers.mysql import MySqlContainer
 
 from api_server.main import app
-from common.domain.entity import Base
+from common.domain.entity import BaseEntity
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 
@@ -25,7 +25,7 @@ async def async_engine(mysql_container):
     async_db_url: str = mysql_container.get_connection_url().replace("mysql://", "mysql+aiomysql://")
     engine = create_async_engine(url=async_db_url, echo=True)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(BaseEntity.metadata.create_all)
     yield engine
     await engine.dispose()
 
@@ -50,7 +50,7 @@ async def db_session(async_session_maker):
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def clean_data_before_test(db_session):
-    for table in reversed(Base.metadata.sorted_tables):
+    for table in reversed(BaseEntity.metadata.sorted_tables):
         await db_session.execute(table.delete())
     await db_session.commit()
     yield

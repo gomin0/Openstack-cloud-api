@@ -1,16 +1,16 @@
-from datetime import datetime, timezone
+from datetime import timezone, datetime
 
 from async_property import async_property
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String, DateTime, Enum
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from common.domain.entity import Base
+from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.enum import LifecycleStatus
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.server.entity import Server
 
 
-class FloatingIp(Base):
+class FloatingIp(SoftDeleteBaseEntity):
     __tablename__ = "floating_ip"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
@@ -22,17 +22,6 @@ class FloatingIp(Base):
         nullable=False
     )
     address: Mapped[str] = mapped_column("address", String(15), nullable=False)
-    lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
-        nullable=False,
-        default=LifecycleStatus.ACTIVE
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
     _server: Mapped[Server] = relationship("Server", lazy="select")
 
