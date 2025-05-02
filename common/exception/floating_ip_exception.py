@@ -35,3 +35,12 @@ class AttachedFloatingIpDeletionException(CustomException):
             status_code=409,
             message="서버에 연결된 floating ip는 삭제할 수 없습니다."
         )
+
+
+class FloatingIpAlreadyDeletedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="FLOATING_IP_ALREADY_DELETED",
+            status_code=409,
+            message="이미 삭제된 floating ip 입니다."
+        )

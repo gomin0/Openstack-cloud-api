@@ -8,8 +8,7 @@ from common.domain.enum import SortOrder
 from common.domain.floating_ip.dto import FloatingIpDTO
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpSortOption
-from common.exception.floating_ip_exception import FloatingIpNotFoundException, FloatingIpAccessDeniedException, \
-    FloatingIpDeletePermissionDeniedException, AttachedFloatingIpDeletionException
+from common.exception.floating_ip_exception import FloatingIpNotFoundException, FloatingIpAccessDeniedException
 from common.infrastructure.database import transactional
 from common.infrastructure.floating_ip.repository import FloatingIpRepository
 from common.infrastructure.neutron.client import NeutronClient
@@ -121,12 +120,8 @@ class FloatingIpService:
         if not floating_ip:
             raise FloatingIpNotFoundException()
 
-        if floating_ip.project_id != project_id:
-            raise FloatingIpDeletePermissionDeniedException()
-
-        if floating_ip.server_id != None:
-            raise AttachedFloatingIpDeletionException()
-
+        floating_ip.validate_delete_permission(project_id=project_id)
+        floating_ip.validate_deletable()
         floating_ip.delete()
 
         await self.neutron_client.delete_floating_ip(
