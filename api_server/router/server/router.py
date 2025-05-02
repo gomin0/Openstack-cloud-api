@@ -198,7 +198,7 @@ async def attach_floating_ip_to_server(
 
 
 @router.delete(
-    path="/{server_id}/floating-ips/{volume_id}",
+    path="/{server_id}/floating-ips/{floating_ip_id}",
     status_code=HTTP_200_OK,
     summary="서버에 floating ip 연결 해제",
     responses={
