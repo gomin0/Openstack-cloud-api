@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 
 import backoff
@@ -318,8 +319,10 @@ class SecurityGroupService:
         keystone_token: str,
         rules_to_delete: list[SecurityGroupRuleDTO],
     ) -> None:
+        tasks = []
+
         for rule in rules_to_delete:
-            await self.neutron_client.delete_security_group_rule(
+            delete_task = self.neutron_client.delete_security_group_rule(
                 client=client,
                 keystone_token=keystone_token,
                 security_group_rule_openstack_id=rule.openstack_id
@@ -338,6 +341,9 @@ class SecurityGroupService:
                     )],
                 )
             )
+            tasks.append(delete_task)
+
+        await asyncio.gather(*tasks)
 
     async def _create_security_group_rules(
         self,
