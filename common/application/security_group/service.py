@@ -8,19 +8,24 @@ from common.application.security_group.response import SecurityGroupDetailsRespo
 from common.domain.enum import SortOrder
 from common.domain.security_group.entity import SecurityGroup, SecurityGroupRule
 from common.domain.security_group.enum import SecurityGroupSortOption
-from common.exception.security_group_exception import SecurityGroupNotFoundException, SecurityGroupAccessDeniedException
+from common.exception.security_group_exception import SecurityGroupNotFoundException, \
+    SecurityGroupAccessDeniedException, SecurityGroupDeletePermissionDeniedException, \
+    AttachedSecurityGroupDeletionException
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
+from common.infrastructure.server_security_group.repository import ServerSecurityGroupRepository
 
 
 class SecurityGroupService:
     def __init__(
         self,
         security_group_repository: SecurityGroupRepository = Depends(),
+        server_security_group_repository: ServerSecurityGroupRepository = Depends(),
         neutron_client: NeutronClient = Depends(),
     ):
         self.security_group_repository = security_group_repository
+        self.server_security_group_repository = server_security_group_repository
         self.neutron_client = neutron_client
 
     async def find_security_groups_details(
@@ -135,7 +140,10 @@ class SecurityGroupService:
         ):
             raise AttachedSecurityGroupDeletionException()
 
-        # OpenStack 삭제 요청 -> 삭제 되었는지 polling
-
-        # 삭제된 경우
         security_group.delete()
+
+        await self.neutron_client.delete_security_group(
+            client=client,
+            keystone_token=keystone_token,
+            secuirty_group_openstack_id=security_group.openstack_id
+        )
