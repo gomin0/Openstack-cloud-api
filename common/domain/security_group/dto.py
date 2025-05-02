@@ -60,15 +60,6 @@ class UpdateSecurityGroupRuleDTO:
     port_range_max: int | None
     remote_ip_prefix: str | None
 
-    def to_dto(self) -> "UpdateSecurityGroupRuleDTO":
-        return UpdateSecurityGroupRuleDTO(
-            protocol=self.protocol,
-            direction=self.direction,
-            port_range_min=self.port_range_min,
-            port_range_max=self.port_range_max,
-            remote_ip_prefix=self.remote_ip_prefix,
-        )
-
     def to_create_dto(self) -> "CreateSecurityGroupRuleDTO":
         return CreateSecurityGroupRuleDTO(
             protocol=self.protocol,

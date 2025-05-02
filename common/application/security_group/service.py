@@ -238,7 +238,7 @@ class SecurityGroupService:
             security_group_openstack_id=security_group.openstack_id,
         )
 
-        # 삭제할 룰셋 / 추가할 룰셋 구분
+        # 삭제할 룰셋 / 변경 하지 않을 룰셋 구분
         rules_to_delete: list[SecurityGroupRuleDTO] = []
         rules_to_keep: list[SecurityGroupRuleDTO] = []
         for rule in existing_rules:
@@ -247,9 +247,11 @@ class SecurityGroupService:
                 continue
             rules_to_keep.append(rule)
 
+        # 데이터 변환(SecurityGroupRuleDTO -> UpdateSecurityGroupRuleDTO)
         existing_rules_to_compare: list[UpdateSecurityGroupRuleDTO] = [
             existing_rule.to_update_dto() for existing_rule in existing_rules
         ]
+        # 새로 생성할 룰셋 구분
         rules_to_add: list[UpdateSecurityGroupRuleDTO] = [
             rule for rule in rules
             if rule not in existing_rules_to_compare
@@ -274,7 +276,7 @@ class SecurityGroupService:
                 )
             )
 
-        # rule 에 변경 사항이 없는 경우
+        # rule 에 변경 사항이 없는 경우 early return
         if not rules_to_delete and not rules_to_add:
             return await SecurityGroupDetailResponse.from_entity(security_group, existing_rules)
 
@@ -287,7 +289,7 @@ class SecurityGroupService:
                 security_group_openstack_id=security_group_openstack_id,
                 compensating_tx=compensating_tx
             )
-        # 추가할 새로운 룰셋 생성
+        # 새로운 룰셋 생성
         created_rules: list[SecurityGroupRuleDTO] = []
         if rules_to_add:
             new_rules = [rule.to_create_dto() for rule in rules_to_add]
@@ -310,7 +312,6 @@ class SecurityGroupService:
         rules_to_delete: list[SecurityGroupRuleDTO],
     ) -> None:
         tasks = []
-
         for rule in rules_to_delete:
             delete_task = self.neutron_client.delete_security_group_rule(
                 client=client,
