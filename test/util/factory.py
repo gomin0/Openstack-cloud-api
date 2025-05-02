@@ -265,6 +265,7 @@ def create_volume(
     status: VolumeStatus = VolumeStatus.AVAILABLE,
     size: int = random_int(),
     is_root_volume: bool = False,
+    lifecycle_status: LifecycleStatus = LifecycleStatus.ACTIVE,
 ) -> Volume:
     return Volume(
         id=volume_id,
@@ -278,10 +279,30 @@ def create_volume(
         status=status,
         size=size,
         is_root_volume=is_root_volume,
-        lifecycle_status=LifecycleStatus.ACTIVE,
+        lifecycle_status=lifecycle_status,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
+    )
+
+
+def create_server(
+    server_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    flavor_openstack_id: str = random_string(),
+    name: str = random_string(),
+    description: str = random_string(),
+    status: ServerStatus = ServerStatus.ACTIVE,
+) -> Server:
+    return Server(
+        id=server_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        flavor_openstack_id=flavor_openstack_id,
+        name=name,
+        description=description,
+        status=status,
     )
 
 

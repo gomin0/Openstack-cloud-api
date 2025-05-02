@@ -1,15 +1,16 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import relationship
 
-from common.domain.entity import Base
+from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
 from common.domain.enum import LifecycleStatus
 from common.domain.server.entity import Server
 
 
-class SecurityGroup(Base):
+class SecurityGroup(SoftDeleteBaseEntity):
     __tablename__ = "security_group"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
@@ -17,18 +18,6 @@ class SecurityGroup(Base):
     project_id: Mapped[int] = mapped_column("project_id", BigInteger, ForeignKey("project.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     description: Mapped[str | None] = mapped_column("description", String(255), nullable=True)
-    lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
-        nullable=False,
-        default=LifecycleStatus.ACTIVE
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
 
     _linked_servers: Mapped[list[Server]] = relationship(
         "ServerSecurityGroup", lazy="select", back_populates="_security_group"
@@ -60,19 +49,16 @@ class SecurityGroup(Base):
         )
 
 
-class ServerSecurityGroup(Base):
+class ServerSecurityGroup(BaseEntity):
     __tablename__ = "server_security_group"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
     server_id: Mapped[int] = mapped_column("server_id", BigInteger, ForeignKey("server.id"), nullable=False)
     security_group_id: Mapped[int] = mapped_column(
-        "security_group_id", BigInteger, ForeignKey("security_group.id"), nullable=False
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
+        "security_group_id",
+        BigInteger,
+        ForeignKey("security_group.id"),
+        nullable=False
     )
 
     _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_security_groups")

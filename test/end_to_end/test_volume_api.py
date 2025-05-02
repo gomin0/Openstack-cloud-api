@@ -1,14 +1,13 @@
-from urllib.request import Request
-
-from httpx import Response
+from httpx import Response, Request
 
 from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
+from common.domain.server.entity import Server
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from test.util.database import add_to_db
-from test.util.factory import create_access_token, create_volume, create_project, create_domain
-from test.util.random import random_string
+from test.util.factory import create_access_token, create_volume, create_project, create_domain, create_server
+from test.util.random import random_string, random_int
 
 
 async def test_create_volume_success(
@@ -211,3 +210,114 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(client, d
     response_body: dict = response.json()
     assert response.status_code == 409
     assert response_body["code"] == "VOLUME_NAME_DUPLICATE"
+
+
+async def test_delete_volume_success(client, db_session, mock_async_client):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs) -> Response:
+        if method == "DELETE" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=204,
+                request=Request(url=url, method=method)
+            )
+        elif method == "GET" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=404,
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+
+    # when
+    access_token: str = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.delete(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 204
+
+
+async def test_delete_volume_fail_volume_not_found(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.delete(
+        url=f"/volumes/{random_int()}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json().get("code") == "VOLUME_NOT_FOUND"
+
+
+async def test_delete_volume_fail_when_has_not_permission_to_delete_volume(client, db_session):
+    # given
+    project_id: int = 1
+    requesting_project_id: int = 2
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(project_id=project_id, domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=requesting_project_id)
+    response: Response = await client.delete(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json().get("code") == "VOLUME_DELETE_PERMISSION_DENIED"
+
+
+async def test_delete_volume_fail_volume_is_linked_to_server(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server: Server = await add_to_db(db_session, create_server(project_id=project.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, server_id=server.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.delete(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    assert response.json().get("code") == "ATTACHED_VOLUME_DELETION"
+
+
+async def test_delete_volume_fail_volume_status_is_not_deletable(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, status=VolumeStatus.CREATING))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.delete(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    assert response.json().get("code") == "VOLUME_STATUS_INVALID_FOR_DELETION"
