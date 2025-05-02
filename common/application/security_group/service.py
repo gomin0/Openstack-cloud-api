@@ -1,23 +1,30 @@
+import logging
 from collections import defaultdict
 
+import backoff
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.domain.enum import SortOrder
-from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, SecurityGroupRuleDTO, SecurityGroupDTO
+from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, SecurityGroupRuleDTO, SecurityGroupDTO, \
+    UpdateSecurityGroupRuleDTO
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
 from common.exception.security_group_exception import (
     SecurityGroupNotFoundException,
     SecurityGroupAccessDeniedException,
-    SecurityGroupNameDuplicatedException
+    SecurityGroupNameDuplicatedException,
+    SecurityGroupUpdatePermissionDeniedException
 )
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
 from common.util.compensating_transaction import CompensationManager
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class SecurityGroupService:
@@ -180,9 +187,190 @@ class SecurityGroupService:
             security_group_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
                 client=client,
                 keystone_token=keystone_token,
-                new_rules=new_rules,
+                security_group_rules=new_rules,
                 security_group_openstack_id=security_group.openstack_id,
             )
 
         security_group_rules += openstack_security_group.rules
         return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
+
+    @backoff.on_exception(backoff.expo, StaleDataError, max_tries=3)
+    @transactional()
+    async def update_security_group_detail(
+        self,
+        compensating_tx: CompensationManager,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        project_id: int,
+        security_group_id: int,
+        name: str,
+        description: str | None,
+        rules: list[UpdateSecurityGroupRuleDTO]
+    ) -> SecurityGroupDetailResponse:
+        security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
+            session=session,
+            security_group_id=security_group_id,
+        )
+        if not security_group:
+            raise SecurityGroupNotFoundException()
+
+        if not security_group.is_owned_by(project_id):
+            raise SecurityGroupUpdatePermissionDeniedException()
+
+        if security_group.name != name:
+            if await self.security_group_repository.exists_by_project_and_name(session, project_id, name):
+                raise SecurityGroupNameDuplicatedException()
+
+        existing_name: str = security_group.name
+
+        # 변경 사항 있는 경우 DB 업데이트
+        if name != existing_name or description != security_group.description:
+            security_group.update_info(name=name, description=description)
+            security_group: SecurityGroup = await self.security_group_repository.update_with_optimistic_lock(
+                session=session,
+                security_group=security_group
+            )
+
+        # 기존 보안 그룹 룰셋 조회
+        existing_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
+            client=client,
+            keystone_token=keystone_token,
+            security_group_openstack_id=security_group.openstack_id,
+        )
+
+        # 삭제할 룰셋 / 추가할 룰셋 구분
+        rules_to_delete: list[SecurityGroupRuleDTO] = []
+        rules_to_keep: list[SecurityGroupRuleDTO] = []
+        for rule in existing_rules:
+            if UpdateSecurityGroupRuleDTO(
+                protocol=rule.protocol,
+                direction=rule.direction,
+                port_range_min=rule.port_range_min,
+                port_range_max=rule.port_range_max,
+                remote_ip_prefix=rule.remote_ip_prefix
+            ) not in rules:
+                rules_to_delete.append(rule)
+            else:
+                rules_to_keep.append(rule)
+        existing_rules_to_compare: list[UpdateSecurityGroupRuleDTO] = [
+            UpdateSecurityGroupRuleDTO(
+                protocol=existing_rule.protocol,
+                direction=existing_rule.direction,
+                port_range_min=existing_rule.port_range_min,
+                port_range_max=existing_rule.port_range_max,
+                remote_ip_prefix=existing_rule.remote_ip_prefix
+            ) for existing_rule in existing_rules
+        ]
+        rules_to_add: list[UpdateSecurityGroupRuleDTO] = [
+            rule for rule in rules
+            if rule not in existing_rules_to_compare
+        ]
+
+        security_group_openstack_id: str = security_group.openstack_id
+
+        # openstack security group update API 호출 (name 이 변경된 경우 에만 호출)
+        if name != existing_name:
+            await self.neutron_client.update_security_group(
+                client=client,
+                keystone_token=keystone_token,
+                security_group_openstack_id=security_group_openstack_id,
+                name=name
+            )
+            compensating_tx.add_task(
+                lambda: self.neutron_client.update_security_group(
+                    client=client,
+                    keystone_token=keystone_token,
+                    security_group_openstack_id=security_group_openstack_id,
+                    name=existing_name
+                )
+            )
+
+        # rule 에 변경 사항이 없는 경우
+        if not rules_to_delete and not rules_to_add:
+            return await SecurityGroupDetailResponse.from_entity(security_group, existing_rules)
+
+        # 삭제 해야 할 룰 삭제
+        if rules_to_delete:
+            await self._delete_security_group_rules(
+                client=client,
+                keystone_token=keystone_token,
+                rules_to_delete=rules_to_delete,
+                security_group_openstack_id=security_group_openstack_id,
+                compensating_tx=compensating_tx
+            )
+        # 추가할 새로운 룰셋 생성
+        created_rules: list[SecurityGroupRuleDTO] = []
+        if rules_to_add:
+            created_rules = await self._create_security_group_rules(
+                client=client,
+                keystone_token=keystone_token,
+                rules_to_add=rules_to_add,
+                security_group_openstack_id=security_group_openstack_id,
+                compensating_tx=compensating_tx
+            )
+
+        return await SecurityGroupDetailResponse.from_entity(security_group, rules_to_keep + created_rules)
+
+    async def _delete_security_group_rules(
+        self,
+        compensating_tx: CompensationManager,
+        client: AsyncClient,
+        security_group_openstack_id: str,
+        keystone_token: str,
+        rules_to_delete: list[SecurityGroupRuleDTO],
+    ) -> None:
+        for rule in rules_to_delete:
+            await self.neutron_client.delete_security_group_rule(
+                client=client,
+                keystone_token=keystone_token,
+                security_group_rule_openstack_id=rule.openstack_id
+            )
+            compensating_tx.add_task(
+                lambda: self.neutron_client.create_security_group_rules(
+                    client=client,
+                    keystone_token=keystone_token,
+                    security_group_openstack_id=security_group_openstack_id,
+                    security_group_rules=[CreateSecurityGroupRuleDTO(
+                        protocol=rule.protocol,
+                        direction=rule.direction,
+                        port_range_min=rule.port_range_min,
+                        port_range_max=rule.port_range_max,
+                        remote_ip_prefix=rule.remote_ip_prefix
+                    )],
+                )
+            )
+
+    async def _create_security_group_rules(
+        self,
+        compensating_tx: CompensationManager,
+        client: AsyncClient,
+        security_group_openstack_id: str,
+        keystone_token: str,
+        rules_to_add: list[UpdateSecurityGroupRuleDTO],
+    ) -> list[SecurityGroupRuleDTO]:
+        rules = [
+            CreateSecurityGroupRuleDTO(
+                protocol=rule.protocol,
+                direction=rule.direction,
+                port_range_min=rule.port_range_min,
+                port_range_max=rule.port_range_max,
+                remote_ip_prefix=rule.remote_ip_prefix
+            )
+            for rule in rules_to_add
+        ]
+        created_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
+            client=client,
+            keystone_token=keystone_token,
+            security_group_openstack_id=security_group_openstack_id,
+            security_group_rules=rules
+        )
+        for rule in created_rules:
+            compensating_tx.add_task(
+                lambda: self.neutron_client.delete_security_group_rule(
+                    client=client,
+                    keystone_token=keystone_token,
+                    security_group_rule_openstack_id=rule.openstack_id
+                )
+            )
+        return created_rules
