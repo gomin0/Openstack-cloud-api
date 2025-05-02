@@ -1,8 +1,8 @@
 import pytest
 
 from common.application.volume.response import VolumeResponse
-from common.domain.domain.dto import VolumeDto
 from common.domain.enum import LifecycleStatus
+from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.exception.openstack_exception import OpenStackException

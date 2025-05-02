@@ -1,6 +1,6 @@
 from httpx import AsyncClient, Response
 
-from common.domain.domain.dto import VolumeDto
+from common.domain.volume.dto import VolumeDto
 from common.domain.volume.enum import VolumeStatus
 from common.infrastructure.openstack_client import OpenStackClient
 from common.util.envs import get_envs, Envs
