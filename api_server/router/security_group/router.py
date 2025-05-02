@@ -6,10 +6,12 @@ from api_server.router.security_group.request import CreateSecurityGroupRequest,
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.application.security_group.service import SecurityGroupService
 from common.domain.enum import SortOrder
+from common.domain.security_group.dto import CreateSecurityGroupRuleDTO
 from common.domain.security_group.enum import SecurityGroupSortOption
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
+from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
 
 router = APIRouter(prefix="/security-groups", tags=["security-group"])
@@ -79,9 +81,32 @@ async def get_security_group(
 )
 async def create_security_group(
     request: CreateSecurityGroupRequest,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    raise NotImplementedError()
+    rules: list[CreateSecurityGroupRuleDTO] = [
+        CreateSecurityGroupRuleDTO(
+            protocol=rule.protocol,
+            direction=rule.direction,
+            port_range_min=rule.port_range_min,
+            port_range_max=rule.port_range_max,
+            remote_ip_prefix=rule.remote_ip_prefix
+        )
+        for rule in request.rules
+    ]
+    async with compensating_transaction() as compensating_tx:
+        return await security_group_service.create_security_group(
+            compensating_tx=compensating_tx,
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            name=request.name,
+            description=request.description,
+            rules=rules,
+        )
 
 
 @router.put(

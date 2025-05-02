@@ -35,3 +35,12 @@ class AttachedSecurityGroupDeletionException(CustomException):
             status_code=409,
             message="서버에 연결된 보안 그룹은 삭제할 수 없습니다."
         )
+
+
+class SecurityGroupNameDuplicatedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="SECURITY_GROUP_NAME_DUPLICATED",
+            status_code=409,
+            message="이미 프로젝트 내에 존재하는 보안 그룹 이름입니다."
+        )

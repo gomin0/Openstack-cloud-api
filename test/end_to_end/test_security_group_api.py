@@ -138,3 +138,91 @@ async def test_get_security_group_fail_access_denied(client, db_session, mock_as
     # then
     assert response.status_code == 403
     assert response.json()["code"] == "SECURITY_GROUP_ACCESS_DENIED"
+
+
+async def test_create_security_group_success(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v2.0/security-groups" in url:
+            mock_response.json.return_value = {
+                "security_group": {
+                    "id": "openstack-sg-id",
+                    "name": "sg",
+                    "description": "test",
+                    "security_group_rules": []
+                }
+            }
+        elif method == "POST" and "/v2.0/security-group-rules" in url:
+            mock_response.json.return_value = {}
+        elif method == "GET" and "/v2.0/security-group-rules" in url:
+            mock_response.json.return_value = {"security_group_rules": []}
+        else:
+            raise ValueError(f"Unknown API endpoint")
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    # when
+    response = await client.post(
+        "/security-groups",
+        json={
+            "name": "sg",
+            "description": "test",
+            "rules": [
+                {
+                    "protocol": "tcp",
+                    "direction": "ingress",
+                    "port_range_min": 80,
+                    "port_range_max": 80,
+                    "remote_ip_prefix": "0.0.0.0/0"
+                }
+            ]
+        },
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == "sg"
+    assert data["project_id"] == project.id
+    assert "rules" in data
+
+
+async def test_create_security_group_fail_name_duplicated(client, db_session, mock_async_client):
+    # given
+    name = "same"
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
+    await add_to_db(db_session, create_security_group(project_id=project.id, name=name))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    # when
+    response = await client.post(
+        "/security-groups",
+        json={
+            "name": name,
+            "description": "test",
+            "rules": []
+        },
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    data = response.json()
+    assert data["code"] == "SECURITY_GROUP_NAME_DUPLICATED"

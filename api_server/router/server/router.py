@@ -1,4 +1,7 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Query, Depends
+from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
 from common.application.server.response import ServerResponse, ServerDetailResponse, ServerDetailsResponse, \
@@ -12,7 +15,7 @@ router = APIRouter(prefix="/servers", tags=["server"])
 
 
 @router.get(
-    "", status_code=200,
+    "", status_code=HTTP_200_OK,
     summary="서버 목록 조회",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -20,18 +23,18 @@ router = APIRouter(prefix="/servers", tags=["server"])
     }
 )
 async def find_servers(
-    ids: list[int] | None = Query(default=None, description="ID 검색"),
-    is_exclude_ids: bool = Query(default=False, description="ID 포함 검색, 제외 검색 여부"),
-    name: str | None = Query(default=None, description="이름 검색"),
-    sort_by: ServerSortOption = Query(default=ServerSortOption.CREATED_AT),
-    order: SortOrder = Query(default=SortOrder.DESC),
+    ids: Annotated[list[int] | None, Query(description="ID 검색")] = None,
+    is_exclude_ids: Annotated[bool, Query(description="ID 포함 검색, 제외 검색 여부")] = False,
+    name: Annotated[str | None, Query(description="이름 검색")] = None,
+    sort_by: Annotated[ServerSortOption, Query(description="정렬 기준")] = ServerSortOption.CREATED_AT,
+    order: Annotated[SortOrder, Query(description="정렬 순서 (ASC 또는 DESC)")] = SortOrder.DESC,
     _: CurrentUser = Depends(get_current_user),
 ) -> ServerDetailsResponse:
     raise NotImplementedError()
 
 
 @router.get(
-    "/{server_id}", status_code=200,
+    "/{server_id}", status_code=HTTP_200_OK,
     summary="서버 단일 조회",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -39,7 +42,7 @@ async def find_servers(
         404: {"description": "해당 ID의 서버를 찾을 수 없는 경우"}
     }
 )
-async def find_servers(
+async def get_server(
     server_id: int,
     _: CurrentUser = Depends(get_current_user),
 ) -> ServerDetailResponse:
@@ -47,7 +50,7 @@ async def find_servers(
 
 
 @router.post(
-    path="", status_code=202,
+    path="", status_code=HTTP_202_ACCEPTED,
     summary="서버 생성",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -64,7 +67,7 @@ async def create_server(
 
 @router.put(
     path="/{server_id}/info",
-    status_code=200,
+    status_code=HTTP_200_OK,
     summary="서버 정보 변경",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -84,7 +87,7 @@ async def update_server_info(
 
 @router.delete(
     path="/{server_id}",
-    status_code=204,
+    status_code=HTTP_204_NO_CONTENT,
     summary="서버 삭제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -102,18 +105,19 @@ async def delete_server(
 
 @router.put(
     path="/{server_id}/status",
-    status_code=202,
+    status_code=HTTP_202_ACCEPTED,
     summary="서버 상태 변경",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "서버에 대한 접근 권한이 없는 경우"},
         404: {"description": "서버를 찾을 수 없는 경우"},
         409: {"description": "서버를 시작/정지할 수 없는 상태인 경우"},
+        422: {"description": "지원하지 않는 서버 상태인 경우"},
     }
 )
 async def update_server_status(
     server_id: int,
-    action: ServerStatus = Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)"),
+    status: Annotated[ServerStatus, Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)")],
     _: CurrentUser = Depends(get_current_user),
 ) -> None:
     raise NotImplementedError()
@@ -121,7 +125,7 @@ async def update_server_status(
 
 @router.get(
     path="/{server_id}/vnc-url",
-    status_code=200,
+    status_code=HTTP_200_OK,
     summary="서버 VNC 접속 기능(링크) 제공",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -138,7 +142,7 @@ async def get_server_vnc_url(
 
 @router.post(
     path="/{server_id}/volumes/{volume_id}",
-    status_code=200,
+    status_code=HTTP_200_OK,
     summary="서버에 볼륨 연결",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -157,7 +161,7 @@ async def attach_volume_to_server(
 
 @router.delete(
     path="/{server_id}/volumes/{volume_id}",
-    status_code=202,
+    status_code=HTTP_202_ACCEPTED,
     summary="서버에 볼륨 연결 해제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -176,7 +180,7 @@ async def detach_volume_from_server(
 
 @router.post(
     path="/{server_id}/floating-ips/{floating_ip_id}",
-    status_code=200,
+    status_code=HTTP_200_OK,
     summary="서버에 floating ip 연결",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -194,8 +198,8 @@ async def attach_floating_ip_to_server(
 
 
 @router.delete(
-    path="/{server_id}/floating-ips/{volume_id}",
-    status_code=200,
+    path="/{server_id}/floating-ips/{floating_ip_id}",
+    status_code=HTTP_200_OK,
     summary="서버에 floating ip 연결 해제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},

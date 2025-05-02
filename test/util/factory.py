@@ -5,7 +5,6 @@ import bcrypt
 from async_property import async_property
 
 from common.domain.domain.entity import Domain
-from common.domain.enum import LifecycleStatus
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.keystone.model import KeystoneToken
@@ -32,7 +31,6 @@ def create_domain(
         id=domain_id,
         openstack_id=openstack_id,
         name=name,
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
@@ -87,7 +85,6 @@ def create_user(
     account_id: str = random_string(),
     name: str = random_string(),
     plain_password: str = random_string(),
-    lifecycle_status: LifecycleStatus = LifecycleStatus.ACTIVE,
     deleted_at: datetime | None = None,
 ) -> User:
     return User(
@@ -100,7 +97,6 @@ def create_user(
             password=plain_password.encode("UTF-8"),
             salt=bcrypt.gensalt()
         ).decode("UTF-8"),
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
@@ -128,7 +124,6 @@ def create_user_stub(
             password=plain_password.encode("UTF-8"),
             salt=bcrypt.gensalt()
         ).decode("UTF-8"),
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
@@ -220,7 +215,6 @@ def create_floating_ip(
         project_id=project_id,
         status=status,
         address=address,
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=None,
@@ -245,7 +239,6 @@ def create_floating_ip_stub(
         server_id=server.id if server else None,
         status=status,
         address=address,
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
@@ -265,6 +258,7 @@ def create_volume(
     status: VolumeStatus = VolumeStatus.AVAILABLE,
     size: int = random_int(),
     is_root_volume: bool = False,
+    deleted_at: datetime | None = None,
 ) -> Volume:
     return Volume(
         id=volume_id,
@@ -278,10 +272,29 @@ def create_volume(
         status=status,
         size=size,
         is_root_volume=is_root_volume,
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
-        deleted_at=None,
+        deleted_at=deleted_at,
+    )
+
+
+def create_server(
+    server_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    flavor_openstack_id: str = random_string(),
+    name: str = random_string(),
+    description: str = random_string(),
+    status: ServerStatus = ServerStatus.ACTIVE,
+) -> Server:
+    return Server(
+        id=server_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        flavor_openstack_id=flavor_openstack_id,
+        name=name,
+        description=description,
+        status=status,
     )
 
 
@@ -303,7 +316,6 @@ def create_floating_ip_stub(
         server_id=server.id if server else None,
         status=status,
         address=address,
-        lifecycle_status=LifecycleStatus.ACTIVE,
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
