@@ -97,7 +97,7 @@ class NeutronClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         security_group_openstack_id: str,
-        new_rules: list[CreateSecurityGroupRuleDTO]
+        security_group_rules: list[CreateSecurityGroupRuleDTO]
     ) -> list[SecurityGroupRuleDTO]:
 
         response: Response = await self.request(
@@ -115,7 +115,7 @@ class NeutronClient(OpenStackClient):
                         "remote_ip_prefix": rule.remote_ip_prefix,
                         "security_group_id": security_group_openstack_id,
                     }
-                    for rule in new_rules
+                    for rule in security_group_rules
                 ]
             }
         )
@@ -136,19 +136,6 @@ class NeutronClient(OpenStackClient):
 
         return security_group_rules
 
-    async def delete_security_group(
-        self,
-        client: AsyncClient,
-        keystone_token: str,
-        security_group_openstack_id: str
-    ) -> None:
-        await self.request(
-            client=client,
-            method="DELETE",
-            url=f"{self._NEUTRON_URL}/v2.0/security-groups/{security_group_openstack_id}",
-            headers={"X-Auth-Token": keystone_token}
-        )
-
     async def create_floating_ip(
         self,
         client: AsyncClient,
@@ -168,6 +155,52 @@ class NeutronClient(OpenStackClient):
             openstack_id=data["id"],
             status=data["status"],
             address=data["floating_ip_address"],
+        )
+
+    async def update_security_group(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        security_group_openstack_id: str,
+        name: str,
+    ) -> None:
+        info = {
+            "security_group": {
+                "name": name
+            }
+        }
+        await self.request(
+            client=client,
+            method="PUT",
+            url=f"{self._NEUTRON_URL}/v2.0/security-groups/{security_group_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+            json=info,
+        )
+
+    async def delete_security_group(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        security_group_openstack_id: str
+    ) -> None:
+        await self.request(
+            client=client,
+            method="DELETE",
+            url=f"{self._NEUTRON_URL}/v2.0/security-groups/{security_group_openstack_id}",
+            headers={"X-Auth-Token": keystone_token}
+        )
+
+    async def delete_security_group_rule(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        security_group_rule_openstack_id: str,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="DELETE",
+            url=f"{self._NEUTRON_URL}/v2.0/security-group-rules/{security_group_rule_openstack_id}",
+            headers={"X-Auth-Token": keystone_token}
         )
 
     async def delete_floating_ip(
