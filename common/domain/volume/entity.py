@@ -1,14 +1,27 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer, Enum, DateTime, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from async_property import async_property
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer, Enum, Boolean
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from common.domain.entity import Base
-from common.domain.enum import LifecycleStatus
+from common.domain.entity import SoftDeleteBaseEntity
+from common.domain.project.entity import Project
 from common.domain.volume.enum import VolumeStatus
+from common.exception.volume_exception import (
+    AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
+    VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException
+)
 
 
-class Volume(Base):
+class Volume(SoftDeleteBaseEntity):
+    DELETABLE_STATUSES: list[VolumeStatus] = [
+        VolumeStatus.AVAILABLE,
+        VolumeStatus.IN_USE,
+        VolumeStatus.ERROR,
+        VolumeStatus.ERROR_RESTORING,
+        VolumeStatus.ERROR_EXTENDING,
+    ]
+
     __tablename__ = "volume"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
@@ -25,18 +38,16 @@ class Volume(Base):
     )
     size: Mapped[int] = mapped_column("size", Integer, nullable=False)
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
-    lifecycle_status: Mapped[LifecycleStatus] = mapped_column(
-        Enum(LifecycleStatus, name="lifecycle_status", native_enum=False, length=15),
-        nullable=False,
-        default=LifecycleStatus.ACTIVE
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        "created_at", DateTime, nullable=False, default=datetime.now(timezone.utc)
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+
+    _project: Mapped[Project] = relationship("Project", lazy="select")
+
+    @async_property
+    async def project(self) -> Project:
+        return await self.awaitable_attrs._project
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
 
     @classmethod
     def create(
@@ -64,18 +75,30 @@ class Volume(Base):
             status=status,
             size=size,
             is_root_volume=is_root_volume,
-            lifecycle_status=LifecycleStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
 
-    def is_owned_by(self, project_id: int) -> bool:
-        return self.project_id == project_id
-
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
+
+    def validate_update_permission(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeUpdatePermissionDeniedException()
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeDeletePermissionDeniedException()
+
+    def validate_deletable(self):
+        if self.server_id is not None:
+            raise AttachedVolumeDeletionException()
+        if self.status not in self.DELETABLE_STATUSES:
+            raise VolumeStatusInvalidForDeletionException(self.status)
+        if self.is_deleted:
+            raise VolumeAlreadyDeletedException()
 
     def complete_creation(self, attached: bool):
         if attached:
@@ -83,5 +106,5 @@ class Volume(Base):
         else:
             self.status = VolumeStatus.AVAILABLE
 
-    def fail_creation(self):
+    def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR

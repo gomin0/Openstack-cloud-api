@@ -152,6 +152,16 @@ async def update_volume_size(
 )
 async def delete_volume(
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
 ) -> None:
-    raise NotImplementedError()
+    await volume_service.delete_volume(
+        session=session,
+        client=client,
+        current_project_id=current_user.project_id,
+        current_project_openstack_id=current_user.project_openstack_id,
+        keystone_token=current_user.keystone_token,
+        volume_id=volume_id,
+    )

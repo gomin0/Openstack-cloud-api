@@ -1,10 +1,16 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from common.application.volume.response import VolumeResponse
+from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
+from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
-    VolumeNameDuplicateException, VolumeUpdatePermissionDeniedException, VolumeNotFoundException
+    VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
+    VolumeAlreadyDeletedException, VolumeStatusInvalidForDeletionException, AttachedVolumeDeletionException,
+    VolumeUpdatePermissionDeniedException, VolumeDeletionFailedException
 )
 from test.util.factory import create_volume
 from test.util.random import random_string, random_int
@@ -276,3 +282,192 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(
         )
     mock_volume_repository.find_by_id.assert_called_once()
     mock_volume_repository.exists_by_name_and_project.assert_called_once()
+
+
+async def test_delete_volume_success(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.AVAILABLE)
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_cinder_client.delete_volume.return_value = None
+    mock_cinder_client.get_volume.side_effect = OpenStackException(openstack_status_code=404)
+
+    # when
+    await volume_service.delete_volume(
+        session=mock_session,
+        client=mock_async_client,
+        current_project_id=project_id,
+        current_project_openstack_id=random_string(),
+        keystone_token=random_string(),
+        volume_id=volume.id,
+    )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_cinder_client.delete_volume.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+    assert volume.deleted_at is not None
+
+
+async def test_delete_volume_fail_volume_not_found(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    mock_volume_repository.find_by_id.return_value = None
+
+    # when and then
+    with pytest.raises(VolumeNotFoundException):
+        await volume_service.delete_volume(
+            session=mock_session,
+            client=mock_async_client,
+            current_project_id=random_int(),
+            current_project_openstack_id=random_string(),
+            keystone_token=random_string(),
+            volume_id=random_int(),
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_volume_fail_when_has_not_permission_to_delete_volume(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    requesting_project_id: int = 1
+    volume: Volume = create_volume(project_id=2, status=VolumeStatus.AVAILABLE)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeDeletePermissionDeniedException):
+        await volume_service.delete_volume(
+            session=mock_session,
+            client=mock_async_client,
+            current_project_id=requesting_project_id,
+            current_project_openstack_id=random_string(),
+            keystone_token=random_string(),
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_volume_fail_volume_is_linked_to_server(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, server_id=random_int())
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(AttachedVolumeDeletionException):
+        await volume_service.delete_volume(
+            session=mock_session,
+            client=mock_async_client,
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            keystone_token=random_string(),
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_volume_fail_volume_status_is_not_deletable(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.CREATING)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeStatusInvalidForDeletionException):
+        await volume_service.delete_volume(
+            session=mock_session,
+            client=mock_async_client,
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            keystone_token=random_string(),
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_volume_fail_volume_is_already_deleted(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(
+        project_id=project_id,
+        status=VolumeStatus.ERROR,
+        deleted_at=datetime.now(timezone.utc),
+    )
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeAlreadyDeletedException):
+        await volume_service.delete_volume(
+            session=mock_session,
+            client=mock_async_client,
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            keystone_token=random_string(),
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_volume_fail_deletion_not_completed(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    project_id: int = random_int()
+    volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.ERROR)
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_cinder_client.delete_volume.return_value = None
+    mock_cinder_client.get_volume.return_value = VolumeDto(
+        openstack_id=volume.openstack_id,
+        volume_type_name=random_string(),
+        image_openstack_id=volume.image_openstack_id,
+        status=volume.status,
+        size=volume.size
+    )
+
+    volume_service.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION = 3
+    volume_service.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION = 0
+
+    # when and then
+    with pytest.raises(VolumeDeletionFailedException):
+        await volume_service.delete_volume(
+            session=mock_session,
+            client=mock_async_client,
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            keystone_token=random_string(),
+            volume_id=volume.id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
