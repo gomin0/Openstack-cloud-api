@@ -226,3 +226,163 @@ async def test_create_security_group_fail_name_duplicated(client, db_session, mo
     assert response.status_code == 409
     data = response.json()
     assert data["code"] == "SECURITY_GROUP_NAME_DUPLICATED"
+
+
+async def test_update_security_group_success(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
+
+    security_group = await add_to_db(
+        db_session, create_security_group(project_id=project.id, name="old", description="desc")
+    )
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "GET" and "/security-group-rules" in url:
+            mock_response.json.return_value = {
+                "security_group_rules": [{
+                    "id": "sgos",
+                    "security_group_id": security_group.openstack_id,
+                    "direction": "egress",
+                    "protocol": "tcp",
+                    "port_range_min": 80,
+                    "port_range_max": 80,
+                    "remote_ip_prefix": "0.0.0.0/0"
+                }]
+            }
+        elif method == "PUT" and "/v2.0/security-groups/" in url:
+            mock_response.json.return_value = {}
+        elif method == "DELETE" and "/v2.0/security-group-rules" in url:
+            mock_response.json.return_value = {}
+        elif method == "POST" and "/v2.0/security-group-rules" in url:
+            mock_response.json.return_value = {
+                "security_group_rules": [{
+                    "id": "newsgos",
+                    "security_group_id": security_group.openstack_id,
+                    "direction": "egress",
+                    "protocol": "tcp",
+                    "port_range_min": 80,
+                    "port_range_max": 80,
+                    "remote_ip_prefix": "0.0.0.0/0"
+                }]
+            }
+        else:
+            raise ValueError("Unknown API endpoint")
+
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    # when
+    response = await client.put(
+        f"/security-groups/{security_group.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "name": "new",
+            "description": "new",
+            "rules": [{
+                "direction": "egress",
+                "protocol": "tcp",
+                "port_range_min": 22,
+                "port_range_max": 22,
+                "remote_ip_prefix": "0.0.0.0/0"
+            }]
+        }
+    )
+
+    # then
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "new"
+    assert data["description"] == "new"
+
+
+async def test_update_security_group_fail_not_found(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+    security_group_id = 1
+
+    # when
+    response = await client.put(
+        f"/security-groups/{security_group_id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "name": "new",
+            "description": "new-desc",
+            "rules": []
+        }
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == "SECURITY_GROUP_NOT_FOUND"
+
+
+async def test_update_security_group_fail_access_denied(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project1.id))
+    security_group = await add_to_db(db_session, create_security_group(project_id=project2.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id, project_id=project1.id)
+
+    # when
+    response = await client.put(
+        f"/security-groups/{security_group.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "name": "new",
+            "description": "desc",
+            "rules": []
+        }
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == "SECURITY_GROUP_DELETE_PERMISSION_DENIED"
+
+
+async def test_update_security_group_fail_name_duplicated(client, db_session):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project.id))
+
+    security_group1 = await add_to_db(db_session, create_security_group(project_id=project.id, name="name"))
+    security_group2 = await add_to_db(db_session, create_security_group(project_id=project.id, name="same"))
+
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    # when
+    response = await client.put(
+        f"/security-groups/{security_group1.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "name": "same",
+            "description": "updated-desc",
+            "rules": []
+        }
+    )
+
+    # then
+    assert response.status_code == 409
+    assert response.json()["code"] == "SECURITY_GROUP_NAME_DUPLICATED"
