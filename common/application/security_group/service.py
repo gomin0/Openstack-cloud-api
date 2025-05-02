@@ -16,8 +16,7 @@ from common.domain.security_group.enum import SecurityGroupSortOption
 from common.exception.security_group_exception import (
     SecurityGroupNotFoundException,
     SecurityGroupAccessDeniedException,
-    SecurityGroupNameDuplicatedException,
-    SecurityGroupUpdatePermissionDeniedException
+    SecurityGroupNameDuplicatedException
 )
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
@@ -213,8 +212,7 @@ class SecurityGroupService:
         if not security_group:
             raise SecurityGroupNotFoundException()
 
-        if not security_group.is_owned_by(project_id):
-            raise SecurityGroupUpdatePermissionDeniedException()
+        security_group.validate_update_permission(project_id=project_id)
 
         if security_group.name != name and await self.security_group_repository.exists_by_project_and_name(
             session=session,
@@ -242,7 +240,7 @@ class SecurityGroupService:
         rules_to_delete: list[SecurityGroupRuleDTO] = []
         rules_to_keep: list[SecurityGroupRuleDTO] = []
         for rule in existing_rules:
-            if rule.to_dto() not in rules:
+            if rule.to_update_dto() not in rules:
                 rules_to_delete.append(rule)
                 continue
             rules_to_keep.append(rule)
@@ -318,6 +316,7 @@ class SecurityGroupService:
                 keystone_token=keystone_token,
                 security_group_rule_openstack_id=rule.openstack_id
             )
+            tasks.append(delete_task)
             compensating_tx.add_task(
                 lambda: self.neutron_client.create_security_group_rules(
                     client=client,
@@ -332,7 +331,6 @@ class SecurityGroupService:
                     )],
                 )
             )
-            tasks.append(delete_task)
 
         await asyncio.gather(*tasks)
 

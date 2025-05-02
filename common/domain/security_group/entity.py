@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
 from common.domain.enum import LifecycleStatus
 from common.domain.server.entity import Server
+from common.exception.security_group_exception import SecurityGroupUpdatePermissionDeniedException
 
 
 class SecurityGroup(SoftDeleteBaseEntity):
@@ -50,8 +51,9 @@ class SecurityGroup(SoftDeleteBaseEntity):
             deleted_at=None,
         )
 
-    def is_owned_by(self, project_id: int) -> bool:
-        return self.project_id == project_id
+    def validate_update_permission(self, project_id: int):
+        if self.project_id != project_id:
+            raise SecurityGroupUpdatePermissionDeniedException()
 
     def update_info(self, name: str, description: str):
         self.name = name
