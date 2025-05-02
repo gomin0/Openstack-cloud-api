@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import Base
@@ -29,6 +29,7 @@ class SecurityGroup(Base):
         "updated_at", DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc)
     )
     deleted_at: Mapped[datetime | None] = mapped_column("deleted_at", DateTime, nullable=True)
+    version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
     _linked_servers: Mapped[list[Server]] = relationship(
         "ServerSecurityGroup", lazy="select", back_populates="_security_group"
@@ -38,6 +39,8 @@ class SecurityGroup(Base):
     async def servers(self) -> list[Server]:
         linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
         return [await link.server for link in linked_servers]
+
+    __mapper_args__ = {"version_id_col": version}
 
     @classmethod
     def create(
@@ -58,6 +61,13 @@ class SecurityGroup(Base):
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
+
+    def is_owned_by(self, project_id: int) -> bool:
+        return self.project_id == project_id
+
+    def update_info(self, name: str, description: str):
+        self.name = name
+        self.description = description
 
 
 class ServerSecurityGroup(Base):
