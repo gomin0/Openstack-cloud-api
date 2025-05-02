@@ -22,7 +22,7 @@ class SecurityGroupAccessDeniedException(CustomException):
 class SecurityGroupUpdatePermissionDeniedException(CustomException):
     def __init__(self):
         super().__init__(
-            code="SECURITY_GROUP_DELETE_PERMISSION_DENIED",
+            code="SECURITY_GROUP_UPDATE_PERMISSION_DENIED",
             status_code=403,
             message="해당 보안 그룹을 변경할 수 있는 권한이 없습니다."
         )
