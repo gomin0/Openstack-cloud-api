@@ -11,8 +11,7 @@ from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
-    VolumeNameDuplicateException, VolumeNotFoundException, VolumeUpdatePermissionDeniedException,
-    VolumeDeletePermissionDeniedException, VolumeDeletionFailedException
+    VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletionFailedException
 )
 from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
@@ -145,9 +144,7 @@ class VolumeService:
         volume: Volume | None = await self.volume_repository.find_by_id(session=session, volume_id=volume_id)
         if volume is None:
             raise VolumeNotFoundException()
-
-        if not volume.is_owned_by(project_id=current_project_id):
-            raise VolumeUpdatePermissionDeniedException()
+        volume.validate_update_permission(project_id=current_project_id)
 
         if volume.name != name and await self.volume_repository.exists_by_name_and_project(
             session=session,
@@ -172,8 +169,7 @@ class VolumeService:
         volume: Volume | None = await self.volume_repository.find_by_id(session, volume_id=volume_id)
         if volume is None:
             raise VolumeNotFoundException()
-        if not volume.is_owned_by(current_project_id):
-            raise VolumeDeletePermissionDeniedException()
+        volume.validate_delete_permission(project_id=current_project_id)
         volume.validate_deletable()
 
         # (OpenStack) delete volume

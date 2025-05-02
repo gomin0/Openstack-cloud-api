@@ -8,7 +8,8 @@ from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.project.entity import Project
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
-    AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException
+    AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
+    VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException
 )
 
 
@@ -79,12 +80,17 @@ class Volume(SoftDeleteBaseEntity):
             deleted_at=None,
         )
 
-    def is_owned_by(self, project_id: int) -> bool:
-        return self.project_id == project_id
-
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
+
+    def validate_update_permission(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeUpdatePermissionDeniedException()
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeDeletePermissionDeniedException()
 
     def validate_deletable(self):
         if self.server_id is not None:
