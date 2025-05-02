@@ -5,11 +5,11 @@ from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer, Enum, Bool
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
-from common.domain.enum import LifecycleStatus
 from common.domain.project.entity import Project
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
-    AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException
+    AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
+    VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException
 )
 
 
@@ -45,6 +45,10 @@ class Volume(SoftDeleteBaseEntity):
     async def project(self) -> Project:
         return await self.awaitable_attrs._project
 
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
     @classmethod
     def create(
         cls,
@@ -71,26 +75,29 @@ class Volume(SoftDeleteBaseEntity):
             status=status,
             size=size,
             is_root_volume=is_root_volume,
-            lifecycle_status=LifecycleStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
 
-    def is_owned_by(self, project_id: int) -> bool:
-        return self.project_id == project_id
-
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
 
+    def validate_update_permission(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeUpdatePermissionDeniedException()
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeDeletePermissionDeniedException()
 
     def validate_deletable(self):
         if self.server_id is not None:
             raise AttachedVolumeDeletionException()
         if self.status not in self.DELETABLE_STATUSES:
             raise VolumeStatusInvalidForDeletionException(self.status)
-        if self.lifecycle_status != LifecycleStatus.ACTIVE:
+        if self.is_deleted:
             raise VolumeAlreadyDeletedException()
 
     def complete_creation(self, attached: bool):

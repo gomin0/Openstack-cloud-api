@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm import relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
-from common.domain.enum import LifecycleStatus
 from common.domain.server.entity import Server
 
 
@@ -42,7 +41,6 @@ class SecurityGroup(SoftDeleteBaseEntity):
             project_id=project_id,
             name=name,
             description=description,
-            lifecycle_status=LifecycleStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
