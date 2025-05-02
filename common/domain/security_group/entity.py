@@ -1,13 +1,11 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from pydantic.dataclasses import dataclass
 from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import Base
 from common.domain.enum import LifecycleStatus
-from common.domain.security_group.enum import SecurityGroupRuleDirection
 from common.domain.server.entity import Server
 
 
@@ -41,18 +39,25 @@ class SecurityGroup(Base):
         linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
         return [await link.server for link in linked_servers]
 
-
-@dataclass
-class SecurityGroupRule:
-    id: str
-    security_group_openstack_id: str
-    protocol: str | None
-    direction: SecurityGroupRuleDirection
-    port_range_min: int | None
-    port_range_max: int | None
-    remote_ip_prefix: str | None
-    created_at: datetime
-    updated_at: datetime
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        name: str,
+        description: str | None,
+    ) -> "SecurityGroup":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            name=name,
+            description=description,
+            lifecycle_status=LifecycleStatus.ACTIVE,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            deleted_at=None,
+        )
 
 
 class ServerSecurityGroup(Base):
