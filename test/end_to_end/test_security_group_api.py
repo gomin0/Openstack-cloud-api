@@ -356,7 +356,7 @@ async def test_update_security_group_fail_access_denied(client, db_session):
 
     # then
     assert response.status_code == 403
-    assert response.json()["code"] == "SECURITY_GROUP_DELETE_PERMISSION_DENIED"
+    assert response.json()["code"] == "SECURITY_GROUP_UPDATE_PERMISSION_DENIED"
 
 
 async def test_update_security_group_fail_name_duplicated(client, db_session):
