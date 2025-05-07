@@ -181,7 +181,7 @@ async def test_create_security_group_success(client, db_session, mock_async_clie
             "rules": [
                 {
                     "protocol": "tcp",
-                    "ethertype": "IPv4",
+                    "ether_type": "IPv4",
                     "direction": "ingress",
                     "port_range_min": 80,
                     "port_range_max": 80,
@@ -293,6 +293,7 @@ async def test_update_security_group_success(client, db_session, mock_async_clie
             "rules": [{
                 "direction": "egress",
                 "protocol": "tcp",
+                "ether_type": "IPv4",
                 "port_range_min": 22,
                 "port_range_max": 22,
                 "remote_ip_prefix": "0.0.0.0/0"

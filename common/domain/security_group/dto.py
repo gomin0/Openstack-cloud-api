@@ -1,6 +1,6 @@
 from pydantic.dataclasses import dataclass
 
-from common.domain.security_group.enum import SecurityGroupRuleDirection
+from common.domain.security_group.enum import SecurityGroupRuleDirection, SecurityGroupRuleEtherType
 
 
 @dataclass
@@ -8,7 +8,7 @@ class SecurityGroupRuleDTO:
     openstack_id: str
     security_group_openstack_id: str
     protocol: str | None
-    ether_type: str
+    ether_type: SecurityGroupRuleEtherType
     direction: SecurityGroupRuleDirection
     port_range_min: int | None
     port_range_max: int | None
@@ -28,7 +28,7 @@ class SecurityGroupRuleDTO:
 @dataclass
 class CreateSecurityGroupRuleDTO:
     protocol: str | None
-    ether_type: str
+    ether_type: SecurityGroupRuleEtherType
     direction: SecurityGroupRuleDirection
     port_range_min: int | None
     port_range_max: int | None
@@ -38,7 +38,7 @@ class CreateSecurityGroupRuleDTO:
 @dataclass
 class UpdateSecurityGroupRuleDTO:
     protocol: str | None
-    ether_type: str
+    ether_type: SecurityGroupRuleEtherType
     direction: SecurityGroupRuleDirection
     port_range_min: int | None
     port_range_max: int | None

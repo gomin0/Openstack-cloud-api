@@ -4,7 +4,7 @@ from common.application.security_group.response import SecurityGroupDetailsRespo
 from common.domain.project.entity import Project
 from common.domain.security_group.dto import SecurityGroupRuleDTO, CreateSecurityGroupRuleDTO, SecurityGroupDTO, \
     UpdateSecurityGroupRuleDTO
-from common.domain.security_group.enum import SecurityGroupRuleDirection
+from common.domain.security_group.enum import SecurityGroupRuleDirection, SecurityGroupRuleEtherType
 from common.exception.security_group_exception import (
     SecurityGroupNotFoundException,
     SecurityGroupAccessDeniedException,
@@ -31,7 +31,7 @@ async def test_find_security_groups_success(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
             protocol="tcp",
-            ether_type="IPv4",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             direction=SecurityGroupRuleDirection.INGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -77,7 +77,7 @@ async def test_get_security_group_success(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
             protocol="tcp",
-            ether_type="IPv4",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             direction=SecurityGroupRuleDirection.INGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -186,7 +186,7 @@ async def test_create_security_group_success(
         CreateSecurityGroupRuleDTO(
             direction=SecurityGroupRuleDirection.INGRESS,
             protocol="tcp",
-            ether_type="IPv4",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0"
@@ -271,7 +271,7 @@ async def test_update_security_group_success(
             openstack_id="newsgos",
             security_group_openstack_id="sgos",
             protocol="tcp",
-            ether_type="IPv4",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             direction=SecurityGroupRuleDirection.EGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -282,7 +282,7 @@ async def test_update_security_group_success(
     rules = [UpdateSecurityGroupRuleDTO(
         direction=SecurityGroupRuleDirection.EGRESS,
         protocol="tcp",
-        ether_type="IPv4",
+        ether_type=SecurityGroupRuleEtherType.IPv4,
         port_range_min=22,
         port_range_max=22,
         remote_ip_prefix="0.0.0.0/0"
