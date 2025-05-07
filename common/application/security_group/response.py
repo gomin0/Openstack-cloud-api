@@ -4,14 +4,14 @@ from pydantic import Field, BaseModel, ConfigDict
 
 from common.domain.security_group.dto import SecurityGroupRuleDTO
 from common.domain.security_group.entity import SecurityGroup
-from common.domain.security_group.enum import SecurityGroupRuleDirection
+from common.domain.security_group.enum import SecurityGroupRuleDirection, SecurityGroupRuleEtherType
 from common.domain.server.entity import Server
 
 
 class SecurityGroupRuleResponse(BaseModel):
     openstack_id: str = Field(description="룰셋 ID")
     protocol: str | None = Field(default=None, description="프로토콜", examples=["tcp"])
-    ether_type: str = Field(description="인터넷 프로토콜 버전", examples=["IPv4"])
+    ether_type: SecurityGroupRuleEtherType = Field(description="인터넷 프로토콜 버전", examples=["IPv4"])
     direction: SecurityGroupRuleDirection = Field(description="방향", examples=["ingress"])
     port_range_min: int | None = Field(default=None, description="시작 포트", examples=[22])
     port_range_max: int | None = Field(default=None, description="종료 포트", examples=[22])
