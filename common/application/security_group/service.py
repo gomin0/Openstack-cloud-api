@@ -323,7 +323,7 @@ class SecurityGroupService:
                 security_group_openstack_id=security_group.openstack_id,
                 compensating_tx=compensating_tx
             )
-        
+
         return rules_to_keep + created_rules
 
     async def _delete_security_group_rules(
@@ -365,7 +365,7 @@ class SecurityGroupService:
         exceptions: list[OpenStackException] = [exception for exception in exceptions if exception is not None]
         if exceptions:
             for exception in exceptions:
-                logging.error(f"Exception occurred while deleting security group rule: {exception}")
+                logging.warning(f"Exception occurred while deleting security group rule: {exception}")
             raise SecurityGroupRuleDeletionFailedException()
 
     async def _create_security_group_rules(
@@ -382,15 +382,12 @@ class SecurityGroupService:
             security_group_openstack_id=security_group_openstack_id,
             security_group_rules=rules_to_add
         )
-
-        delete_tasks = [
-            self.neutron_client.delete_security_group_rule(
-                client=client,
-                keystone_token=keystone_token,
-                security_group_rule_openstack_id=rule.openstack_id
+        for rule in created_rules:
+            compensating_tx.add_task(
+                lambda: self.neutron_client.delete_security_group_rule(
+                    client=client,
+                    keystone_token=keystone_token,
+                    security_group_rule_openstack_id=rule.openstack_id
+                )
             )
-            for rule in created_rules
-        ]
-        compensating_tx.add_task(lambda: asyncio.gather(*delete_tasks))
-
         return created_rules
