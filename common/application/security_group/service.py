@@ -323,7 +323,7 @@ class SecurityGroupService:
                 security_group_openstack_id=security_group.openstack_id,
                 compensating_tx=compensating_tx
             )
-
+        
         return rules_to_keep + created_rules
 
     async def _delete_security_group_rules(
@@ -342,17 +342,17 @@ class SecurityGroupService:
                     security_group_rule_openstack_id=rule.openstack_id
                 )
                 compensating_tx.add_task(
-                    lambda r=rule: self.neutron_client.create_security_group_rules(
+                    lambda: self.neutron_client.create_security_group_rules(
                         client=client,
                         keystone_token=keystone_token,
                         security_group_openstack_id=security_group_openstack_id,
                         security_group_rules=[CreateSecurityGroupRuleDTO(
-                            protocol=r.protocol,
-                            ether_type=r.ether_type,
-                            direction=r.direction,
-                            port_range_min=r.port_range_min,
-                            port_range_max=r.port_range_max,
-                            remote_ip_prefix=r.remote_ip_prefix
+                            protocol=rule.protocol,
+                            ether_type=rule.ether_type,
+                            direction=rule.direction,
+                            port_range_min=rule.port_range_min,
+                            port_range_max=rule.port_range_max,
+                            remote_ip_prefix=rule.remote_ip_prefix
                         )]
                     )
                 )
