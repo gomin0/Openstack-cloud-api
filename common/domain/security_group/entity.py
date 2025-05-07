@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
 from common.domain.server.entity import Server
+from common.exception.security_group_exception import SecurityGroupDeletePermissionDeniedException
 
 
 class SecurityGroup(SoftDeleteBaseEntity):
@@ -45,6 +46,10 @@ class SecurityGroup(SoftDeleteBaseEntity):
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise SecurityGroupDeletePermissionDeniedException()
 
 
 class ServerSecurityGroup(BaseEntity):

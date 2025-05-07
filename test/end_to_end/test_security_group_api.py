@@ -226,3 +226,96 @@ async def test_create_security_group_fail_name_duplicated(client, db_session, mo
     assert response.status_code == 409
     data = response.json()
     assert data["code"] == "SECURITY_GROUP_NAME_DUPLICATED"
+
+
+async def test_delete_security_group_success(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    security_group = await add_to_db(db_session, create_security_group(project_id=project.id))
+    await add_to_db(db_session, create_server(project_id=project.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "DELETE" and "/v2.0/security-groups" in url:
+            mock_response.status_code = 204
+            mock_response.raise_for_status.return_value = None
+        else:
+            raise ValueError("Unknown API endpoint")
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    # when
+    response = await client.delete(
+        f"/security-groups/{security_group.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 204
+
+
+async def test_delete_security_group_fail_not_found(client, mock_async_client):
+    # given
+    security_group_id = 1
+    access_token = create_access_token(user_id=1, project_id=1)
+
+    # when
+    response = await client.delete(
+        f"/security-groups/{security_group_id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == "SECURITY_GROUP_NOT_FOUND"
+
+
+async def test_delete_security_group_fail_server_attached(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    security_group = await add_to_db(db_session, create_security_group(project_id=project.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    await add_to_db(db_session, ServerSecurityGroup(server_id=server.id, security_group_id=security_group.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    # when
+    response = await client.delete(
+        f"/security-groups/{security_group.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    assert response.json()["code"] == "ATTACHED_SECURITY_GROUP_DELETION"
+
+
+async def test_delete_security_group_fail_permission_denied(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_project_user(user_id=user.id, project_id=project1.id))
+    security_group = await add_to_db(db_session, create_security_group(project_id=project2.id))
+    await db_session.commit()
+
+    access_token = create_access_token(user_id=user.id, project_id=project1.id)
+
+    # when
+    response = await client.delete(
+        f"/security-groups/{security_group.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == "SECURITY_GROUP_DELETE_PERMISSION_DENIED_EXCEPTION"

@@ -6,17 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.domain.enum import SortOrder
-from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, SecurityGroupRuleDTO, SecurityGroupDTO
+from common.domain.security_group.dto import SecurityGroupRuleDTO, CreateSecurityGroupRuleDTO, SecurityGroupDTO
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
-from common.exception.security_group_exception import (
-    SecurityGroupNotFoundException,
-    SecurityGroupAccessDeniedException,
+from common.exception.security_group_exception import SecurityGroupNotFoundException, \
+    SecurityGroupAccessDeniedException, AttachedSecurityGroupDeletionException, \
     SecurityGroupNameDuplicatedException
-)
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
+from common.infrastructure.server_security_group.repository import ServerSecurityGroupRepository
 from common.util.compensating_transaction import CompensationManager
 
 
@@ -24,9 +23,11 @@ class SecurityGroupService:
     def __init__(
         self,
         security_group_repository: SecurityGroupRepository = Depends(),
+        server_security_group_repository: ServerSecurityGroupRepository = Depends(),
         neutron_client: NeutronClient = Depends(),
     ):
         self.security_group_repository = security_group_repository
+        self.server_security_group_repository = server_security_group_repository
         self.neutron_client = neutron_client
 
     async def find_security_groups_details(
@@ -186,3 +187,35 @@ class SecurityGroupService:
 
         security_group_rules += openstack_security_group.rules
         return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
+
+    @transactional()
+    async def delete_security_group(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        project_id: int,
+        keystone_token: str,
+        security_group_id: int,
+    ) -> None:
+        security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
+            session=session,
+            security_group_id=security_group_id,
+        )
+        if not security_group:
+            raise SecurityGroupNotFoundException()
+
+        security_group.validate_delete_permission(project_id=project_id)
+
+        if await self.server_security_group_repository.exists_by_security_group(
+            session=session,
+            security_group_id=security_group_id,
+        ):
+            raise AttachedSecurityGroupDeletionException()
+
+        security_group.delete()
+
+        await self.neutron_client.delete_security_group(
+            client=client,
+            keystone_token=keystone_token,
+            security_group_openstack_id=security_group.openstack_id
+        )
