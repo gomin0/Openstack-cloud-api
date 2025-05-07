@@ -7,7 +7,8 @@ from common.domain.project.entity import Project
 from common.domain.security_group.dto import SecurityGroupRuleDTO, CreateSecurityGroupRuleDTO, SecurityGroupDTO
 from common.domain.security_group.enum import SecurityGroupRuleDirection
 from common.exception.security_group_exception import SecurityGroupNotFoundException, \
-    SecurityGroupAccessDeniedException, SecurityGroupNameDuplicatedException
+    SecurityGroupAccessDeniedException, SecurityGroupNameDuplicatedException, \
+    SecurityGroupDeletePermissionDeniedException, AttachedSecurityGroupDeletionException
 from test.util.factory import create_security_group_stub
 
 
@@ -239,4 +240,131 @@ async def test_create_security_group_fail_name_duplicated(
         session=mock_session,
         project_id=1,
         name="sg"
+    )
+
+
+async def test_delete_security_group_success(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    mock_server_security_group_repository,
+    mock_neutron_client,
+    security_group_service
+):
+    # given
+    security_group_id = 1
+    project_id = 1
+    keystone_token = "token"
+
+    security_group = create_security_group_stub(security_group_id=security_group_id, project_id=project_id)
+    mock_security_group_repository.find_by_id.return_value = security_group
+    mock_server_security_group_repository.exists_by_security_group.return_value = False
+
+    # when
+    await security_group_service.delete_security_group(
+        session=mock_session,
+        client=mock_async_client,
+        project_id=project_id,
+        keystone_token=keystone_token,
+        security_group_id=security_group_id,
+    )
+
+    # then
+    mock_security_group_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        security_group_id=security_group_id
+    )
+    mock_server_security_group_repository.exists_by_security_group.assert_called_once_with(
+        session=mock_session,
+        security_group_id=security_group_id
+    )
+    mock_neutron_client.delete_security_group.assert_called_once_with(
+        client=mock_async_client, keystone_token=keystone_token, security_group_openstack_id=security_group.openstack_id
+    )
+
+
+async def test_delete_security_group_fail_not_found(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    security_group_service
+):
+    # given
+    security_group_id = 1
+    mock_security_group_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(SecurityGroupNotFoundException):
+        await security_group_service.delete_security_group(
+            session=mock_session,
+            client=mock_async_client,
+            project_id=1,
+            keystone_token="token",
+            security_group_id=security_group_id,
+        )
+
+    mock_security_group_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        security_group_id=security_group_id
+    )
+
+
+async def test_delete_security_group_fail_permission_denied(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    security_group_service
+):
+    # given
+    security_group_id = 1
+    security_group = create_security_group_stub(security_group_id=security_group_id, project_id=2)
+    mock_security_group_repository.find_by_id.return_value = security_group
+
+    # when & then
+    with pytest.raises(SecurityGroupDeletePermissionDeniedException):
+        await security_group_service.delete_security_group(
+            session=mock_session,
+            client=mock_async_client,
+            project_id=1,
+            keystone_token="token",
+            security_group_id=security_group_id,
+        )
+
+    mock_security_group_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        security_group_id=security_group_id
+    )
+
+
+async def test_delete_security_group_fail_server_attached(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    mock_server_security_group_repository,
+    security_group_service
+):
+    # given
+    security_group_id = 1
+    project_id = 1
+    security_group = create_security_group_stub(security_group_id=security_group_id, project_id=project_id)
+    mock_security_group_repository.find_by_id.return_value = security_group
+    mock_server_security_group_repository.exists_by_security_group.return_value = True
+
+    # when & then
+    with pytest.raises(AttachedSecurityGroupDeletionException):
+        await security_group_service.delete_security_group(
+            session=mock_session,
+            client=mock_async_client,
+            project_id=project_id,
+            keystone_token="token",
+            security_group_id=security_group_id,
+        )
+
+    mock_server_security_group_repository.exists_by_security_group.assert_called_once_with(
+        session=mock_session,
+        security_group_id=security_group_id
+    )
+    mock_security_group_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        security_group_id=security_group_id
     )

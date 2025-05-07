@@ -31,7 +31,7 @@ class SecurityGroupDeletePermissionDeniedException(CustomException):
 class AttachedSecurityGroupDeletionException(CustomException):
     def __init__(self):
         super().__init__(
-            code="ATTEACHED_SECURITY_GROUP_DELETION",
+            code="ATTACHED_SECURITY_GROUP_DELETION",
             status_code=409,
             message="서버에 연결된 보안 그룹은 삭제할 수 없습니다."
         )
