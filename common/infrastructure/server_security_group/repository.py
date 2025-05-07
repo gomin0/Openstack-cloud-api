@@ -1,4 +1,4 @@
-from sqlalchemy import select, exists
+from sqlalchemy import select, exists, Select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.domain.security_group.entity import ServerSecurityGroup
@@ -10,9 +10,8 @@ class ServerSecurityGroupRepository:
         session: AsyncSession,
         security_group_id: int,
     ) -> bool:
-        query = select(exists().where(
+        query: Select[tuple[bool]] = select(exists().where(
             ServerSecurityGroup.security_group_id == security_group_id,
         ))
-        result = await session.scalar(query)
 
-        return result
+        return await session.scalar(query)
