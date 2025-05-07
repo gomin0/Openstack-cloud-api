@@ -2,7 +2,6 @@ from sqlalchemy import select, ScalarResult, Select, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from common.domain.enum import LifecycleStatus
 from common.domain.enum import SortOrder
 from common.domain.security_group.entity import SecurityGroup, ServerSecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
@@ -23,7 +22,7 @@ class SecurityGroupRepository:
         )
 
         if not with_deleted:
-            query = query.where(SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE)
+            query = query.where(SecurityGroup.deleted_at.is_(None))
 
         if with_relations:
             query = query.options(self._with_relations())
@@ -51,9 +50,7 @@ class SecurityGroupRepository:
         query = select(SecurityGroup).where(SecurityGroup.id == security_group_id)
 
         if not with_deleted:
-            query = query.where(
-                SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE
-            )
+            query = query.where(SecurityGroup.deleted_at.is_(None))
 
         if with_relations:
             query = query.options(self._with_relations())
@@ -70,7 +67,7 @@ class SecurityGroupRepository:
             select(exists().where(
                 SecurityGroup.project_id == project_id,
                 SecurityGroup.name == name,
-                SecurityGroup.lifecycle_status == LifecycleStatus.ACTIVE
+                SecurityGroup.deleted_at.is_(None)
             ))
         )
         return result

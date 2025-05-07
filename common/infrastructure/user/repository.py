@@ -4,7 +4,7 @@ from sqlalchemy import select, Select, ScalarResult, exists, ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
-from common.domain.enum import SortOrder, LifecycleStatus
+from common.domain.enum import SortOrder
 from common.domain.project.entity import ProjectUser
 from common.domain.user.entity import User
 from common.domain.user.enum import UserSortOption
@@ -26,7 +26,7 @@ class UserRepository:
         query: Select[tuple[User]] = select(User)
 
         if not with_deleted:
-            query = query.where(User.lifecycle_status == LifecycleStatus.ACTIVE)
+            query = query.where(User.deleted_at.is_(None))
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
@@ -63,7 +63,7 @@ class UserRepository:
         query: Select[tuple[User]] = select(User).where(User.id == user_id)
 
         if not with_deleted:
-            query = query.where(User.lifecycle_status == LifecycleStatus.ACTIVE)
+            query = query.where(User.deleted_at.is_(None))
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
@@ -82,7 +82,7 @@ class UserRepository:
         query: Select = select(User).where(User.account_id == account_id)
 
         if not with_deleted:
-            query = query.where(User.lifecycle_status == LifecycleStatus.ACTIVE)
+            query = query.where(User.deleted_at.is_(None))
         if with_relations:
             query = query.options(
                 joinedload(User._domain),
@@ -100,7 +100,7 @@ class UserRepository:
         session: AsyncSession,
         account_id: str,
     ) -> bool:
-        is_not_deleted: ColumnElement = User.lifecycle_status == LifecycleStatus.ACTIVE
+        is_not_deleted: ColumnElement = User.deleted_at.is_(None)
         query: Select = select(exists().where(is_not_deleted, User.account_id == account_id))
         return await session.scalar(query)
 

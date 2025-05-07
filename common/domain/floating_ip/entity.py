@@ -5,7 +5,6 @@ from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
-from common.domain.enum import LifecycleStatus
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.server.entity import Server
 
@@ -43,7 +42,6 @@ class FloatingIp(SoftDeleteBaseEntity):
             server_id=None,
             status=FloatingIpStatus.DOWN,
             address=address,
-            lifecycle_status=LifecycleStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,

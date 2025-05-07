@@ -1,7 +1,8 @@
+from datetime import datetime, timezone
+
 import pytest
 
 from common.application.volume.response import VolumeResponse
-from common.domain.enum import LifecycleStatus
 from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
@@ -419,7 +420,7 @@ async def test_delete_volume_fail_volume_is_already_deleted(
     volume: Volume = create_volume(
         project_id=project_id,
         status=VolumeStatus.ERROR,
-        lifecycle_status=LifecycleStatus.DELETED
+        deleted_at=datetime.now(timezone.utc),
     )
     mock_volume_repository.find_by_id.return_value = volume
 

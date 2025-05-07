@@ -1,13 +1,12 @@
 from sqlalchemy import select, exists, ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.domain.enum import LifecycleStatus
 from common.domain.volume.entity import Volume
 
 
 class VolumeRepository:
     async def exists_by_name_and_project(self, session: AsyncSession, name: str, project_id: int) -> bool:
-        is_not_deleted: ColumnElement = Volume.lifecycle_status == LifecycleStatus.ACTIVE
+        is_not_deleted: ColumnElement = Volume.deleted_at.is_(None)
         return await session.scalar(
             select(
                 exists()
@@ -18,7 +17,7 @@ class VolumeRepository:
     async def find_by_id(self, session: AsyncSession, volume_id: int) -> Volume | None:
         return await session.scalar(
             select(Volume).where(
-                Volume.lifecycle_status == LifecycleStatus.ACTIVE,
+                Volume.deleted_at.is_(None),
                 Volume.id == volume_id
             )
         )
@@ -26,7 +25,7 @@ class VolumeRepository:
     async def find_by_openstack_id(self, session: AsyncSession, openstack_id: str) -> Volume | None:
         return await session.scalar(
             select(Volume).where(
-                Volume.lifecycle_status == LifecycleStatus.ACTIVE,
+                Volume.deleted_at.is_(None),
                 Volume.openstack_id == openstack_id
             )
         )
