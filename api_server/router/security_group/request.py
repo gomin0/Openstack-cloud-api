@@ -6,7 +6,7 @@ from common.domain.security_group.enum import SecurityGroupRuleDirection
 
 class SecurityGroupRuleRequest(BaseModel):
     protocol: str | None = Field(max_length=10, default=None, description="프로토콜", examples=["tcp"])
-    ethertype: str = Field(description="인터넷 프로토콜 버전", examples=["IPv4"])
+    ether_type: str = Field(description="인터넷 프로토콜 버전", examples=["IPv4"])
     direction: SecurityGroupRuleDirection = Field(description="방향", examples=["ingress"])
     port_range_min: int | None = Field(default=None, description="시작 포트", examples=[22])
     port_range_max: int | None = Field(default=None, description="종료 포트", examples=[22])

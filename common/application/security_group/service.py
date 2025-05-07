@@ -325,7 +325,7 @@ class SecurityGroupService:
                         security_group_openstack_id=security_group_openstack_id,
                         security_group_rules=[CreateSecurityGroupRuleDTO(
                             protocol=r.protocol,
-                            ethertype=r.ethertype,
+                            ether_type=r.ether_type,
                             direction=r.direction,
                             port_range_min=r.port_range_min,
                             port_range_max=r.port_range_max,

@@ -8,7 +8,7 @@ class SecurityGroupRuleDTO:
     openstack_id: str
     security_group_openstack_id: str
     protocol: str | None
-    ethertype: str
+    ether_type: str
     direction: SecurityGroupRuleDirection
     port_range_min: int | None
     port_range_max: int | None
@@ -17,7 +17,7 @@ class SecurityGroupRuleDTO:
     def to_update_dto(self) -> "UpdateSecurityGroupRuleDTO":
         return UpdateSecurityGroupRuleDTO(
             protocol=self.protocol,
-            ethertype=self.ethertype,
+            ether_type=self.ether_type,
             direction=self.direction,
             port_range_min=self.port_range_min,
             port_range_max=self.port_range_max,
@@ -28,7 +28,7 @@ class SecurityGroupRuleDTO:
 @dataclass
 class CreateSecurityGroupRuleDTO:
     protocol: str | None
-    ethertype: str
+    ether_type: str
     direction: SecurityGroupRuleDirection
     port_range_min: int | None
     port_range_max: int | None
@@ -38,7 +38,7 @@ class CreateSecurityGroupRuleDTO:
 @dataclass
 class UpdateSecurityGroupRuleDTO:
     protocol: str | None
-    ethertype: str
+    ether_type: str
     direction: SecurityGroupRuleDirection
     port_range_min: int | None
     port_range_max: int | None
@@ -47,7 +47,7 @@ class UpdateSecurityGroupRuleDTO:
     def to_create_dto(self) -> "CreateSecurityGroupRuleDTO":
         return CreateSecurityGroupRuleDTO(
             protocol=self.protocol,
-            ethertype=self.ethertype,
+            ether_type=self.ether_type,
             direction=self.direction,
             port_range_min=self.port_range_min,
             port_range_max=self.port_range_max,
