@@ -17,3 +17,30 @@ class FloatingIpAccessDeniedException(CustomException):
             status_code=403,
             message="해당 floating ip에 접근할 수 있는 권한이 없습니다."
         )
+
+
+class FloatingIpDeletePermissionDeniedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="FLOATING_IP_DELETE_PERMISSION_DENIED",
+            status_code=403,
+            message="floating ip를 삭제할 수 있는 권한이 없습니다."
+        )
+
+
+class AttachedFloatingIpDeletionException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="ATTACHED_FLOATING_IP_DELETION",
+            status_code=409,
+            message="서버에 연결된 floating ip는 삭제할 수 없습니다."
+        )
+
+
+class FloatingIpAlreadyDeletedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="FLOATING_IP_ALREADY_DELETED",
+            status_code=409,
+            message="이미 삭제된 floating ip 입니다."
+        )

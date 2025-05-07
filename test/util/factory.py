@@ -206,6 +206,7 @@ def create_floating_ip(
     floating_ip_id: int | None = None,
     openstack_id: str = random_string(),
     project_id: int = random_int(),
+    server_id: int | None = None,
     status: FloatingIpStatus = FloatingIpStatus.DOWN,
     address: str = random_string()
 ) -> FloatingIp:
@@ -213,6 +214,7 @@ def create_floating_ip(
         id=floating_ip_id,
         openstack_id=openstack_id,
         project_id=project_id,
+        server_id=server_id,
         status=status,
         address=address,
         created_at=datetime.now(timezone.utc),
@@ -275,51 +277,6 @@ def create_volume(
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=deleted_at,
-    )
-
-
-def create_server(
-    server_id: int | None = None,
-    openstack_id: str = random_string(),
-    project_id: int = random_int(),
-    flavor_openstack_id: str = random_string(),
-    name: str = random_string(),
-    description: str = random_string(),
-    status: ServerStatus = ServerStatus.ACTIVE,
-) -> Server:
-    return Server(
-        id=server_id,
-        openstack_id=openstack_id,
-        project_id=project_id,
-        flavor_openstack_id=flavor_openstack_id,
-        name=name,
-        description=description,
-        status=status,
-    )
-
-
-def create_floating_ip_stub(
-    project_id: int,
-    server: Server | None = None,
-    floating_ip_id: int = random_int(),
-    openstack_id: str = random_string(),
-    status: FloatingIpStatus = FloatingIpStatus.DOWN,
-    address: str = random_string(),
-    created_at: datetime = datetime.now(timezone.utc),
-    updated_at: datetime = datetime.now(timezone.utc),
-    deleted_at: datetime | None = None,
-) -> FloatingIp:
-    return FloatingIpStub(
-        id=floating_ip_id,
-        openstack_id=openstack_id,
-        project_id=project_id,
-        server_id=server.id if server else None,
-        status=status,
-        address=address,
-        created_at=created_at,
-        updated_at=updated_at,
-        deleted_at=deleted_at,
-        server=server
     )
 
 
