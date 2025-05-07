@@ -242,6 +242,30 @@ class SecurityGroupService:
 
         return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
 
+    async def _create_security_group_rules(
+        self,
+        compensating_tx: CompensationManager,
+        client: AsyncClient,
+        security_group_openstack_id: str,
+        keystone_token: str,
+        rules_to_add: list[CreateSecurityGroupRuleDTO],
+    ) -> list[SecurityGroupRuleDTO]:
+        created_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
+            client=client,
+            keystone_token=keystone_token,
+            security_group_openstack_id=security_group_openstack_id,
+            security_group_rules=rules_to_add
+        )
+        for rule in created_rules:
+            compensating_tx.add_task(
+                lambda: self.neutron_client.delete_security_group_rule(
+                    client=client,
+                    keystone_token=keystone_token,
+                    security_group_rule_openstack_id=rule.openstack_id
+                )
+            )
+        return created_rules
+
     async def _update_security_group_info(
         self,
         compensating_tx: CompensationManager,
@@ -367,27 +391,3 @@ class SecurityGroupService:
             for exception in exceptions:
                 logging.warning(f"Exception occurred while deleting security group rule: {exception}")
             raise SecurityGroupRuleDeletionFailedException()
-
-    async def _create_security_group_rules(
-        self,
-        compensating_tx: CompensationManager,
-        client: AsyncClient,
-        security_group_openstack_id: str,
-        keystone_token: str,
-        rules_to_add: list[CreateSecurityGroupRuleDTO],
-    ) -> list[SecurityGroupRuleDTO]:
-        created_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
-            client=client,
-            keystone_token=keystone_token,
-            security_group_openstack_id=security_group_openstack_id,
-            security_group_rules=rules_to_add
-        )
-        for rule in created_rules:
-            compensating_tx.add_task(
-                lambda: self.neutron_client.delete_security_group_rule(
-                    client=client,
-                    keystone_token=keystone_token,
-                    security_group_rule_openstack_id=rule.openstack_id
-                )
-            )
-        return created_rules
