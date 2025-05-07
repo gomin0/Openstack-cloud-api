@@ -223,38 +223,38 @@ class SecurityGroupService:
         ):
             raise SecurityGroupNameDuplicatedException()
 
-        existing_name: str = security_group.name
-        security_group.update_info(name=name, description=description)
-
-        # 기존 보안 그룹 룰셋 조회
-        existing_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
+        await self._update_security_group_info(
+            compensating_tx=compensating_tx,
             client=client,
+            security_group=security_group,
             keystone_token=keystone_token,
-            security_group_openstack_id=security_group.openstack_id,
+            name=name,
+            description=description,
         )
 
-        # 삭제할 룰셋 / 변경 하지 않을 룰셋 구분
-        rules_to_delete: list[SecurityGroupRuleDTO] = []
-        rules_to_keep: list[SecurityGroupRuleDTO] = []
-        for rule in existing_rules:
-            if rule.to_update_dto() not in rules:
-                rules_to_delete.append(rule)
-                continue
-            rules_to_keep.append(rule)
+        security_group_rules: list[SecurityGroupRuleDTO] = await self._update_security_group_rules(
+            compensating_tx=compensating_tx,
+            client=client,
+            keystone_token=keystone_token,
+            security_group=security_group,
+            rules=rules,
+        )
 
-        # 데이터 변환(SecurityGroupRuleDTO -> UpdateSecurityGroupRuleDTO)
-        existing_rules_to_compare: list[UpdateSecurityGroupRuleDTO] = [
-            existing_rule.to_update_dto() for existing_rule in existing_rules
-        ]
-        # 새로 생성할 룰셋 구분
-        rules_to_add: list[UpdateSecurityGroupRuleDTO] = [
-            rule for rule in rules
-            if rule not in existing_rules_to_compare
-        ]
+        return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
 
+    async def _update_security_group_info(
+        self,
+        compensating_tx: CompensationManager,
+        client: AsyncClient,
+        keystone_token: str,
+        security_group: SecurityGroup,
+        name: str,
+        description: str | None,
+    ) -> None:
+        existing_name: str = security_group.name
         security_group_openstack_id: str = security_group.openstack_id
 
-        # openstack security group update API 호출 (name 이 변경된 경우 에만 호출)
+        security_group.update_info(name=name, description=description)
         if name != existing_name:
             await self.neutron_client.update_security_group(
                 client=client,
@@ -271,20 +271,48 @@ class SecurityGroupService:
                 )
             )
 
-        # rule 에 변경 사항이 없는 경우 early return
-        if not rules_to_delete and not rules_to_add:
-            return await SecurityGroupDetailResponse.from_entity(security_group, existing_rules)
+    async def _update_security_group_rules(
+        self,
+        compensating_tx: CompensationManager,
+        client: AsyncClient,
+        keystone_token: str,
+        security_group: SecurityGroup,
+        rules: list[UpdateSecurityGroupRuleDTO]
+    ) -> list[SecurityGroupRuleDTO]:
+        existing_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
+            client=client,
+            keystone_token=keystone_token,
+            security_group_openstack_id=security_group.openstack_id,
+        )
 
-        # 삭제 해야 할 룰 삭제
+        rules_to_delete: list[SecurityGroupRuleDTO] = []
+        rules_to_keep: list[SecurityGroupRuleDTO] = []
+        for rule in existing_rules:
+            if rule.to_update_dto() not in rules:
+                rules_to_delete.append(rule)
+                continue
+            rules_to_keep.append(rule)
+
+        existing_rules_to_compare: list[UpdateSecurityGroupRuleDTO] = [
+            existing_rule.to_update_dto() for existing_rule in existing_rules
+        ]
+        rules_to_add: list[UpdateSecurityGroupRuleDTO] = [
+            rule for rule in rules
+            if rule not in existing_rules_to_compare
+        ]
+
+        if not rules_to_delete and not rules_to_add:
+            return existing_rules
+
         if rules_to_delete:
             await self._delete_security_group_rules(
                 client=client,
                 keystone_token=keystone_token,
                 rules_to_delete=rules_to_delete,
-                security_group_openstack_id=security_group_openstack_id,
+                security_group_openstack_id=security_group.openstack_id,
                 compensating_tx=compensating_tx
             )
-        # 새로운 룰셋 생성
+
         created_rules: list[SecurityGroupRuleDTO] = []
         if rules_to_add:
             new_rules = [rule.to_create_dto() for rule in rules_to_add]
@@ -292,11 +320,11 @@ class SecurityGroupService:
                 client=client,
                 keystone_token=keystone_token,
                 rules_to_add=new_rules,
-                security_group_openstack_id=security_group_openstack_id,
+                security_group_openstack_id=security_group.openstack_id,
                 compensating_tx=compensating_tx
             )
 
-        return await SecurityGroupDetailResponse.from_entity(security_group, rules_to_keep + created_rules)
+        return rules_to_keep + created_rules
 
     async def _delete_security_group_rules(
         self,
@@ -355,14 +383,14 @@ class SecurityGroupService:
             security_group_rules=rules_to_add
         )
 
-        tasks = [
-            await self.neutron_client.delete_security_group_rule(
+        delete_tasks = [
+            self.neutron_client.delete_security_group_rule(
                 client=client,
                 keystone_token=keystone_token,
                 security_group_rule_openstack_id=rule.openstack_id
             )
             for rule in created_rules
         ]
-        compensating_tx.add_task(lambda: asyncio.gather(*tasks))
+        compensating_tx.add_task(lambda: asyncio.gather(*delete_tasks))
 
         return created_rules
