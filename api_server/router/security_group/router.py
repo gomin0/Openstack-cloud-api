@@ -6,7 +6,6 @@ from api_server.router.security_group.request import CreateSecurityGroupRequest,
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.application.security_group.service import SecurityGroupService
 from common.domain.enum import SortOrder
-from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, UpdateSecurityGroupRuleDTO
 from common.domain.security_group.enum import SecurityGroupSortOption
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
@@ -86,7 +85,6 @@ async def create_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    rules: list[CreateSecurityGroupRuleDTO] = [rule.to_create_dto() for rule in request.rules]
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.create_security_group(
             compensating_tx=compensating_tx,
@@ -96,7 +94,7 @@ async def create_security_group(
             project_id=current_user.project_id,
             name=request.name,
             description=request.description,
-            rules=rules,
+            rules=[rule.to_create_dto() for rule in request.rules],
         )
 
 
@@ -120,7 +118,6 @@ async def update_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    rules: list[UpdateSecurityGroupRuleDTO] = [rule.to_update_dto() for rule in request.rules]
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.update_security_group_detail(
             compensating_tx=compensating_tx,
@@ -131,7 +128,7 @@ async def update_security_group(
             security_group_id=security_group_id,
             name=request.name,
             description=request.description,
-            rules=rules,
+            rules=[rule.to_update_dto() for rule in request.rules],
         )
 
 

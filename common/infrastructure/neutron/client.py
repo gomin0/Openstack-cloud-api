@@ -168,17 +168,16 @@ class NeutronClient(OpenStackClient):
         security_group_openstack_id: str,
         name: str,
     ) -> None:
-        info = {
-            "security_group": {
-                "name": name
-            }
-        }
         await self.request(
             client=client,
             method="PUT",
             url=f"{self._NEUTRON_URL}/v2.0/security-groups/{security_group_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
-            json=info,
+            json={
+                "security_group": {
+                    "name": name
+                }
+            },
         )
 
     async def delete_security_group(
