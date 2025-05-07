@@ -325,6 +325,7 @@ class SecurityGroupService:
                         security_group_openstack_id=security_group_openstack_id,
                         security_group_rules=[CreateSecurityGroupRuleDTO(
                             protocol=r.protocol,
+                            ethertype=r.ethertype,
                             direction=r.direction,
                             port_range_min=r.port_range_min,
                             port_range_max=r.port_range_max,
@@ -358,9 +359,9 @@ class SecurityGroupService:
             security_group_openstack_id=security_group_openstack_id,
             security_group_rules=rules_to_add
         )
-        
+
         tasks = [
-            self.neutron_client.delete_security_group_rule(
+            await self.neutron_client.delete_security_group_rule(
                 client=client,
                 keystone_token=keystone_token,
                 security_group_rule_openstack_id=rule.openstack_id

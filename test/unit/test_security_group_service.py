@@ -31,6 +31,7 @@ async def test_find_security_groups_success(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
             protocol="tcp",
+            ethertype="IPv4",
             direction=SecurityGroupRuleDirection.INGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -76,6 +77,7 @@ async def test_get_security_group_success(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
             protocol="tcp",
+            ethertype="IPv4",
             direction=SecurityGroupRuleDirection.INGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -184,6 +186,7 @@ async def test_create_security_group_success(
         CreateSecurityGroupRuleDTO(
             direction=SecurityGroupRuleDirection.INGRESS,
             protocol="tcp",
+            ethertype="IPv4",
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0"
@@ -269,6 +272,7 @@ async def test_update_security_group_success(
             openstack_id="newsgos",
             security_group_openstack_id="sgos",
             protocol="tcp",
+            ethertype="IPv4",
             direction=SecurityGroupRuleDirection.EGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -279,6 +283,7 @@ async def test_update_security_group_success(
     rules = [UpdateSecurityGroupRuleDTO(
         direction=SecurityGroupRuleDirection.EGRESS,
         protocol="tcp",
+        ethertype="IPv4",
         port_range_min=22,
         port_range_max=22,
         remote_ip_prefix="0.0.0.0/0"
