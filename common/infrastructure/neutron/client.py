@@ -112,7 +112,7 @@ class NeutronClient(OpenStackClient):
                     {
                         "protocol": rule.protocol,
                         "direction": rule.direction.value,
-                        "ethertype": rule.ether_type,
+                        "ethertype": rule.ether_type.value,
                         "port_range_min": rule.port_range_min,
                         "port_range_max": rule.port_range_max,
                         "remote_ip_prefix": rule.remote_ip_prefix,
