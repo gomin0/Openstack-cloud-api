@@ -11,7 +11,7 @@ from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
 from common.exception.security_group_exception import SecurityGroupNotFoundException, \
     SecurityGroupAccessDeniedException, AttachedSecurityGroupDeletionException, \
-    SecurityGroupDeletePermissionDeniedException, SecurityGroupNameDuplicatedException
+    SecurityGroupNameDuplicatedException
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
@@ -204,8 +204,7 @@ class SecurityGroupService:
         if not security_group:
             raise SecurityGroupNotFoundException()
 
-        if security_group.project_id != project_id:
-            raise SecurityGroupDeletePermissionDeniedException()
+        security_group.validate_delete_permission(project_id=project_id)
 
         if await self.server_security_group_repository.exists_by_security_group(
             session=session,
