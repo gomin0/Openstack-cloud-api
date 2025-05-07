@@ -102,3 +102,30 @@ class FloatingIpService:
         floating_ip: FloatingIp = await self.floating_ip_repository.create(session, floating_ip=floating_ip)
 
         return FloatingIpResponse.from_entity(floating_ip)
+
+    @transactional()
+    async def delete_floating_ip(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        project_id: int,
+        keystone_token: str,
+        floating_ip_id: int
+    ) -> None:
+
+        floating_ip: FloatingIp | None = await self.floating_ip_repository.find_by_id(
+            session=session,
+            floating_ip_id=floating_ip_id,
+        )
+        if not floating_ip:
+            raise FloatingIpNotFoundException()
+
+        floating_ip.validate_delete_permission(project_id=project_id)
+        floating_ip.validate_deletable()
+        floating_ip.delete()
+
+        await self.neutron_client.delete_floating_ip(
+            client=client,
+            keystone_token=keystone_token,
+            floating_ip_openstack_id=floating_ip.openstack_id
+        )

@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.server.entity import Server
+from common.exception.floating_ip_exception import FloatingIpDeletePermissionDeniedException, \
+    AttachedFloatingIpDeletionException, FloatingIpAlreadyDeletedException
 
 
 class FloatingIp(SoftDeleteBaseEntity):
@@ -28,6 +30,10 @@ class FloatingIp(SoftDeleteBaseEntity):
     async def server(self) -> Server:
         return await self.awaitable_attrs._server
 
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+
     @classmethod
     def create(
         cls,
@@ -46,3 +52,13 @@ class FloatingIp(SoftDeleteBaseEntity):
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
+
+    def validate_delete_permission(self, project_id=project_id):
+        if self.project_id != project_id:
+            raise FloatingIpDeletePermissionDeniedException()
+
+    def validate_deletable(self):
+        if self.server_id is not None:
+            raise AttachedFloatingIpDeletionException()
+        if self.is_deleted:
+            raise FloatingIpAlreadyDeletedException()

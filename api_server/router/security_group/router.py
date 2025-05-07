@@ -145,6 +145,15 @@ async def update_security_group(
 )
 async def delete_security_group(
     security_group_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    security_group_service: SecurityGroupService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client)
 ) -> None:
-    raise NotImplementedError()
+    return await security_group_service.delete_security_group(
+        session=session,
+        client=client,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+        security_group_id=security_group_id,
+    )
