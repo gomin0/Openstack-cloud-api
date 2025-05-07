@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from collections import defaultdict
 
 import backoff
@@ -13,10 +14,11 @@ from common.domain.security_group.dto import CreateSecurityGroupRuleDTO, Securit
     UpdateSecurityGroupRuleDTO
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
+from common.exception.openstack_exception import OpenStackException
 from common.exception.security_group_exception import (
     SecurityGroupNotFoundException,
     SecurityGroupAccessDeniedException,
-    SecurityGroupNameDuplicatedException
+    SecurityGroupNameDuplicatedException, SecurityGroupRuleDeletionFailedException
 )
 from common.infrastructure.database import transactional
 from common.infrastructure.neutron.client import NeutronClient
@@ -309,30 +311,38 @@ class SecurityGroupService:
         keystone_token: str,
         rules_to_delete: list[SecurityGroupRuleDTO],
     ) -> None:
-        tasks = []
-        for rule in rules_to_delete:
-            delete_task = self.neutron_client.delete_security_group_rule(
-                client=client,
-                keystone_token=keystone_token,
-                security_group_rule_openstack_id=rule.openstack_id
-            )
-            tasks.append(delete_task)
-            compensating_tx.add_task(
-                lambda: self.neutron_client.create_security_group_rules(
+        async def delete_rule(rule: SecurityGroupRuleDTO) -> OpenStackException | None:
+            try:
+                await self.neutron_client.delete_security_group_rule(
                     client=client,
                     keystone_token=keystone_token,
-                    security_group_openstack_id=security_group_openstack_id,
-                    security_group_rules=[CreateSecurityGroupRuleDTO(
-                        protocol=rule.protocol,
-                        direction=rule.direction,
-                        port_range_min=rule.port_range_min,
-                        port_range_max=rule.port_range_max,
-                        remote_ip_prefix=rule.remote_ip_prefix
-                    )],
+                    security_group_rule_openstack_id=rule.openstack_id
                 )
-            )
+                compensating_tx.add_task(
+                    lambda r=rule: self.neutron_client.create_security_group_rules(
+                        client=client,
+                        keystone_token=keystone_token,
+                        security_group_openstack_id=security_group_openstack_id,
+                        security_group_rules=[CreateSecurityGroupRuleDTO(
+                            protocol=r.protocol,
+                            direction=r.direction,
+                            port_range_min=r.port_range_min,
+                            port_range_max=r.port_range_max,
+                            remote_ip_prefix=r.remote_ip_prefix
+                        )]
+                    )
+                )
+                return None
+            except OpenStackException as openstack_ex:
+                return openstack_ex
 
-        await asyncio.gather(*tasks)
+        delete_tasks = [delete_rule(rule) for rule in rules_to_delete]
+        exceptions: list[OpenStackException | None] = await asyncio.gather(*delete_tasks)
+        exceptions: list[OpenStackException] = [exception for exception in exceptions if exception is not None]
+        if exceptions:
+            for exception in exceptions:
+                logging.error(f"Exception occurred while deleting security group rule: {exception}")
+            raise SecurityGroupRuleDeletionFailedException()
 
     async def _create_security_group_rules(
         self,
@@ -348,12 +358,15 @@ class SecurityGroupService:
             security_group_openstack_id=security_group_openstack_id,
             security_group_rules=rules_to_add
         )
-        for rule in created_rules:
-            compensating_tx.add_task(
-                lambda: self.neutron_client.delete_security_group_rule(
-                    client=client,
-                    keystone_token=keystone_token,
-                    security_group_rule_openstack_id=rule.openstack_id
-                )
+        
+        tasks = [
+            self.neutron_client.delete_security_group_rule(
+                client=client,
+                keystone_token=keystone_token,
+                security_group_rule_openstack_id=rule.openstack_id
             )
+            for rule in created_rules
+        ]
+        compensating_tx.add_task(lambda: asyncio.gather(*tasks))
+
         return created_rules
