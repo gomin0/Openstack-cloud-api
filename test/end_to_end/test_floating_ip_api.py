@@ -8,7 +8,8 @@ from test.util.factory import (
     create_project,
     create_project_user,
     create_floating_ip,
-    create_access_token, create_server
+    create_access_token,
+    create_server,
 )
 
 envs = get_envs()

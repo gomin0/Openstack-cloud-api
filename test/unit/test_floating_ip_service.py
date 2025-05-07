@@ -4,8 +4,12 @@ from common.application.floating_ip.response import FloatingIpDetailResponse
 from common.domain.enum import SortOrder
 from common.domain.floating_ip.dto import FloatingIpDTO
 from common.domain.floating_ip.enum import FloatingIpSortOption, FloatingIpStatus
-from common.exception.floating_ip_exception import FloatingIpAccessDeniedException, FloatingIpNotFoundException, \
-    AttachedFloatingIpDeletionException, FloatingIpDeletePermissionDeniedException
+from common.exception.floating_ip_exception import (
+    FloatingIpAccessDeniedException,
+    FloatingIpNotFoundException,
+    AttachedFloatingIpDeletionException,
+    FloatingIpDeletePermissionDeniedException,
+)
 from test.util.factory import create_floating_ip_stub, create_server
 
 
