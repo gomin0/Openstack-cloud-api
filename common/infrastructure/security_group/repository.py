@@ -82,13 +82,5 @@ class SecurityGroupRepository:
 
         return security_group
 
-    async def update_with_optimistic_lock(
-        self,
-        session: AsyncSession,
-        security_group: SecurityGroup,
-    ) -> SecurityGroup:
-        await session.flush()
-        return security_group
-
     def _with_relations(self):
         return selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)

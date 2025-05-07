@@ -224,12 +224,7 @@ class SecurityGroupService:
             raise SecurityGroupNameDuplicatedException()
 
         existing_name: str = security_group.name
-
         security_group.update_info(name=name, description=description)
-        security_group: SecurityGroup = await self.security_group_repository.update_with_optimistic_lock(
-            session=session,
-            security_group=security_group
-        )
 
         # 기존 보안 그룹 룰셋 조회
         existing_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
