@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import pytest
 
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
@@ -33,8 +31,6 @@ async def test_find_security_groups_success(
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
         )
     ]
 
@@ -80,8 +76,6 @@ async def test_get_security_group_success(
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0",
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
         )
     ]
 
