@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from sqlalchemy import select, Select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, selectinload, InstrumentedAttribute
 
 from common.domain.enum import SortOrder
 from common.domain.security_group.entity import ServerSecurityGroup
@@ -23,7 +25,7 @@ class ServerRepository:
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> list[Server]:
-        query = select(Server).where(Server.project_id == project_id)
+        query: Select[tuple[Server]] = select(Server).where(Server.project_id == project_id)
 
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
@@ -42,7 +44,7 @@ class ServerRepository:
         if name_like:
             query = query.where(Server.name.like(f"%{name_like}%"))
 
-        order_column = {
+        order_column: InstrumentedAttribute[str] | InstrumentedAttribute[datetime] = {
             ServerSortOption.NAME: Server.name,
             ServerSortOption.CREATED_AT: Server.created_at
         }.get(sort_by, Server.created_at)
@@ -61,7 +63,7 @@ class ServerRepository:
         with_deleted: bool = False,
         with_relations: bool = False
     ) -> Server | None:
-        query = select(Server).where(Server.id == server_id)
+        query: Select[tuple[Server]] = select(Server).where(Server.id == server_id)
 
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
