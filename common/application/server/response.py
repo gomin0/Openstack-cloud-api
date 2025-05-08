@@ -90,7 +90,7 @@ class ServerDetailResponse(BaseModel):
         floating_ip: FloatingIp | None = await server.floating_ip
         security_groups: list[SecurityGroup] | None = await server.security_groups
         network_interfaces: list[NetworkInterface] = await server.network_interfaces
-        root_volume = next(volume for volume in volumes if volume.is_root_volume)
+        root_volume: Volume = next(volume for volume in volumes if volume.is_root_volume)
         return cls(
             id=server.id,
             name=server.name,
