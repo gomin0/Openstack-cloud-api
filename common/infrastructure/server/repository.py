@@ -78,5 +78,6 @@ class ServerRepository:
         return (
             joinedload(Server._floating_ip),
             selectinload(Server._linked_volumes),
+            selectinload(Server._linked_network_interface),
             selectinload(Server._linked_security_groups).selectinload(ServerSecurityGroup._security_group)
         )
