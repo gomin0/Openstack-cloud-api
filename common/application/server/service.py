@@ -23,7 +23,6 @@ class ServerService:
         sort_by: ServerSortOption,
         order: SortOrder,
         project_id: int,
-        with_deleted: bool = False,
     ) -> ServerDetailsResponse:
         servers = await self.server_repository.find_all_by_project_id(
             session=session,
@@ -35,7 +34,7 @@ class ServerService:
             sort_by=sort_by,
             order=order,
             project_id=project_id,
-            with_deleted=with_deleted,
+            with_deleted=False,
             with_relations=True,
         )
         return ServerDetailsResponse(
@@ -47,12 +46,10 @@ class ServerService:
         session: AsyncSession,
         server_id: int,
         project_id: int,
-        with_deleted: bool = False,
     ) -> ServerDetailResponse:
         server = await self.server_repository.find_by_id(
             session=session,
             server_id=server_id,
-            with_deleted=with_deleted,
             with_relations=True,
         )
         if not server:
