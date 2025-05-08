@@ -8,6 +8,7 @@ from common.domain.domain.entity import Domain
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.keystone.model import KeystoneToken
+from common.domain.network_interface.entity import NetworkInterface
 from common.domain.project.entity import Project, ProjectUser
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.server.entity import Server
@@ -178,6 +179,40 @@ def create_server(
     )
 
 
+def create_server_stub(
+    volumes: list[Volume],
+    network_interfaces: list[NetworkInterface],
+    server_id: int | None = None,
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    flavor_openstack_id: str = random_string(),
+    name: str = random_string(),
+    description: str = random_string(),
+    status: ServerStatus = ServerStatus.ACTIVE,
+    security_groups: list[SecurityGroup] | None = None,
+    floating_ips: list[FloatingIp] | None = None,
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None,
+) -> Server:
+    return ServerStub(
+        id=server_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        flavor_openstack_id=flavor_openstack_id,
+        name=name,
+        description=description,
+        status=status,
+        volumes=volumes,
+        network_interfaces=network_interfaces,
+        security_groups=security_groups or [],
+        floating_ips=floating_ips or [],
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
+    )
+
+
 def create_security_group_stub(
     security_group_id: int,
     name: str = random_string(),
@@ -206,6 +241,7 @@ def create_floating_ip(
     floating_ip_id: int | None = None,
     openstack_id: str = random_string(),
     project_id: int = random_int(),
+    server_id: int | None = None,
     status: FloatingIpStatus = FloatingIpStatus.DOWN,
     address: str = random_string()
 ) -> FloatingIp:
@@ -213,6 +249,7 @@ def create_floating_ip(
         id=floating_ip_id,
         openstack_id=openstack_id,
         project_id=project_id,
+        server_id=server_id,
         status=status,
         address=address,
         created_at=datetime.now(timezone.utc),
@@ -406,3 +443,35 @@ class FloatingIpStub(FloatingIp):
     @async_property
     async def server(self) -> Server | None:
         return self._mock_server
+
+
+class ServerStub(Server):
+    def __init__(
+        self,
+        volumes: list[Volume],
+        network_interfaces: list[NetworkInterface],
+        security_groups: list[SecurityGroup] | None = None,
+        floating_ips: list[FloatingIp] | None = None,
+        **kwargs: Any
+    ):
+        super().__init__(**kwargs)
+        self._mock_volumes: list[Volume] = volumes
+        self._mock_network_interfaces: list[NetworkInterface] = network_interfaces
+        self._mock_security_groups: list[SecurityGroup] = security_groups or []
+        self._mock_floating_ips: list[FloatingIp] = floating_ips or []
+
+    @async_property
+    async def volumes(self) -> list[Volume]:
+        return self._mock_volumes
+
+    @async_property
+    async def network_interfaces(self) -> list[NetworkInterface]:
+        return self._mock_network_interfaces
+
+    @async_property
+    async def security_groups(self) -> list[SecurityGroup]:
+        return self._mock_security_groups
+
+    @async_property
+    async def floating_ips(self) -> list[FloatingIp]:
+        return self._mock_floating_ips
