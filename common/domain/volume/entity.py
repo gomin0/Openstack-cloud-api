@@ -9,7 +9,8 @@ from common.domain.project.entity import Project
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
-    VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException
+    VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException, VolumeResizeNotAllowedException,
+    VolumeStatusInvalidForResizingException
 )
 
 
@@ -80,10 +81,6 @@ class Volume(SoftDeleteBaseEntity):
             deleted_at=None,
         )
 
-    def update_info(self, name: str, description: str):
-        self.name = name
-        self.description = description
-
     def validate_update_permission(self, project_id):
         if self.project_id != project_id:
             raise VolumeUpdatePermissionDeniedException()
@@ -99,6 +96,20 @@ class Volume(SoftDeleteBaseEntity):
             raise VolumeStatusInvalidForDeletionException(self.status)
         if self.is_deleted:
             raise VolumeAlreadyDeletedException()
+
+    def validate_resizable(self, size: int):
+        if self.status != VolumeStatus.AVAILABLE:
+            raise VolumeStatusInvalidForResizingException(self.status)
+        if size <= self.size:
+            raise VolumeResizeNotAllowedException(size=size)
+
+    def update_info(self, name: str, description: str):
+        self.name = name
+        self.description = description
+
+    def resize(self, size: int):
+        self.validate_resizable(size=size)
+        self.size = size
 
     def complete_creation(self, attached: bool):
         if attached:
