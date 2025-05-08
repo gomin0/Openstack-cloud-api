@@ -26,13 +26,13 @@ router = APIRouter(prefix="/servers", tags=["server"])
     }
 )
 async def find_servers(
-    id_: Annotated[int | None, Query()] = None,
+    id_: int | None = None,
     ids_contain: Annotated[list[int] | None, Query()] = None,
     ids_exclude: Annotated[list[int] | None, Query()] = None,
-    name_eq: Annotated[str | None, Query()] = None,
-    name_like: Annotated[str | None, Query()] = None,
-    sort_by: Annotated[ServerSortOption, Query()] = ServerSortOption.CREATED_AT,
-    order: Annotated[SortOrder, Query()] = SortOrder.DESC,
+    name_eq: str | None = None,
+    name_like: str | None = None,
+    sort_by: ServerSortOption = ServerSortOption.CREATED_AT,
+    order: SortOrder = SortOrder.DESC,
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends()
