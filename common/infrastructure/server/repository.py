@@ -14,7 +14,7 @@ class ServerRepository:
     async def find_all_by_project_id(
         self,
         session: AsyncSession,
-        id_: int,
+        id_: int | None,
         ids_contain: list[int] | None,
         ids_exclude: list[int] | None,
         name_eq: str | None,
