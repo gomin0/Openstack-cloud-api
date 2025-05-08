@@ -25,10 +25,18 @@ async def test_find_servers_details_success(
     network_interface2 = NetworkInterface(fixed_ip_address="456")
     mock_servers = [
         create_server_stub(
-            server_id=1, project_id=project.id, volumes=[volume1], network_interfaces=[network_interface1]
+            server_id=1,
+            project_id=project.id,
+            volumes=[volume1],
+            network_interfaces=[network_interface1],
+            security_groups=[]
         ),
         create_server_stub(
-            server_id=2, project_id=project.id, volumes=[volume2], network_interfaces=[network_interface2]
+            server_id=2,
+            project_id=project.id,
+            volumes=[volume2],
+            network_interfaces=[network_interface2],
+            security_groups=[]
         ),
     ]
     mock_server_repository.find_all_by_project_id.return_value = mock_servers
