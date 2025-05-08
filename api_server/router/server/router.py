@@ -26,7 +26,7 @@ router = APIRouter(prefix="/servers", tags=["server"])
     }
 )
 async def find_servers(
-    id_: int | None = None,
+    id_: Annotated[int | None, Query(alias="id")] = None,
     ids_contain: Annotated[list[int] | None, Query()] = None,
     ids_exclude: Annotated[list[int] | None, Query()] = None,
     name_eq: str | None = None,
