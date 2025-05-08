@@ -2,6 +2,7 @@ import pytest
 
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
+from common.domain.project.entity import Project
 from common.domain.server.enum import ServerSortOption
 from common.exception.server_exception import ServerNotFoundException, ServerAccessDeniedException
 from test.util.factory import create_server_stub, create_volume, create_project
@@ -14,7 +15,7 @@ async def test_find_servers_details_success(
     server_service
 ):
     # given
-    project = create_project(project_id=1, domain_id=1)
+    project = Project(id=1, name="project", openstack_id="pos", domain_id=1)
     volume1 = create_volume(
         volume_id=1, project_id=project.id, server_id=1, is_root_volume=True, image_openstack_id="123"
     )
@@ -65,7 +66,6 @@ async def test_find_servers_details_success(
         name_like=None,
         sort_by=ServerSortOption.CREATED_AT,
         order=SortOrder.ASC,
-        with_deleted=False,
         with_relations=True
     )
     assert len(response.servers) == 2
@@ -86,7 +86,11 @@ async def test_get_server_detail_success(
     )
     network_interface = NetworkInterface(fixed_ip_address="123")
     mock_server = create_server_stub(
-        server_id=server_id, project_id=project.id, volumes=[volume], network_interfaces=[network_interface]
+        server_id=server_id,
+        project_id=project.id,
+        volumes=[volume],
+        network_interfaces=[network_interface],
+        security_groups=[]
     )
 
     mock_server_repository.find_by_id.return_value = mock_server
@@ -102,7 +106,6 @@ async def test_get_server_detail_success(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
-        with_deleted=False,
         with_relations=True
     )
     assert response.id == mock_server.id
@@ -130,7 +133,6 @@ async def test_get_server_detail_fail_not_found(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
-        with_deleted=False,
         with_relations=True
     )
 
@@ -149,7 +151,11 @@ async def test_get_server_detail_fail_access_denied(
     )
     network_interface = NetworkInterface(fixed_ip_address="123")
     mock_server = create_server_stub(
-        server_id=server_id, project_id=2, volumes=[volume], network_interfaces=[network_interface]
+        server_id=server_id,
+        project_id=2,
+        volumes=[volume],
+        network_interfaces=[network_interface],
+        security_groups=[],
     )
     mock_server_repository.find_by_id.return_value = mock_server
 
@@ -164,6 +170,5 @@ async def test_get_server_detail_fail_access_denied(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
-        with_deleted=False,
         with_relations=True
     )

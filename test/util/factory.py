@@ -435,30 +435,20 @@ class SecurityGroupStub(SecurityGroup):
         return self._mock_servers
 
 
-class FloatingIpStub(FloatingIp):
-    def __init__(self, server: Server | None = None, **kwargs: Any):
-        super().__init__(**kwargs)
-        self._mock_server: Server | None = server
-
-    @async_property
-    async def server(self) -> Server | None:
-        return self._mock_server
-
-
 class ServerStub(Server):
     def __init__(
         self,
         volumes: list[Volume],
         network_interfaces: list[NetworkInterface],
-        security_groups: list[SecurityGroup] | None = None,
-        floating_ips: list[FloatingIp] | None = None,
+        security_groups: list[SecurityGroup],
+        floating_ip: FloatingIp | None = None,
         **kwargs: Any
     ):
         super().__init__(**kwargs)
         self._mock_volumes: list[Volume] = volumes
         self._mock_network_interfaces: list[NetworkInterface] = network_interfaces
-        self._mock_security_groups: list[SecurityGroup] = security_groups or []
-        self._mock_floating_ips: list[FloatingIp] = floating_ips or []
+        self._mock_security_groups: list[SecurityGroup] = security_groups
+        self._mock_floating_ip: FloatingIp | None = floating_ip
 
     @async_property
     async def volumes(self) -> list[Volume]:
@@ -473,5 +463,5 @@ class ServerStub(Server):
         return self._mock_security_groups
 
     @async_property
-    async def floating_ips(self) -> list[FloatingIp]:
-        return self._mock_floating_ips
+    async def floating_ip(self) -> FloatingIp | None:
+        return self._mock_floating_ip

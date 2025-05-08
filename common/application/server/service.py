@@ -34,7 +34,6 @@ class ServerService:
             sort_by=sort_by,
             order=order,
             project_id=project_id,
-            with_deleted=False,
             with_relations=True,
         )
         return ServerDetailsResponse(
