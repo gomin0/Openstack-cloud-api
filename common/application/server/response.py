@@ -24,14 +24,19 @@ class FloatingIpResponse(BaseModel):
 class VolumeResponse(BaseModel):
     id: int = Field(description="Volume ID")
     name: str = Field(description="Volume name")
-    volume_type_openstack_id: str = Field(description="Volume type (OpenStack ID)")
+    volume_type_id: str = Field(description="Volume type (OpenStack ID)")
     size: int = Field(description="Volume size")
 
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_entity(cls, volume: Volume) -> "VolumeResponse":
-        return cls.model_validate(volume)
+        return cls(
+            id=volume.id,
+            name=volume.name,
+            volume_type_id=volume.volume_type_openstack_id,
+            size=volume.size,
+        )
 
 
 class SecurityGroupResponse(BaseModel):
@@ -68,18 +73,16 @@ class ServerDetailResponse(BaseModel):
     name: str = Field(description="Server name")
     description: str | None = Field(default=None, description="Server description")
     project_id: int = Field(description="project id")
-    flavor_openstack_id: str = Field(description="flavor openstack id")
-    image_openstack_id: str = Field(description="Image OpenStack ID")
+    flavor_id: str = Field(description="flavor openstack id")
+    image_id: str = Field(description="Image OpenStack ID")
     status: ServerStatus = Field(description="Server status")
-    fixed_ip_address: list[str] = Field(description="Fixed IP address")
+    fixed_ip_addresses: list[str] = Field(description="Fixed IP address")
     floating_ip: FloatingIpResponse | None = Field(description="Floating IP info")
     volumes: list[VolumeResponse] = Field(description="List of connected volumes")
     security_groups: list[SecurityGroupResponse] | None = Field(description="List of security groups")
     created_at: datetime = Field(description="Created at")
     updated_at: datetime = Field(description="Updated at")
     deleted_at: datetime | None = Field(default=None, description="Deleted at")
-
-    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     async def from_entity(cls, server: Server) -> "ServerDetailResponse":
@@ -93,10 +96,10 @@ class ServerDetailResponse(BaseModel):
             name=server.name,
             description=server.description,
             project_id=server.project_id,
-            flavor_openstack_id=server.flavor_openstack_id,
-            image_openstack_id=root_volume.image_openstack_id,
+            flavor_id=server.flavor_openstack_id,
+            image_id=root_volume.image_openstack_id,
             status=server.status,
-            fixed_ip_address=[network_interface.fixed_ip_address for network_interface in network_interfaces],
+            fixed_ip_addresses=[network_interface.fixed_ip_address for network_interface in network_interfaces],
             floating_ip=FloatingIpResponse.from_entity(floating_ip) if floating_ip else None,
             volumes=[VolumeResponse.from_entity(volume) for volume in volumes],
             security_groups=[
