@@ -26,9 +26,10 @@ router = APIRouter(prefix="/servers", tags=["server"])
     }
 )
 async def find_servers(
-    ids: Annotated[list[int] | None, Query()] = None,
-    is_exclude_ids: Annotated[bool, Query()] = False,
-    name: Annotated[str | None, Query()] = None,
+    id_: Annotated[int | None, Query()] = None,
+    ids_contain: Annotated[list[int] | None, Query()] = None,
+    ids_exclude: Annotated[list[int] | None, Query()] = None,
+    name_eq: Annotated[str | None, Query()] = None,
     name_like: Annotated[str | None, Query()] = None,
     sort_by: Annotated[ServerSortOption, Query()] = ServerSortOption.CREATED_AT,
     order: Annotated[SortOrder, Query()] = SortOrder.DESC,
@@ -38,9 +39,10 @@ async def find_servers(
 ) -> ServerDetailsResponse:
     return await server_service.find_servers_details(
         session=session,
-        ids=ids,
-        is_exclude_ids=is_exclude_ids,
-        name=name,
+        id_=id_,
+        ids_contain=ids_contain,
+        ids_exclude=ids_exclude,
+        name_eq=name_eq,
         name_like=name_like,
         sort_by=sort_by,
         order=order,

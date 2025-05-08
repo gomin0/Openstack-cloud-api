@@ -1,6 +1,8 @@
 import pytest
 
+from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
+from common.domain.server.enum import ServerSortOption
 from common.exception.server_exception import ServerNotFoundException, ServerAccessDeniedException
 from test.util.factory import create_server_stub, create_volume, create_project
 
@@ -34,25 +36,27 @@ async def test_find_servers_details_success(
     # when
     response = await server_service.find_servers_details(
         session=mock_session,
-        ids=None,
-        is_exclude_ids=False,
-        name=None,
+        id_=None,
+        ids_contain=None,
+        ids_exclude=None,
+        name_eq=None,
         name_like=None,
-        sort_by="created_at",
-        order="desc",
+        sort_by=ServerSortOption.CREATED_AT,
+        order=SortOrder.ASC,
         project_id=project.id,
     )
 
     # then
     mock_server_repository.find_all_by_project_id.assert_called_once_with(
         session=mock_session,
-        ids=None,
-        is_exclude_ids=False,
-        name=None,
-        name_like=None,
-        sort_by="created_at",
-        order="desc",
         project_id=project.id,
+        id_=None,
+        ids_contain=None,
+        ids_exclude=None,
+        name_eq=None,
+        name_like=None,
+        sort_by=ServerSortOption.CREATED_AT,
+        order=SortOrder.ASC,
         with_deleted=False,
         with_relations=True
     )

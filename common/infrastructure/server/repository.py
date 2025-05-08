@@ -12,13 +12,14 @@ class ServerRepository:
     async def find_all_by_project_id(
         self,
         session: AsyncSession,
-        ids: list[int] | None,
-        name: str | None,
+        id_: int,
+        ids_contain: list[int] | None,
+        ids_exclude: list[int] | None,
+        name_eq: str | None,
         name_like: str | None,
         sort_by: ServerSortOption,
         order: SortOrder,
         project_id: int,
-        is_exclude_ids: bool = False,
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> list[Server]:
@@ -30,11 +31,14 @@ class ServerRepository:
             query = query.options(
                 *self._with_relations()
             )
-
-        if ids:
-            query = query.where(Server.id.not_in(ids) if is_exclude_ids else Server.id.in_(ids))
-        if name:
-            query = query.where(Server.name == name)
+        if id_:
+            query = query.where(Server.id == id_)
+        if ids_contain:
+            query = query.where(Server.id.in_(ids_contain))
+        if ids_exclude:
+            query = query.where(Server.id.not_in(ids_exclude))
+        if name_eq:
+            query = query.where(Server.name == name_eq)
         if name_like:
             query = query.where(Server.name.like(f"%{name_like}%"))
 

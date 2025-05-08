@@ -15,9 +15,10 @@ class ServerService:
     async def find_servers_details(
         self,
         session: AsyncSession,
-        ids: list[int] | None,
-        is_exclude_ids: bool,
-        name: str | None,
+        id_: int | None,
+        ids_contain: list[int] | None,
+        ids_exclude: list[int] | None,
+        name_eq: str | None,
         name_like: str | None,
         sort_by: ServerSortOption,
         order: SortOrder,
@@ -26,9 +27,10 @@ class ServerService:
     ) -> ServerDetailsResponse:
         servers = await self.server_repository.find_all_by_project_id(
             session=session,
-            ids=ids,
-            is_exclude_ids=is_exclude_ids,
-            name=name,
+            id_=id_,
+            ids_contain=ids_contain,
+            ids_exclude=ids_exclude,
+            name_eq=name_eq,
             name_like=name_like,
             sort_by=sort_by,
             order=order,
