@@ -5,6 +5,7 @@ from common.application.server.response import ServerDetailsResponse, ServerDeta
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption
 from common.exception.server_exception import ServerNotFoundException
+from common.infrastructure.database import transactional
 from common.infrastructure.server.repository import ServerRepository
 
 
@@ -12,6 +13,7 @@ class ServerService:
     def __init__(self, server_repository: ServerRepository = Depends()):
         self.server_repository = server_repository
 
+    @transactional()
     async def find_servers_details(
         self,
         session: AsyncSession,
@@ -39,7 +41,8 @@ class ServerService:
         return ServerDetailsResponse(
             servers=[await ServerDetailResponse.from_entity(server) for server in servers]
         )
-
+    
+    @transactional()
     async def get_server_detail(
         self,
         session: AsyncSession,
