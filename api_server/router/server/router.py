@@ -1,13 +1,16 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
 from common.application.server.response import ServerResponse, ServerDetailResponse, ServerDetailsResponse, \
     ServerVncUrlResponse
+from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.context import CurrentUser
 
@@ -23,14 +26,28 @@ router = APIRouter(prefix="/servers", tags=["server"])
     }
 )
 async def find_servers(
-    ids: Annotated[list[int] | None, Query(description="ID 검색")] = None,
-    is_exclude_ids: Annotated[bool, Query(description="ID 포함 검색, 제외 검색 여부")] = False,
-    name: Annotated[str | None, Query(description="이름 검색")] = None,
-    sort_by: Annotated[ServerSortOption, Query(description="정렬 기준")] = ServerSortOption.CREATED_AT,
-    order: Annotated[SortOrder, Query(description="정렬 순서 (ASC 또는 DESC)")] = SortOrder.DESC,
-    _: CurrentUser = Depends(get_current_user),
+    id_: Annotated[int | None, Query(alias="id")] = None,
+    ids_contain: Annotated[list[int] | None, Query()] = None,
+    ids_exclude: Annotated[list[int] | None, Query()] = None,
+    name_eq: str | None = None,
+    name_like: str | None = None,
+    sort_by: ServerSortOption = ServerSortOption.CREATED_AT,
+    order: SortOrder = SortOrder.DESC,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    server_service: ServerService = Depends()
 ) -> ServerDetailsResponse:
-    raise NotImplementedError()
+    return await server_service.find_servers_details(
+        session=session,
+        id_=id_,
+        ids_contain=ids_contain,
+        ids_exclude=ids_exclude,
+        name_eq=name_eq,
+        name_like=name_like,
+        sort_by=sort_by,
+        order=order,
+        project_id=current_user.project_id,
+    )
 
 
 @router.get(
@@ -44,9 +61,15 @@ async def find_servers(
 )
 async def get_server(
     server_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    server_service: ServerService = Depends()
 ) -> ServerDetailResponse:
-    raise NotImplementedError()
+    return await server_service.get_server_detail(
+        session=session,
+        server_id=server_id,
+        project_id=current_user.project_id
+    )
 
 
 @router.post(

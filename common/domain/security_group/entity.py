@@ -82,3 +82,7 @@ class ServerSecurityGroup(BaseEntity):
     @async_property
     async def server(self) -> Server:
         return await self.awaitable_attrs._server
+
+    @async_property
+    async def security_group(self) -> SecurityGroup:
+        return await self.awaitable_attrs._security_group
