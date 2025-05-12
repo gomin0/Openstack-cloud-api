@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Depends
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
 
@@ -10,6 +11,7 @@ from common.application.server.response import ServerResponse, ServerDetailRespo
 from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.context import CurrentUser
@@ -158,9 +160,18 @@ async def update_server_status(
 )
 async def get_server_vnc_url(
     server_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
 ) -> ServerVncUrlResponse:
-    raise NotImplementedError()
+    return await server_service.get_server_vnc_url(
+        session=session,
+        client=client,
+        server_id=server_id,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+    )
 
 
 @router.post(
