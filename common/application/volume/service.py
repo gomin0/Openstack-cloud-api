@@ -7,11 +7,12 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.volume.response import VolumeResponse
+from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
-    VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletionFailedException
+    VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletionFailedException, VolumeResizingFailedException
 )
 from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
@@ -24,11 +25,14 @@ logger: Logger = logging.getLogger(__name__)
 
 class VolumeService:
     # 볼륨 생성 시: 최대 MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION * SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION초 동안 동기화 수행
-    MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION = envs.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION
-    SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION = envs.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION
+    MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION: int = envs.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION
+    SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION: int = envs.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION
 
-    MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION
-    CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION
+    MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION: int = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION
+    CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION: int = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION
+
+    MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING: int = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING
+    CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING: int = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING
 
     def __init__(
         self,
@@ -156,6 +160,43 @@ class VolumeService:
         volume.update_info(name=name, description=description)
         return VolumeResponse.from_entity(volume)
 
+    async def update_volume_size(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        current_project_id: int,
+        current_project_openstack_id: str,
+        volume_id: int,
+        new_size: int,
+    ) -> VolumeResponse:
+        volume: Volume = await self._prepare_volume_for_resize(
+            session=session,
+            current_project_id=current_project_id,
+            volume_id=volume_id,
+            new_size=new_size,
+        )
+
+        await self.cinder_client.extend_volume_size(
+            client=client,
+            keystone_token=keystone_token,
+            project_openstack_id=current_project_openstack_id,
+            volume_openstack_id=volume.openstack_id,
+            new_size=new_size,
+        )
+
+        await self._wait_for_volume_resize_completion(
+            client=client,
+            keystone_token=keystone_token,
+            project_openstack_id=current_project_openstack_id,
+            volume_openstack_id=volume.openstack_id,
+            target_size=new_size,
+        )
+
+        await self._resize_and_persist_volume(session, volume=volume, new_size=new_size)
+
+        return VolumeResponse.from_entity(volume)
+
     @transactional()
     async def delete_volume(
         self,
@@ -202,13 +243,13 @@ class VolumeService:
         # (DB) delete volume
         volume.delete()
 
-    async def _get_volume_by_openstack_id(
-        self,
-        session: AsyncSession,
-        openstack_id: str,
-    ) -> Volume:
-        volume: Volume | None = await self.volume_repository.find_by_openstack_id(session, openstack_id=openstack_id)
-        if volume is None:
+    async def _get_volume_by_id(self, session: AsyncSession, volume_id: int) -> Volume:
+        if (volume := await self.volume_repository.find_by_id(session, volume_id=volume_id)) is None:
+            raise VolumeNotFoundException()
+        return volume
+
+    async def _get_volume_by_openstack_id(self, session: AsyncSession, openstack_id: str) -> Volume:
+        if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id=openstack_id)) is None:
             raise VolumeNotFoundException()
         return volume
 
@@ -231,3 +272,49 @@ class VolumeService:
                 return False
             raise ex
         return True
+
+    @transactional()
+    async def _prepare_volume_for_resize(
+        self,
+        session: AsyncSession,
+        current_project_id: int,
+        volume_id: int,
+        new_size: int,
+    ) -> Volume:
+        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        volume.validate_update_permission(project_id=current_project_id)
+        volume.validate_resizable(size=new_size)
+        return volume
+
+    @transactional()
+    async def _resize_and_persist_volume(self, _: AsyncSession, volume: Volume, new_size: int):
+        volume.resize(size=new_size)
+
+    async def _wait_for_volume_resize_completion(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        project_openstack_id: str,
+        volume_openstack_id: str,
+        target_size: int,
+    ):
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING):
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING)
+
+            vol: VolumeDto = await self.cinder_client.get_volume(
+                client=client,
+                keystone_token=keystone_token,
+                project_openstack_id=project_openstack_id,
+                volume_openstack_id=volume_openstack_id,
+            )
+
+            if vol.status == VolumeStatus.EXTENDING:
+                continue
+
+            is_resize_complete: bool = vol.status == VolumeStatus.AVAILABLE and vol.size == target_size
+            if is_resize_complete:
+                return
+
+            raise VolumeResizingFailedException()
+
+        raise VolumeResizingFailedException()

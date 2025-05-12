@@ -10,7 +10,8 @@ from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
     VolumeAlreadyDeletedException, VolumeStatusInvalidForDeletionException, AttachedVolumeDeletionException,
-    VolumeUpdatePermissionDeniedException, VolumeDeletionFailedException
+    VolumeUpdatePermissionDeniedException, VolumeDeletionFailedException, VolumeStatusInvalidForResizingException,
+    VolumeResizeNotAllowedException, VolumeResizingFailedException
 )
 from test.util.factory import create_volume
 from test.util.random import random_string, random_int
@@ -282,6 +283,188 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(
         )
     mock_volume_repository.find_by_id.assert_called_once()
     mock_volume_repository.exists_by_name_and_project.assert_called_once()
+
+
+async def test_update_volume_size_success(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 2
+    volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_cinder_client.extend_volume_size.return_value = None
+    mock_cinder_client.get_volume.return_value = VolumeDto(
+        openstack_id=volume.openstack_id,
+        volume_type_name="DEFAULT",
+        image_openstack_id=None,
+        status=VolumeStatus.AVAILABLE,
+        size=new_size
+    )
+
+    # when
+    result: Volume = await volume_service.update_volume_size(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        current_project_id=volume.project_id,
+        current_project_openstack_id=random_string(),
+        volume_id=volume.id,
+        new_size=new_size,
+    )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_cinder_client.extend_volume_size.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+    assert result.id == volume.id
+    assert result.status == VolumeStatus.AVAILABLE
+    assert result.size == new_size
+
+
+async def test_update_volume_size_fail_volume_not_found(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = random_int()
+    mock_volume_repository.find_by_id.return_value = None
+
+    # when and then
+    with pytest.raises(VolumeNotFoundException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=random_int(),
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_update_permission_denied(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 2
+    volume: Volume = create_volume(project_id=1, status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeUpdatePermissionDeniedException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=2,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_when_volume_status_is_not_available(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 2
+    volume: Volume = create_volume(status=VolumeStatus.IN_USE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeStatusInvalidForResizingException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=volume.project_id,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_when_given_invalid_size(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 1
+    volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeResizeNotAllowedException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=volume.project_id,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_resize_from_openstack(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    volume_service.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING = 3
+    volume_service.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING = 0
+
+    new_size: int = 2
+    volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_cinder_client.extend_volume_size.return_value = None
+    mock_cinder_client.get_volume.return_value = VolumeDto(
+        openstack_id=volume.openstack_id,
+        volume_type_name="DEFAULT",
+        image_openstack_id=None,
+        status=VolumeStatus.EXTENDING,
+        size=new_size
+    )
+
+    # when and then
+    with pytest.raises(VolumeResizingFailedException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=volume.project_id,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_cinder_client.extend_volume_size.assert_called_once()
+    assert mock_cinder_client.get_volume.call_count == volume_service.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING
 
 
 async def test_delete_volume_success(
