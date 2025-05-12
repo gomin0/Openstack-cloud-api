@@ -228,7 +228,8 @@ async def test_delete_floating_ip_fail_server_attached(client, db_session, mock_
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server = await add_to_db(db_session, create_server(project_id=project.id))
-    network_interface = await add_to_db(db_session, create_network_interface(server_id=server.id))
+    network_interface = await add_to_db(db_session,
+                                        create_network_interface(server_id=server.id, project_id=project.id))
     floating_ip = await add_to_db(
         db_session,
         create_floating_ip(project_id=project.id, network_interface_id=network_interface.id)
