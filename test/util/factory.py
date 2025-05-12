@@ -321,6 +321,7 @@ def create_volume(
 
 def create_network_interface(
     server_id: int,
+    project_id: int,
     network_interface_id: int = random_int(),
     openstack_id: str = random_string(),
     fixed_ip_address: str = random_string(),
@@ -329,6 +330,7 @@ def create_network_interface(
         id=network_interface_id,
         openstack_id=openstack_id,
         server_id=server_id,
+        project_id=project_id,
         fixed_ip_address=fixed_ip_address,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),

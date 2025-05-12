@@ -260,7 +260,7 @@ async def test_delete_floating_ip_fail_attached(
     project_id = 1
     keystone_token = "token"
     server = create_server(project_id=project_id, server_id=1)
-    network_interface = create_network_interface(server_id=server.id)
+    network_interface = create_network_interface(server_id=server.id, project_id=project_id)
     floating_ip = create_floating_ip_stub(project_id=project_id, network_interface=network_interface)
 
     mock_floating_ip_repository.find_by_id.return_value = floating_ip
