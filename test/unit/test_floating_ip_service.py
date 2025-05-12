@@ -10,7 +10,7 @@ from common.exception.floating_ip_exception import (
     AttachedFloatingIpDeletionException,
     FloatingIpDeletePermissionDeniedException,
 )
-from test.util.factory import create_floating_ip_stub, create_server
+from test.util.factory import create_floating_ip_stub, create_server, create_network_interface
 
 
 async def test_find_floating_ips_success(mock_session, mock_floating_ip_repository, floating_ip_service):
@@ -260,7 +260,8 @@ async def test_delete_floating_ip_fail_attached(
     project_id = 1
     keystone_token = "token"
     server = create_server(project_id=project_id, server_id=1)
-    floating_ip = create_floating_ip_stub(project_id=project_id, server=server)
+    network_interface = create_network_interface(server_id=server.id)
+    floating_ip = create_floating_ip_stub(project_id=project_id, network_interface=network_interface)
 
     mock_floating_ip_repository.find_by_id.return_value = floating_ip
 

@@ -1,10 +1,11 @@
 from datetime import datetime
 
-from sqlalchemy import select, Select
+from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload, InstrumentedAttribute
 
 from common.domain.enum import SortOrder
+from common.domain.network_interface.entity import NetworkInterface
 from common.domain.security_group.entity import ServerSecurityGroup
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
@@ -30,9 +31,7 @@ class ServerRepository:
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
         if with_relations:
-            query = query.options(
-                *self._with_relations()
-            )
+            query = query.options(*self._with_relations())
         if id_:
             query = query.where(Server.id == id_)
         if ids_contain:
@@ -53,8 +52,9 @@ class ServerRepository:
             order_column = order_column.desc()
 
         query: Select[tuple[Server]] = query.order_by(order_column)
+        result: ScalarResult[Server] = await session.scalars(query)
 
-        return (await session.scalars(query)).all()
+        return result.unique().all()
 
     async def find_by_id(
         self,
@@ -68,16 +68,13 @@ class ServerRepository:
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
         if with_relations:
-            query = query.options(
-                *self._with_relations()
-            )
+            query = query.options(*self._with_relations())
 
         return await session.scalar(query)
 
     def _with_relations(self):
         return (
-            joinedload(Server._floating_ip),
             selectinload(Server._linked_volumes),
-            selectinload(Server._linked_network_interface),
+            joinedload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
             selectinload(Server._linked_security_groups).selectinload(ServerSecurityGroup._security_group)
         )

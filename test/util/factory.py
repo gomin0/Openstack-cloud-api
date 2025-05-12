@@ -190,7 +190,6 @@ def create_server_stub(
     name: str = random_string(),
     description: str = random_string(),
     status: ServerStatus = ServerStatus.ACTIVE,
-    floating_ip: FloatingIp | None = None,
     created_at: datetime = datetime.now(timezone.utc),
     updated_at: datetime = datetime.now(timezone.utc),
     deleted_at: datetime | None = None,
@@ -206,7 +205,6 @@ def create_server_stub(
         volumes=volumes,
         network_interfaces=network_interfaces,
         security_groups=security_groups,
-        floating_ip=floating_ip,
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
@@ -241,7 +239,7 @@ def create_floating_ip(
     floating_ip_id: int | None = None,
     openstack_id: str = random_string(),
     project_id: int = random_int(),
-    server_id: int | None = None,
+    network_interface_id: int | None = None,
     status: FloatingIpStatus = FloatingIpStatus.DOWN,
     address: str = random_string()
 ) -> FloatingIp:
@@ -249,7 +247,7 @@ def create_floating_ip(
         id=floating_ip_id,
         openstack_id=openstack_id,
         project_id=project_id,
-        server_id=server_id,
+        network_interface_id=network_interface_id,
         status=status,
         address=address,
         created_at=datetime.now(timezone.utc),
@@ -260,7 +258,7 @@ def create_floating_ip(
 
 def create_floating_ip_stub(
     project_id: int,
-    server: Server | None = None,
+    network_interface: NetworkInterface | None = None,
     floating_ip_id: int = random_int(),
     openstack_id: str = random_string(),
     status: FloatingIpStatus = FloatingIpStatus.DOWN,
@@ -273,13 +271,13 @@ def create_floating_ip_stub(
         id=floating_ip_id,
         openstack_id=openstack_id,
         project_id=project_id,
-        server_id=server.id if server else None,
+        network_interface_id=network_interface.id if network_interface else None,
         status=status,
         address=address,
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
-        server=server
+        network_interface=network_interface
     )
 
 
@@ -312,6 +310,23 @@ def create_volume(
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=deleted_at,
+    )
+
+
+def create_network_interface(
+    server_id: int,
+    network_interface_id: int = random_int(),
+    openstack_id: str = random_string(),
+    fixed_ip_address: str = random_string(),
+) -> NetworkInterface:
+    return NetworkInterface(
+        id=network_interface_id,
+        openstack_id=openstack_id,
+        server_id=server_id,
+        fixed_ip_address=fixed_ip_address,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
     )
 
 
@@ -371,13 +386,13 @@ class UserStub(User):
 
 
 class FloatingIpStub(FloatingIp):
-    def __init__(self, server: Server | None = None, **kwargs: Any):
+    def __init__(self, network_interface: NetworkInterface | None = None, **kwargs: Any):
         super().__init__(**kwargs)
-        self._mock_server: Server | None = server
+        self._mock_network_interface: NetworkInterface | None = network_interface
 
     @async_property
-    async def server(self) -> Server | None:
-        return self._mock_server
+    async def network_interface(self) -> NetworkInterface | None:
+        return self._mock_network_interface
 
 
 class SecurityGroupStub(SecurityGroup):
@@ -396,14 +411,12 @@ class ServerStub(Server):
         volumes: list[Volume],
         network_interfaces: list[NetworkInterface],
         security_groups: list[SecurityGroup],
-        floating_ip: FloatingIp | None = None,
         **kwargs: Any
     ):
         super().__init__(**kwargs)
         self._mock_volumes: list[Volume] = volumes
         self._mock_network_interfaces: list[NetworkInterface] = network_interfaces
         self._mock_security_groups: list[SecurityGroup] = security_groups
-        self._mock_floating_ip: FloatingIp | None = floating_ip
 
     @async_property
     async def volumes(self) -> list[Volume]:
@@ -416,7 +429,3 @@ class ServerStub(Server):
     @async_property
     async def security_groups(self) -> list[SecurityGroup]:
         return self._mock_security_groups
-
-    @async_property
-    async def floating_ip(self) -> FloatingIp | None:
-        return self._mock_floating_ip
