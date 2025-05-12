@@ -6,7 +6,6 @@ from api_server.router.security_group.request import CreateSecurityGroupRequest,
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.application.security_group.service import SecurityGroupService
 from common.domain.enum import SortOrder
-from common.domain.security_group.dto import CreateSecurityGroupRuleDTO
 from common.domain.security_group.enum import SecurityGroupSortOption
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
@@ -86,16 +85,6 @@ async def create_security_group(
     client: AsyncClient = Depends(get_async_client),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    rules: list[CreateSecurityGroupRuleDTO] = [
-        CreateSecurityGroupRuleDTO(
-            protocol=rule.protocol,
-            direction=rule.direction,
-            port_range_min=rule.port_range_min,
-            port_range_max=rule.port_range_max,
-            remote_ip_prefix=rule.remote_ip_prefix
-        )
-        for rule in request.rules
-    ]
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.create_security_group(
             compensating_tx=compensating_tx,
@@ -105,7 +94,7 @@ async def create_security_group(
             project_id=current_user.project_id,
             name=request.name,
             description=request.description,
-            rules=rules,
+            rules=[rule.to_create_dto() for rule in request.rules],
         )
 
 
@@ -124,9 +113,23 @@ async def create_security_group(
 async def update_security_group(
     security_group_id: int,
     request: UpdateSecurityGroupRequest,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
-    raise NotImplementedError()
+    async with compensating_transaction() as compensating_tx:
+        return await security_group_service.update_security_group_detail(
+            compensating_tx=compensating_tx,
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            security_group_id=security_group_id,
+            name=request.name,
+            description=request.description,
+            rules=[rule.to_update_dto() for rule in request.rules],
+        )
 
 
 @router.delete(

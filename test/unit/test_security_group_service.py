@@ -2,11 +2,18 @@ import pytest
 
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.domain.project.entity import Project
-from common.domain.security_group.dto import SecurityGroupRuleDTO, CreateSecurityGroupRuleDTO, SecurityGroupDTO
-from common.domain.security_group.enum import SecurityGroupRuleDirection
-from common.exception.security_group_exception import SecurityGroupNotFoundException, \
-    SecurityGroupAccessDeniedException, SecurityGroupNameDuplicatedException, \
-    SecurityGroupDeletePermissionDeniedException, AttachedSecurityGroupDeletionException
+from common.domain.security_group.dto import SecurityGroupRuleDTO, CreateSecurityGroupRuleDTO, SecurityGroupDTO, \
+    UpdateSecurityGroupRuleDTO
+from common.domain.security_group.enum import SecurityGroupRuleDirection, SecurityGroupRuleEtherType
+from common.exception.security_group_exception import (
+    SecurityGroupNotFoundException,
+    SecurityGroupAccessDeniedException,
+    SecurityGroupNameDuplicatedException,
+    SecurityGroupUpdatePermissionDeniedException,
+    SecurityGroupDeletePermissionDeniedException,
+    AttachedSecurityGroupDeletionException
+
+)
 from test.util.factory import create_security_group_stub
 
 
@@ -27,6 +34,7 @@ async def test_find_security_groups_success(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
             protocol="tcp",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             direction=SecurityGroupRuleDirection.INGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -72,6 +80,7 @@ async def test_get_security_group_success(
             openstack_id="rule-id",
             security_group_openstack_id=security_group.openstack_id,
             protocol="tcp",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             direction=SecurityGroupRuleDirection.INGRESS,
             port_range_min=22,
             port_range_max=22,
@@ -180,6 +189,7 @@ async def test_create_security_group_success(
         CreateSecurityGroupRuleDTO(
             direction=SecurityGroupRuleDirection.INGRESS,
             protocol="tcp",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
             port_range_min=22,
             port_range_max=22,
             remote_ip_prefix="0.0.0.0/0"
@@ -235,6 +245,120 @@ async def test_create_security_group_fail_name_duplicated(
         project_id=1,
         name="sg"
     )
+
+
+async def test_update_security_group_success(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    mock_neutron_client,
+    security_group_service,
+    mock_compensation_manager
+):
+    # given
+    security_group = create_security_group_stub(security_group_id=1, name="old", description="desc", project_id=1)
+    mock_security_group_repository.find_by_id.return_value = security_group
+    mock_security_group_repository.exists_by_project_and_name.return_value = False
+    mock_neutron_client.get_security_group_rules_in_security_group.return_value = [
+        {
+            "id": "sgos",
+            "direction": "egress",
+            "protocol": "tcp",
+            "port_range_min": 80,
+            "port_range_max": 80,
+            "remote_ip_prefix": "0.0.0.0/0"
+        }
+    ]
+    mock_neutron_client.create_security_group_rules.return_value = [
+        SecurityGroupRuleDTO(
+            openstack_id="newsgos",
+            security_group_openstack_id="sgos",
+            protocol="tcp",
+            ether_type=SecurityGroupRuleEtherType.IPv4,
+            direction=SecurityGroupRuleDirection.EGRESS,
+            port_range_min=22,
+            port_range_max=22,
+            remote_ip_prefix="0.0.0.0/0"
+        )
+    ]
+
+    rules = [UpdateSecurityGroupRuleDTO(
+        direction=SecurityGroupRuleDirection.EGRESS,
+        protocol="tcp",
+        ether_type=SecurityGroupRuleEtherType.IPv4,
+        port_range_min=22,
+        port_range_max=22,
+        remote_ip_prefix="0.0.0.0/0"
+    )]
+
+    # when
+    result = await security_group_service.update_security_group_detail(
+        compensating_tx=mock_compensation_manager,
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token="token",
+        project_id=1,
+        security_group_id=1,
+        name="new",
+        description="new",
+        rules=rules
+    )
+
+    # then
+    assert result.name == "new"
+    assert result.description == "new"
+    mock_security_group_repository.find_by_id.assert_called_once()
+
+
+async def test_update_security_group_fail_not_found(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    security_group_service,
+    mock_compensation_manager
+):
+    # given
+    mock_security_group_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(SecurityGroupNotFoundException):
+        await security_group_service.update_security_group_detail(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token="token",
+            project_id=1,
+            security_group_id=1,
+            name="name",
+            description="desc",
+            rules=[]
+        )
+
+
+async def test_update_security_group_fail_access_denied(
+    mock_session,
+    mock_async_client,
+    mock_security_group_repository,
+    security_group_service,
+    mock_compensation_manager
+):
+    # given
+    security_group = create_security_group_stub(security_group_id=1, project_id=2)
+    mock_security_group_repository.find_by_id.return_value = security_group
+
+    # when & then
+    with pytest.raises(SecurityGroupUpdatePermissionDeniedException):
+        await security_group_service.update_security_group_detail(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token="token",
+            project_id=1,
+            security_group_id=1,
+            name="same",
+            description="desc",
+            rules=[]
+        )
 
 
 async def test_delete_security_group_success(
