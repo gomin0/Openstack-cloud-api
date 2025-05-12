@@ -91,9 +91,9 @@ class ServerDetailResponse(BaseModel):
         security_groups: list[SecurityGroup] = await server.security_groups
         network_interfaces: list[NetworkInterface] = await server.network_interfaces
         root_volume: Volume = next(volume for volume in volumes if volume.is_root_volume)
-        floating_ips = []
+        floating_ips: list[FloatingIp] = []
         for network_interface in network_interfaces:
-            floating_ip = await network_interface.floating_ip
+            floating_ip: FloatingIp | None = await network_interface.floating_ip
             if floating_ip:
                 floating_ips.append(floating_ip)
 

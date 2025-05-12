@@ -50,7 +50,7 @@ class FloatingIpDetailResponse(BaseModel):
 
     @classmethod
     async def from_entity(cls, floating_ip: FloatingIp) -> "FloatingIpDetailResponse":
-        network_interface: NetworkInterface = await floating_ip.network_interface
+        network_interface: NetworkInterface | None = await floating_ip.network_interface
         server: Server | None = None
         if network_interface:
             server: Server | None = await network_interface.server
