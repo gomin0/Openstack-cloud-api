@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
-from common.application.server.response import ServerResponse, ServerDetailResponse, ServerDetailsResponse, \
-    ServerVncUrlResponse
+from common.application.server.response import (
+    ServerResponse, ServerDetailResponse, ServerDetailsResponse, ServerVncUrlResponse
+)
 from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
@@ -94,7 +95,7 @@ async def create_server(
     summary="서버 정보 변경",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
-        403: {"description": "서버에 대한 접근 권한이 없는 경우"},
+        403: {"description": "서버에 대한 수정 권한이 없는 경우"},
         404: {"description": "서버를 찾을 수 없는 경우"},
         409: {"description": "변경하려는 이름이 이미 사용중인 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
@@ -103,9 +104,17 @@ async def create_server(
 async def update_server_info(
     server_id: int,
     request: UpdateServerInfoRequest,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    server_service: ServerService = Depends(),
 ) -> ServerResponse:
-    raise NotImplementedError()
+    return await server_service.update_server_info(
+        session=session,
+        current_project_id=current_user.project_id,
+        server_id=server_id,
+        name=request.name,
+        description=request.description,
+    )
 
 
 @router.delete(

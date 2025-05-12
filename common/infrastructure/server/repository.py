@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, Select, ScalarResult
+from sqlalchemy import select, Select, ScalarResult, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, InstrumentedAttribute
 
@@ -71,6 +71,18 @@ class ServerRepository:
             query = query.options(*self._with_relations())
 
         return await session.scalar(query)
+
+    async def exists_by_project_and_name(self, session: AsyncSession, project_id: int, name: str) -> bool:
+        return await session.scalar(
+            select(
+                exists()
+                .where(
+                    Server.deleted_at.is_(None),
+                    Server.project_id == project_id,
+                    Server.name == name,
+                )
+            )
+        )
 
     def _with_relations(self):
         return (

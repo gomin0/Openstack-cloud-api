@@ -160,13 +160,16 @@ def create_security_group(
 
 
 def create_server(
-    server_id: int | None = None,
+    server_id: int = random_int(),
     openstack_id: str = random_string(),
     project_id: int = random_int(),
     flavor_openstack_id: str = random_string(),
     name: str = random_string(),
     description: str = random_string(),
     status: ServerStatus = ServerStatus.ACTIVE,
+    created_at: datetime = datetime.now(timezone.utc),
+    updated_at: datetime = datetime.now(timezone.utc),
+    deleted_at: datetime | None = None,
 ) -> Server:
     return Server(
         id=server_id,
@@ -176,6 +179,9 @@ def create_server(
         name=name,
         description=description,
         status=status,
+        created_at=created_at,
+        updated_at=updated_at,
+        deleted_at=deleted_at,
     )
 
 
