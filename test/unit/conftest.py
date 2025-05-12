@@ -82,6 +82,11 @@ def mock_cinder_client():
 
 
 @pytest.fixture(scope='function')
+def mock_nova_client():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
 def project_service(mock_project_repository, mock_user_repository, mock_project_user_repository, mock_keystone_client):
     return ProjectService(
         project_repository=mock_project_repository,
@@ -126,7 +131,8 @@ def floating_ip_service(mock_floating_ip_repository, mock_neutron_client):
 
 
 @pytest.fixture(scope='function')
-def server_service(mock_server_repository):
+def server_service(mock_server_repository, mock_nova_client):
     return ServerService(
         server_repository=mock_server_repository,
+        nova_client=mock_nova_client
     )

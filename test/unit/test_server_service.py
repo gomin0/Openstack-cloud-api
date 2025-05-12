@@ -172,3 +172,79 @@ async def test_get_server_detail_fail_access_denied(
         server_id=server_id,
         with_relations=True
     )
+
+
+async def test_get_server_vnc_url_success(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_nova_client,
+    server_service
+):
+    # given
+    server_id = 1
+    project_id = 1
+    keystone_token = "token"
+    vnc_url = "vnc-url"
+
+    volume = create_volume(
+        volume_id=1, project_id=project_id, server_id=1, is_root_volume=True, image_openstack_id="123"
+    )
+    network_interface = NetworkInterface(fixed_ip_address="123")
+    mock_server = create_server_stub(
+        server_id=server_id,
+        project_id=project_id,
+        volumes=[volume],
+        network_interfaces=[network_interface],
+        security_groups=[]
+    )
+    mock_server_repository.find_by_id.return_value = mock_server
+    mock_nova_client.create_console.return_value = vnc_url
+
+    # when
+    response = await server_service.get_server_vnc_url(
+        session=mock_session,
+        client=mock_async_client,
+        server_id=server_id,
+        project_id=project_id,
+        keystone_token=keystone_token
+    )
+
+    # then
+    mock_server_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        server_id=server_id
+    )
+    mock_nova_client.create_console.assert_called_once_with(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=mock_server.openstack_id
+    )
+    assert response.url == vnc_url
+
+
+async def test_get_server_vnc_url_fail_not_found(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    server_service
+):
+    # given
+    server_id = 1
+    project_id = 1
+    mock_server_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(ServerNotFoundException):
+        await server_service.get_server_vnc_url(
+            session=mock_session,
+            client=mock_async_client,
+            server_id=server_id,
+            project_id=project_id,
+            keystone_token="token"
+        )
+
+    mock_server_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        server_id=server_id,
+    )
