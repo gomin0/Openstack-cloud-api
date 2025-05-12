@@ -243,6 +243,7 @@ async def test_update_server_info_fail_when_requester_has_not_update_permission(
         )
     mock_server_repository.find_by_id.assert_called_once()
 
+
 async def test_update_server_info_fail_new_name_is_duplicated(mock_session, mock_server_repository, server_service):
     # given
     new_name: str = "new_name"
@@ -262,3 +263,80 @@ async def test_update_server_info_fail_new_name_is_duplicated(mock_session, mock
         )
     mock_server_repository.find_by_id.assert_called_once()
     mock_server_repository.exists_by_project_and_name.assert_called_once()
+
+
+async def test_get_server_vnc_url_success(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_nova_client,
+    server_service
+):
+    # given
+    server_id = 1
+    project_id = 1
+    keystone_token = "token"
+    vnc_url = "vnc-url"
+
+    volume = create_volume(
+        volume_id=1, project_id=project_id, server_id=1, is_root_volume=True, image_openstack_id="123"
+    )
+    network_interface = NetworkInterface(fixed_ip_address="123")
+    mock_server = create_server_stub(
+        server_id=server_id,
+        project_id=project_id,
+        volumes=[volume],
+        network_interfaces=[network_interface],
+        security_groups=[]
+    )
+    mock_server_repository.find_by_id.return_value = mock_server
+    mock_nova_client.get_vnc_console.return_value = vnc_url
+
+    # when
+    server = await server_service.get_server(
+        session=mock_session,
+        server_id=server_id,
+        project_id=project_id,
+    )
+    response_url = await server_service.get_vnc_console(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=server.openstack_id
+    )
+
+    # then
+    mock_server_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        server_id=server_id
+    )
+    mock_nova_client.get_vnc_console.assert_called_once_with(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=mock_server.openstack_id
+    )
+    assert response_url == vnc_url
+
+
+async def test_get_server_vnc_url_fail_not_found(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    server_service
+):
+    # given
+    server_id = 1
+    project_id = 1
+    mock_server_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(ServerNotFoundException):
+        await server_service.get_server(
+            session=mock_session,
+            server_id=server_id,
+            project_id=project_id,
+        )
+
+    mock_server_repository.find_by_id.assert_called_once_with(
+        session=mock_session,
+        server_id=server_id,
+    )

@@ -1,4 +1,5 @@
 from fastapi import Depends
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse
@@ -7,12 +8,18 @@ from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
 from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
 from common.infrastructure.database import transactional
+from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
 
 
 class ServerService:
-    def __init__(self, server_repository: ServerRepository = Depends()):
+    def __init__(
+        self,
+        server_repository: ServerRepository = Depends(),
+        nova_client: NovaClient = Depends()
+    ):
         self.server_repository = server_repository
+        self.nova_client = nova_client
 
     @transactional()
     async def find_servers_details(
@@ -83,3 +90,34 @@ class ServerService:
 
         server.update_info(name=name, description=description)
         return ServerResponse.from_entity(server)
+
+    @transactional()
+    async def get_server(
+        self,
+        session: AsyncSession,
+        server_id: int,
+        project_id: int,
+    ) -> ServerResponse:
+        server: Server = await self.server_repository.find_by_id(
+            session=session,
+            server_id=server_id,
+        )
+        if server is None:
+            raise ServerNotFoundException()
+        server.validate_access_permission(project_id=project_id)
+
+        return ServerResponse.from_entity(server)
+
+    async def get_vnc_console(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str,
+    ) -> str:
+        vnc_url: str = await self.nova_client.get_vnc_console(
+            client=client,
+            keystone_token=keystone_token,
+            server_openstack_id=server_openstack_id
+        )
+
+        return vnc_url

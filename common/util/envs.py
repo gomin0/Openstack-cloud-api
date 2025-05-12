@@ -34,6 +34,7 @@ class Envs(BaseSettings):
     NEUTRON_PORT: int
     CINDER_PORT: int
     NEUTRON_PORT: int
+    NOVA_PORT: int
 
 
 @lru_cache

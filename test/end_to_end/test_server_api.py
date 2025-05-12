@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 from httpx import Response
 
 from common.domain.domain.entity import Domain
@@ -107,7 +109,7 @@ async def test_get_server_fail_access_denied(client, db_session, mock_async_clie
 
     # then
     assert response.status_code == 403
-    assert response.json()["code"] == "SERVER_ACCESS_DENIED"
+    assert response.json()["code"] == "SERVER_ACCESS_PERMISSION_DENIED"
 
 
 async def test_update_server_info_success(client, db_session):
@@ -222,3 +224,79 @@ async def test_update_server_info_fail_new_name_is_duplicated(client, db_session
     # then
     assert response.status_code == 409
     assert response.json()["code"] == "SERVER_NAME_DUPLICATE"
+
+
+async def test_get_server_vnc_url_success(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+    vnc_url = "vnc-url"
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "POST" and "/v2.1/servers/{}/action".format(server.openstack_id) in url:
+            mock_response.json.return_value = {"console": {"url": vnc_url}}
+        else:
+            raise ValueError("Unknown API endpoint")
+        mock_response.status_code = 200
+        mock_response.raise_for_status.return_value = None
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    # when
+    response = await client.get(
+        f"/servers/{server.id}/vnc-url",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 200
+    data = response.json()
+    assert "url" in data
+    assert data["url"] == vnc_url
+
+
+async def test_get_server_vnc_url_fail_not_found(client, db_session):
+    # given
+    server_id = 1
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    # when
+    response = await client.get(
+        f"/servers/{server.id}/vnc-url",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == "SERVER_NOT_FOUND"
+
+
+async def test_get_server_vnc_url_fail_access_denied(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(server_id=1, project_id=project2.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project1.id)
+
+    # when
+    response = await client.get(
+        f"/servers/{server.id}/vnc-url",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == "SERVER_ACCESS_PERMISSION_DENIED"
