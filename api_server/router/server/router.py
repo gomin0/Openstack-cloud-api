@@ -165,12 +165,15 @@ async def get_server_vnc_url(
     client: AsyncClient = Depends(get_async_client),
     server_service: ServerService = Depends(),
 ) -> ServerVncUrlResponse:
-    url: str = await server_service.get_server_vnc_url(
+    server: ServerResponse = await server_service.get_server(
         session=session,
-        client=client,
         server_id=server_id,
         project_id=current_user.project_id,
+    )
+    url: str = await server_service.get_vnc_console(
+        client=client,
         keystone_token=current_user.keystone_token,
+        server_openstack_id=server.openstack_id,
     )
     return ServerVncUrlResponse(url=url)
 

@@ -202,12 +202,15 @@ async def test_get_server_vnc_url_success(
     mock_nova_client.get_vnc_console.return_value = vnc_url
 
     # when
-    response = await server_service.get_server_vnc_url(
+    server = await server_service.get_server(
         session=mock_session,
-        client=mock_async_client,
         server_id=server_id,
         project_id=project_id,
-        keystone_token=keystone_token
+    )
+    response_url = await server_service.get_vnc_console(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=server.openstack_id
     )
 
     # then
@@ -220,7 +223,7 @@ async def test_get_server_vnc_url_success(
         keystone_token=keystone_token,
         server_openstack_id=mock_server.openstack_id
     )
-    assert response.url == vnc_url
+    assert response_url == vnc_url
 
 
 async def test_get_server_vnc_url_fail_not_found(
@@ -236,12 +239,10 @@ async def test_get_server_vnc_url_fail_not_found(
 
     # when & then
     with pytest.raises(ServerNotFoundException):
-        await server_service.get_server_vnc_url(
+        await server_service.get_server(
             session=mock_session,
-            client=mock_async_client,
             server_id=server_id,
             project_id=project_id,
-            keystone_token="token"
         )
 
     mock_server_repository.find_by_id.assert_called_once_with(

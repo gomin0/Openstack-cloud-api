@@ -52,6 +52,7 @@ class SecurityGroupResponse(BaseModel):
 
 class ServerResponse(BaseModel):
     id: int = Field(description="server id")
+    openstack_id: str = Field(description="OpenStack ID")
     project_id: int = Field(description="project id")
     flavor_openstack_id: str = Field(description="flavor openstack id")
     name: str = Field(description="server name")

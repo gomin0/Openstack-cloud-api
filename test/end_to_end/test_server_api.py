@@ -117,7 +117,7 @@ async def test_get_server_vnc_url_success(client, db_session, mock_async_client)
 
     def request_side_effect(method, url, *args, **kwargs):
         mock_response = Mock()
-        if method == "POST" and "/v2/servers/{}/action".format(server.openstack_id) in url:
+        if method == "POST" and "/v2.1/servers/{}/action".format(server.openstack_id) in url:
             mock_response.json.return_value = {"console": {"url": vnc_url}}
         else:
             raise ValueError("Unknown API endpoint")
