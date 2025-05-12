@@ -1,11 +1,15 @@
 import pytest
 
+from common.application.server.response import ServerResponse
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
 from common.domain.project.entity import Project
+from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
-from common.exception.server_exception import ServerNotFoundException, ServerAccessDeniedException
-from test.util.factory import create_server_stub, create_volume, create_project
+from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
+    ServerUpdatePermissionDeniedException, ServerNameDuplicateException
+from test.util.factory import create_server_stub, create_volume, create_project, create_server
+from test.util.random import random_int, random_string
 
 
 async def test_find_servers_details_success(
@@ -160,7 +164,7 @@ async def test_get_server_detail_fail_access_denied(
     mock_server_repository.find_by_id.return_value = mock_server
 
     # when & then
-    with pytest.raises(ServerAccessDeniedException):
+    with pytest.raises(ServerAccessPermissionDeniedException):
         await server_service.get_server_detail(
             session=mock_session,
             server_id=server_id,
@@ -172,3 +176,89 @@ async def test_get_server_detail_fail_access_denied(
         server_id=server_id,
         with_relations=True
     )
+
+
+async def test_update_server_info_success(mock_session, mock_server_repository, server_service):
+    # given
+    new_name: str = "new_name"
+    new_description: str = "new_description"
+    server: Server = create_server()
+    mock_server_repository.find_by_id.return_value = server
+    mock_server_repository.exists_by_project_and_name.return_value = False
+
+    # when
+    result: ServerResponse = await server_service.update_server_info(
+        session=mock_session,
+        current_project_id=server.project_id,
+        server_id=server.id,
+        name=new_name,
+        description=new_description,
+    )
+
+    # then
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_server_repository.exists_by_project_and_name.assert_called_once()
+    assert result.id == server.id
+    assert result.name == new_name
+    assert result.description == new_description
+
+
+async def test_update_server_info_fail_server_not_found(mock_session, mock_server_repository, server_service):
+    # given
+    mock_server_repository.find_by_id.return_value = None
+
+    # when and then
+    with pytest.raises(ServerNotFoundException):
+        await server_service.update_server_info(
+            session=mock_session,
+            current_project_id=random_int(),
+            server_id=random_int(),
+            name=random_string(),
+            description=random_string(),
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+
+
+async def test_update_server_info_fail_when_requester_has_not_update_permission(
+    mock_session,
+    mock_server_repository,
+    server_service
+):
+    # given
+    project_id = 1
+    requesting_project_id = 2
+    new_name: str = "new_name"
+    new_description: str = "new_description"
+    server: Server = create_server(project_id=project_id)
+    mock_server_repository.find_by_id.return_value = server
+
+    # when and then
+    with pytest.raises(ServerUpdatePermissionDeniedException):
+        await server_service.update_server_info(
+            session=mock_session,
+            current_project_id=requesting_project_id,
+            server_id=server.id,
+            name=new_name,
+            description=new_description,
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+
+async def test_update_server_info_fail_new_name_is_duplicated(mock_session, mock_server_repository, server_service):
+    # given
+    new_name: str = "new_name"
+    new_description: str = "new_description"
+    server: Server = create_server()
+    mock_server_repository.find_by_id.return_value = server
+    mock_server_repository.exists_by_project_and_name.return_value = True
+
+    # when and then
+    with pytest.raises(ServerNameDuplicateException):
+        await server_service.update_server_info(
+            session=mock_session,
+            current_project_id=server.project_id,
+            server_id=server.id,
+            name=new_name,
+            description=new_description,
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_server_repository.exists_by_project_and_name.assert_called_once()
