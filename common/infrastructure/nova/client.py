@@ -11,7 +11,7 @@ class NovaClient(OpenStackClient):
     _NOVA_PORT: int = envs.NOVA_PORT
     _NOVA_URL: str = f"{_OPEN_STACK_URL}:{_NOVA_PORT}"
 
-    async def create_console(
+    async def get_vnc_console(
         self,
         client: AsyncClient,
         keystone_token: str,

@@ -199,7 +199,7 @@ async def test_get_server_vnc_url_success(
         security_groups=[]
     )
     mock_server_repository.find_by_id.return_value = mock_server
-    mock_nova_client.create_console.return_value = vnc_url
+    mock_nova_client.get_vnc_console.return_value = vnc_url
 
     # when
     response = await server_service.get_server_vnc_url(
@@ -215,7 +215,7 @@ async def test_get_server_vnc_url_success(
         session=mock_session,
         server_id=server_id
     )
-    mock_nova_client.create_console.assert_called_once_with(
+    mock_nova_client.get_vnc_console.assert_called_once_with(
         client=mock_async_client,
         keystone_token=keystone_token,
         server_openstack_id=mock_server.openstack_id

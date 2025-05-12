@@ -84,7 +84,7 @@ class ServerService:
             raise ServerNotFoundException()
         server.validate_access_permission(project_id=project_id)
 
-        vnc_url: str = await self.nova_client.create_console(
+        vnc_url: str = await self.nova_client.get_vnc_console(
             client=client,
             keystone_token=keystone_token,
             server_openstack_id=server.openstack_id
