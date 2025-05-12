@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload, InstrumentedAttribute
+from sqlalchemy.orm import selectinload, InstrumentedAttribute
 
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
@@ -54,7 +54,7 @@ class ServerRepository:
         query: Select[tuple[Server]] = query.order_by(order_column)
         result: ScalarResult[Server] = await session.scalars(query)
 
-        return result.unique().all()
+        return result.all()
 
     async def find_by_id(
         self,
@@ -75,6 +75,6 @@ class ServerRepository:
     def _with_relations(self):
         return (
             selectinload(Server._linked_volumes),
-            joinedload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
+            selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
             selectinload(Server._linked_security_groups).selectinload(ServerSecurityGroup._security_group)
         )
