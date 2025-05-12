@@ -6,11 +6,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.project.entity import Project
+from common.domain.server.entity import Server
 from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
     VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException, VolumeResizeNotAllowedException,
-    VolumeStatusInvalidForResizingException
+    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException
 )
 
 
@@ -41,10 +42,15 @@ class Volume(SoftDeleteBaseEntity):
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
 
     _project: Mapped[Project] = relationship("Project", lazy="select")
+    _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_volumes")
 
     @async_property
     async def project(self) -> Project:
         return await self.awaitable_attrs._project
+
+    @async_property
+    async def server(self) -> Server | None:
+        return await self.awaitable_attrs._server
 
     @property
     def is_deleted(self):
@@ -80,6 +86,10 @@ class Volume(SoftDeleteBaseEntity):
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
+
+    def validate_owned_by(self, project_id):
+        if self.project_id != project_id:
+            raise VolumeAccessPermissionDeniedException()
 
     def validate_update_permission(self, project_id):
         if self.project_id != project_id:

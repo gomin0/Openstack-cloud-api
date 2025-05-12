@@ -46,9 +46,15 @@ async def find_volumes_detail(
 )
 async def get_volume_detail(
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends()
 ) -> VolumeDetailResponse:
-    raise NotImplementedError()
+    return await volume_service.get_volume_detail(
+        session=session,
+        current_project_id=current_user.project_id,
+        volume_id=volume_id,
+    )
 
 
 @router.post(

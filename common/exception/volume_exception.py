@@ -20,6 +20,15 @@ class VolumeNameDuplicateException(CustomException):
         )
 
 
+class VolumeAccessPermissionDeniedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="VOLUME_ACCESS_PERMISSION_DENIED",
+            status_code=403,
+            message="볼륨에 접근할 수 있는 권한이 없습니다."
+        )
+
+
 class VolumeUpdatePermissionDeniedException(CustomException):
     def __init__(self):
         super().__init__(
