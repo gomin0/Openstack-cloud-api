@@ -6,7 +6,7 @@ from common.application.server.response import ServerDetailsResponse, ServerDeta
 from common.domain.enum import SortOrder
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
-from common.exception.server_exception import ServerNotFoundException
+from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
 from common.infrastructure.database import transactional
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
@@ -34,7 +34,7 @@ class ServerService:
         order: SortOrder,
         project_id: int,
     ) -> ServerDetailsResponse:
-        servers = await self.server_repository.find_all_by_project_id(
+        servers: list[Server] = await self.server_repository.find_all_by_project_id(
             session=session,
             id_=id_,
             ids_contain=ids_contain,
@@ -46,9 +46,7 @@ class ServerService:
             project_id=project_id,
             with_relations=True,
         )
-        return ServerDetailsResponse(
-            servers=[await ServerDetailResponse.from_entity(server) for server in servers]
-        )
+        return ServerDetailsResponse(servers=[await ServerDetailResponse.from_entity(server) for server in servers])
 
     @transactional()
     async def get_server_detail(
@@ -57,7 +55,7 @@ class ServerService:
         server_id: int,
         project_id: int,
     ) -> ServerDetailResponse:
-        server = await self.server_repository.find_by_id(
+        server: Server | None = await self.server_repository.find_by_id(
             session=session,
             server_id=server_id,
             with_relations=True,
@@ -67,6 +65,31 @@ class ServerService:
         server.validate_access_permission(project_id=project_id)
 
         return await ServerDetailResponse.from_entity(server)
+
+    @transactional()
+    async def update_server_info(
+        self,
+        session: AsyncSession,
+        current_project_id: int,
+        server_id: int,
+        name: str,
+        description: str,
+    ) -> ServerResponse:
+        server: Server | None = await self.server_repository.find_by_id(session=session, server_id=server_id)
+        if server is None:
+            raise ServerNotFoundException()
+        server.validate_update_permission(project_id=current_project_id)
+
+        if name != server.name:
+            if await self.server_repository.exists_by_project_and_name(
+                session=session,
+                project_id=current_project_id,
+                name=name
+            ):
+                raise ServerNameDuplicateException()
+
+        server.update_info(name=name, description=description)
+        return ServerResponse.from_entity(server)
 
     @transactional()
     async def get_server(

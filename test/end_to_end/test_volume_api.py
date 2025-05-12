@@ -5,9 +5,83 @@ from common.domain.project.entity import Project
 from common.domain.server.entity import Server
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
+from common.exception.volume_exception import VolumeAccessPermissionDeniedException, VolumeNotFoundException
 from test.util.database import add_to_db
 from test.util.factory import create_access_token, create_volume, create_project, create_domain, create_server
 from test.util.random import random_string, random_int
+
+
+async def test_find_volume_details_success(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_volume(volume_id=1, project_id=project.id))
+    await add_to_db(db_session, create_volume(volume_id=2, project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.get(
+        url="/volumes",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 200
+    assert len(response.json()["volumes"]) == 2
+
+
+async def test_get_volume_detail_success(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.get(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 200
+    assert response.json()["id"] == volume.id
+
+
+async def test_get_volume_detail_fail_not_found(client, db_session):
+    # given
+
+    # when
+    access_token: str = create_access_token(project_id=random_int())
+    response: Response = await client.get(
+        url=f"/volumes/1",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == VolumeNotFoundException().code
+
+
+async def test_get_volume_detail_fail_requester_do_not_have_access_permission(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(project_id=1, domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=2)
+    response: Response = await client.get(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == VolumeAccessPermissionDeniedException().code
 
 
 async def test_create_volume_success(
@@ -210,6 +284,127 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(client, d
     response_body: dict = response.json()
     assert response.status_code == 409
     assert response_body["code"] == "VOLUME_NAME_DUPLICATE"
+
+
+async def test_update_volume_size_success(client, db_session, mock_async_client):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, size=1))
+    await db_session.commit()
+
+    new_size: int = volume.size + 1
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs) -> Response:
+        if method == "POST" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}/action" in url:
+            return Response(
+                status_code=202,
+                request=Request(url=url, method=method)
+            )
+        elif method == "GET" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "volume": {
+                        "id": volume.openstack_id,
+                        "volume_type": "DEFAULT",
+                        "status": "AVAILABLE",
+                        "size": new_size
+                    }
+                },
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+
+    # when
+    access_token: str = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.put(
+        url=f"/volumes/{volume.id}/size",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={"size": new_size}
+    )
+
+    # then
+    response_body: dict = response.json()
+    assert response.status_code == 200
+    assert response_body["size"] == new_size
+
+
+async def test_update_volume_size_fail_volume_not_found(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.put(
+        url="/volumes/1/size",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={"size": 4}
+    )
+
+    # then
+    assert response.status_code == 404
+
+
+async def test_update_volume_size_fail_when_volume_status_is_not_available(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(
+        db_session,
+        create_volume(project_id=project.id, status=VolumeStatus.IN_USE, size=1)
+    )
+    await db_session.commit()
+
+    new_size: int = volume.size + 1
+
+    # when
+    access_token: str = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.put(
+        url=f"/volumes/{volume.id}/size",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={"size": new_size}
+    )
+
+    # then
+    assert response.status_code == 409
+
+
+async def test_update_volume_size_fail_when_given_invalid_size(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, size=1))
+    await db_session.commit()
+
+    new_size: int = volume.size
+
+    # when
+    access_token: str = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.put(
+        url=f"/volumes/{volume.id}/size",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}"
+        },
+        json={"size": new_size}
+    )
+
+    # then
+    assert response.status_code == 400
 
 
 async def test_delete_volume_success(client, db_session, mock_async_client):

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpStatus
+from common.domain.network_interface.entity import NetworkInterface
 from common.domain.server.entity import Server
 
 
@@ -49,7 +50,10 @@ class FloatingIpDetailResponse(BaseModel):
 
     @classmethod
     async def from_entity(cls, floating_ip: FloatingIp) -> "FloatingIpDetailResponse":
-        server: Server = await floating_ip.server
+        network_interface: NetworkInterface | None = await floating_ip.network_interface
+        server: Server | None = None
+        if network_interface:
+            server: Server | None = await network_interface.server
         return cls(
             id=floating_ip.id,
             address=floating_ip.address,

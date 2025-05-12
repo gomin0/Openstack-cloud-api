@@ -78,6 +78,29 @@ class CinderClient(OpenStackClient):
         )
         return response.json().get("volume").get("id")
 
+    async def extend_volume_size(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        project_openstack_id: str,
+        volume_openstack_id: str,
+        new_size: int,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="POST",
+            url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}/action",
+            headers={
+                "Content-Type": "application/json",
+                "X-Auth-Token": keystone_token,
+            },
+            json={
+                "os-extend": {
+                    "new_size": new_size
+                }
+            }
+        )
+
     async def delete_volume(
         self,
         client: AsyncClient,

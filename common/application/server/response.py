@@ -12,6 +12,7 @@ from common.domain.volume.entity import Volume
 
 class FloatingIpResponse(BaseModel):
     id: int = Field(description="Floating IP id")
+    network_interface_id: int | None = Field(description="Network interface id")
     address: str = Field(description="Floating IP address")
 
     model_config = ConfigDict(from_attributes=True)
@@ -78,7 +79,7 @@ class ServerDetailResponse(BaseModel):
     image_id: str = Field(description="Image OpenStack ID")
     status: ServerStatus = Field(description="Server status")
     fixed_ip_addresses: list[str] = Field(description="Fixed IP address")
-    floating_ip: FloatingIpResponse | None = Field(description="Floating IP info")
+    floating_ips: list[FloatingIpResponse] | None = Field(description="Floating IP info")
     volumes: list[VolumeResponse] = Field(description="List of connected volumes")
     security_groups: list[SecurityGroupResponse] | None = Field(description="List of security groups")
     created_at: datetime = Field(description="Created at")
@@ -88,10 +89,15 @@ class ServerDetailResponse(BaseModel):
     @classmethod
     async def from_entity(cls, server: Server) -> "ServerDetailResponse":
         volumes: list[Volume] = await server.volumes
-        floating_ip: FloatingIp | None = await server.floating_ip
         security_groups: list[SecurityGroup] = await server.security_groups
         network_interfaces: list[NetworkInterface] = await server.network_interfaces
         root_volume: Volume = next(volume for volume in volumes if volume.is_root_volume)
+        floating_ips: list[FloatingIp] = []
+        for network_interface in network_interfaces:
+            floating_ip: FloatingIp | None = await network_interface.floating_ip
+            if floating_ip:
+                floating_ips.append(floating_ip)
+
         return cls(
             id=server.id,
             name=server.name,
@@ -101,7 +107,7 @@ class ServerDetailResponse(BaseModel):
             image_id=root_volume.image_openstack_id,
             status=server.status,
             fixed_ip_addresses=[network_interface.fixed_ip_address for network_interface in network_interfaces],
-            floating_ip=FloatingIpResponse.from_entity(floating_ip) if floating_ip else None,
+            floating_ips=[FloatingIpResponse.from_entity(floating_ip) for floating_ip in floating_ips],
             volumes=[VolumeResponse.from_entity(volume) for volume in volumes],
             security_groups=[
                 SecurityGroupResponse.from_entity(security_group) for security_group in security_groups

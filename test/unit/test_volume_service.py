@@ -2,18 +2,93 @@ from datetime import datetime, timezone
 
 import pytest
 
-from common.application.volume.response import VolumeResponse
+from common.application.volume.response import VolumeResponse, VolumeDetailResponse
+from common.domain.enum import SortOrder
 from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
-from common.domain.volume.enum import VolumeStatus
+from common.domain.volume.enum import VolumeStatus, VolumeSortOption
 from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
     VolumeAlreadyDeletedException, VolumeStatusInvalidForDeletionException, AttachedVolumeDeletionException,
-    VolumeUpdatePermissionDeniedException, VolumeDeletionFailedException
+    VolumeUpdatePermissionDeniedException, VolumeDeletionFailedException, VolumeStatusInvalidForResizingException,
+    VolumeResizeNotAllowedException, VolumeResizingFailedException, VolumeAccessPermissionDeniedException
 )
-from test.util.factory import create_volume
+from test.util.factory import create_volume, create_volume_stub
 from test.util.random import random_string, random_int
+
+
+async def test_find_volume_details_success(mock_session, mock_volume_repository, volume_service):
+    # given
+    project_id: int = random_int()
+    expected_result: list[Volume] = [create_volume_stub(project_id=project_id)]
+    mock_volume_repository.find_all_by_project.return_value = expected_result
+
+    # when
+    actual_result = await volume_service.find_volume_details(
+        session=mock_session,
+        current_project_id=project_id,
+        sort_by=VolumeSortOption.NAME,
+        sort_order=SortOrder.DESC,
+    )
+
+    # then
+    mock_volume_repository.find_all_by_project.assert_called_once()
+    assert len(expected_result) == len(actual_result)
+
+
+async def test_get_volume_detail_success(mock_session, mock_volume_repository, volume_service):
+    # given
+    project_id: int = random_int()
+    volume_id: int = random_int()
+    expected_result: Volume = create_volume_stub(volume_id=volume_id, project_id=project_id)
+    mock_volume_repository.find_by_id.return_value = expected_result
+
+    # when
+    actual_result: VolumeDetailResponse = await volume_service.get_volume_detail(
+        session=mock_session,
+        current_project_id=project_id,
+        volume_id=volume_id,
+    )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    assert actual_result.id == expected_result.id
+
+
+async def test_get_volume_detail_fail_not_found(mock_session, mock_volume_repository, volume_service):
+    # given
+    project_id: int = random_int()
+    volume_id: int = random_int()
+    mock_volume_repository.find_by_id.return_value = None
+
+    # when and then
+    with pytest.raises(VolumeNotFoundException):
+        await volume_service.get_volume_detail(
+            session=mock_session,
+            current_project_id=project_id,
+            volume_id=volume_id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_get_volume_detail_fail_requester_do_not_have_access_permission(mock_session, mock_volume_repository,
+                                                                              volume_service):
+    # given
+    project_id: int = 1
+    requesting_project_id: int = 2
+    volume_id: int = random_int()
+    expected_result: Volume = create_volume_stub(volume_id=volume_id, project_id=project_id)
+    mock_volume_repository.find_by_id.return_value = expected_result
+
+    # when and then
+    with pytest.raises(VolumeAccessPermissionDeniedException):
+        await volume_service.get_volume_detail(
+            session=mock_session,
+            current_project_id=requesting_project_id,
+            volume_id=volume_id,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
 
 
 async def test_create_volume_success(
@@ -282,6 +357,188 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(
         )
     mock_volume_repository.find_by_id.assert_called_once()
     mock_volume_repository.exists_by_name_and_project.assert_called_once()
+
+
+async def test_update_volume_size_success(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 2
+    volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_cinder_client.extend_volume_size.return_value = None
+    mock_cinder_client.get_volume.return_value = VolumeDto(
+        openstack_id=volume.openstack_id,
+        volume_type_name="DEFAULT",
+        image_openstack_id=None,
+        status=VolumeStatus.AVAILABLE,
+        size=new_size
+    )
+
+    # when
+    result: Volume = await volume_service.update_volume_size(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        current_project_id=volume.project_id,
+        current_project_openstack_id=random_string(),
+        volume_id=volume.id,
+        new_size=new_size,
+    )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_cinder_client.extend_volume_size.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+    assert result.id == volume.id
+    assert result.status == VolumeStatus.AVAILABLE
+    assert result.size == new_size
+
+
+async def test_update_volume_size_fail_volume_not_found(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = random_int()
+    mock_volume_repository.find_by_id.return_value = None
+
+    # when and then
+    with pytest.raises(VolumeNotFoundException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=random_int(),
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_update_permission_denied(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 2
+    volume: Volume = create_volume(project_id=1, status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeUpdatePermissionDeniedException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=2,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_when_volume_status_is_not_available(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 2
+    volume: Volume = create_volume(status=VolumeStatus.IN_USE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeStatusInvalidForResizingException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=volume.project_id,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_when_given_invalid_size(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    new_size: int = 1
+    volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeResizeNotAllowedException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=volume.project_id,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_update_volume_size_fail_resize_from_openstack(
+    mock_session,
+    mock_async_client,
+    mock_volume_repository,
+    mock_cinder_client,
+    volume_service,
+):
+    # given
+    volume_service.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING = 3
+    volume_service.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING = 0
+
+    new_size: int = 2
+    volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_cinder_client.extend_volume_size.return_value = None
+    mock_cinder_client.get_volume.return_value = VolumeDto(
+        openstack_id=volume.openstack_id,
+        volume_type_name="DEFAULT",
+        image_openstack_id=None,
+        status=VolumeStatus.EXTENDING,
+        size=new_size
+    )
+
+    # when and then
+    with pytest.raises(VolumeResizingFailedException):
+        await volume_service.update_volume_size(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=volume.project_id,
+            current_project_openstack_id=random_string(),
+            volume_id=random_int(),
+            new_size=new_size,
+        )
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_cinder_client.extend_volume_size.assert_called_once()
+    assert mock_cinder_client.get_volume.call_count == volume_service.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING
 
 
 async def test_delete_volume_success(

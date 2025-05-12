@@ -57,10 +57,6 @@ class SecurityGroupRepository:
 
         return await session.scalar(query)
 
-    @staticmethod
-    def _with_relations():
-        return selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
-
     async def exists_by_project_and_name(
         self,
         session: AsyncSession,
@@ -85,3 +81,6 @@ class SecurityGroupRepository:
         await session.flush()
 
         return security_group
+
+    def _with_relations(self):
+        return selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)

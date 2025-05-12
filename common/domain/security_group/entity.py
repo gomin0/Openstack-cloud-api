@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 
 from async_property import async_property
-from sqlalchemy import BigInteger, CHAR, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.orm import relationship
+from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
 from common.domain.server.entity import Server
+from common.exception.security_group_exception import SecurityGroupDeletePermissionDeniedException, \
+    SecurityGroupUpdatePermissionDeniedException
 
 
 class SecurityGroup(SoftDeleteBaseEntity):
@@ -17,6 +18,7 @@ class SecurityGroup(SoftDeleteBaseEntity):
     project_id: Mapped[int] = mapped_column("project_id", BigInteger, ForeignKey("project.id"), nullable=False)
     name: Mapped[str] = mapped_column("name", String(255), nullable=False)
     description: Mapped[str | None] = mapped_column("description", String(255), nullable=True)
+    version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
     _linked_servers: Mapped[list[Server]] = relationship(
         "ServerSecurityGroup", lazy="select", back_populates="_security_group"
@@ -26,6 +28,8 @@ class SecurityGroup(SoftDeleteBaseEntity):
     async def servers(self) -> list[Server]:
         linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
         return [await link.server for link in linked_servers]
+
+    __mapper_args__ = {"version_id_col": version}
 
     @classmethod
     def create(
@@ -45,6 +49,18 @@ class SecurityGroup(SoftDeleteBaseEntity):
             updated_at=datetime.now(timezone.utc),
             deleted_at=None,
         )
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise SecurityGroupDeletePermissionDeniedException()
+
+    def validate_update_permission(self, project_id: int):
+        if self.project_id != project_id:
+            raise SecurityGroupUpdatePermissionDeniedException()
+
+    def update_info(self, name: str, description: str):
+        self.name = name
+        self.description = description
 
 
 class ServerSecurityGroup(BaseEntity):

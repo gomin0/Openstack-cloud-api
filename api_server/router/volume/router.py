@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from api_server.router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
-from common.application.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
+from common.application.volume.response import VolumeDetailsResponse, VolumeResponse, VolumeDetailResponse
 from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.volume.enum import VolumeSortOption
@@ -27,11 +27,19 @@ router = APIRouter(prefix="/volumes", tags=["volume"])
     }
 )
 async def find_volumes_detail(
-    sort_by: VolumeSortOption = Query(default=VolumeSortOption.CREATED_AT),
-    sort_order: SortOrder = Query(default=SortOrder.ASC),
-    _: CurrentUser = Depends(get_current_user)
-) -> VolumesDetailResponse:
-    raise NotImplementedError()
+    sort_by: VolumeSortOption = VolumeSortOption.CREATED_AT,
+    sort_order: SortOrder = SortOrder.ASC,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    volume_service: VolumeService = Depends(),
+) -> VolumeDetailsResponse:
+    volume_details: list[VolumeDetailResponse] = await volume_service.find_volume_details(
+        session=session,
+        current_project_id=current_user.project_id,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return VolumeDetailsResponse(volumes=volume_details)
 
 
 @router.get(
@@ -46,9 +54,15 @@ async def find_volumes_detail(
 )
 async def get_volume_detail(
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends()
 ) -> VolumeDetailResponse:
-    raise NotImplementedError()
+    return await volume_service.get_volume_detail(
+        session=session,
+        current_project_id=current_user.project_id,
+        volume_id=volume_id,
+    )
 
 
 @router.post(
@@ -120,22 +134,39 @@ async def update_volume_info(
 
 @router.put(
     path="/{volume_id}/size",
-    status_code=HTTP_202_ACCEPTED,
+    status_code=HTTP_200_OK,
     summary="볼륨 용량 변경",
+    description="""
+        <p>볼륨 용량을 변경합니다. 
+        <p>상태가 <code>AVAILABLE</code>인 볼륨만 용량을 변경할 수 있습니다.
+        <p>용량은 상향 조정만 가능합니다.
+    """,
     responses={
         400: {"description": "변경하려는 볼륨 용량이 기존 용량보다 크지 않은 경우"},
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "볼륨에 대한 접근 권한이 없는 경우"},
         404: {"description": "볼륨을 찾을 수 없는 경우"},
+        409: {"description": "용량을 변경하려는 볼륨의 상태가 <code>AVAILABLE</code>이 아닌 경우"},
         422: {"description": "요청 데이터의 값이나 형식이 잘못된 경우"},
     }
 )
 async def update_volume_size(
     volume_id: int,
     request: UpdateVolumeSizeRequest,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends(),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
 ) -> VolumeResponse:
-    raise NotImplementedError()
+    return await volume_service.update_volume_size(
+        session=session,
+        client=client,
+        keystone_token=current_user.keystone_token,
+        current_project_id=current_user.project_id,
+        current_project_openstack_id=current_user.project_openstack_id,
+        volume_id=volume_id,
+        new_size=request.size,
+    )
 
 
 @router.delete(

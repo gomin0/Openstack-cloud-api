@@ -8,7 +8,8 @@ from test.util.factory import (
     create_project,
     create_project_user,
     create_floating_ip,
-    create_access_token
+    create_access_token,
+    create_server, create_network_interface,
 )
 
 envs = get_envs()
@@ -152,3 +153,96 @@ async def test_create_floating_ip_success(client, db_session, mock_async_client)
     assert response.status_code == 201
     data = response.json()
     assert data["address"] == "10.0.0.1"
+
+
+async def test_delete_floating_ip_success(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    floating_ip = await add_to_db(db_session, create_floating_ip(project_id=project.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    def request_side_effect(method, url, *args, **kwargs):
+        mock_response = Mock()
+        if method == "DELETE" and "/v2.0/floatingips" in url:
+            mock_response.status_code = 204
+            mock_response.raise_for_status.return_value = None
+        else:
+            raise ValueError("Unknown API endpoint")
+        return mock_response
+
+    mock_async_client.request.side_effect = request_side_effect
+
+    # when
+    response = await client.delete(
+        f"/floating-ips/{floating_ip.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 204
+
+
+async def test_delete_floating_ip_fail_not_found(client, db_session, mock_async_client):
+    # given
+    floating_ip_id = 1
+    access_token = create_access_token(user_id=1, project_id=1)
+
+    # when
+    response = await client.delete(
+        f"/floating-ips/{floating_ip_id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == "FLOATING_IP_NOT_FOUND"
+
+
+async def test_delete_floating_ip_fail_permission_denied(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project1 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    project2 = await add_to_db(db_session, create_project(domain_id=domain.id))
+    floating_ip = await add_to_db(db_session, create_floating_ip(project_id=project2.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project1.id)
+
+    # when
+    response = await client.delete(
+        f"/floating-ips/{floating_ip.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == "FLOATING_IP_DELETE_PERMISSION_DENIED"
+
+
+async def test_delete_floating_ip_fail_server_attached(client, db_session, mock_async_client):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    network_interface = await add_to_db(db_session,
+                                        create_network_interface(server_id=server.id, project_id=project.id))
+    floating_ip = await add_to_db(
+        db_session,
+        create_floating_ip(project_id=project.id, network_interface_id=network_interface.id)
+    )
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    # when
+    response = await client.delete(
+        f"/floating-ips/{floating_ip.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    assert response.json()["code"] == "ATTACHED_FLOATING_IP_DELETION"
