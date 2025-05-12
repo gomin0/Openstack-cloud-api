@@ -1,17 +1,25 @@
 from fastapi import Depends
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.application.server.response import ServerDetailsResponse, ServerDetailResponse
+from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerVncUrlResponse
 from common.domain.enum import SortOrder
+from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
 from common.exception.server_exception import ServerNotFoundException
 from common.infrastructure.database import transactional
+from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
 
 
 class ServerService:
-    def __init__(self, server_repository: ServerRepository = Depends()):
+    def __init__(
+        self,
+        server_repository: ServerRepository = Depends(),
+        nova_client: NovaClient = Depends()
+    ):
         self.server_repository = server_repository
+        self.nova_client = nova_client
 
     @transactional()
     async def find_servers_details(
@@ -41,7 +49,7 @@ class ServerService:
         return ServerDetailsResponse(
             servers=[await ServerDetailResponse.from_entity(server) for server in servers]
         )
-    
+
     @transactional()
     async def get_server_detail(
         self,
@@ -59,3 +67,27 @@ class ServerService:
         server.validate_access_permission(project_id=project_id)
 
         return await ServerDetailResponse.from_entity(server)
+
+    async def get_server_vnc_url(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        server_id: int,
+        project_id: int,
+        keystone_token: str,
+    ) -> ServerVncUrlResponse:
+        server: Server = await self.server_repository.find_by_id(
+            session=session,
+            server_id=server_id,
+        )
+        if not server:
+            raise ServerNotFoundException()
+        server.validate_access_permission(project_id=project_id)
+
+        vnc_url: str = await self.nova_client.create_console(
+            client=client,
+            keystone_token=keystone_token,
+            server_openstack_id=server.openstack_id
+        )
+
+        return ServerVncUrlResponse(url=vnc_url)
