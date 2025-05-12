@@ -2,7 +2,7 @@ from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerVncUrlResponse
+from common.application.server.response import ServerDetailsResponse, ServerDetailResponse
 from common.domain.enum import SortOrder
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
@@ -75,13 +75,11 @@ class ServerService:
         server_id: int,
         project_id: int,
         keystone_token: str,
-    ) -> ServerVncUrlResponse:
-        server: Server = await self.server_repository.find_by_id(
+    ) -> str:
+        server: Server = await self._get_server_by_id(
             session=session,
-            server_id=server_id,
+            server_id=server_id
         )
-        if not server:
-            raise ServerNotFoundException()
         server.validate_access_permission(project_id=project_id)
 
         vnc_url: str = await self.nova_client.get_vnc_console(
@@ -90,4 +88,22 @@ class ServerService:
             server_openstack_id=server.openstack_id
         )
 
-        return ServerVncUrlResponse(url=vnc_url)
+        return vnc_url
+
+    @transactional()
+    async def _get_server_by_id(
+        self,
+        session: AsyncSession,
+        server_id: int,
+        with_deleted: bool,
+        with_relations: bool,
+    ) -> Server | None:
+        if server := await self.server_repository.find_by_id(
+            session=session,
+            server_id=server_id,
+            with_deleted=with_deleted,
+            with_relations=with_relations,
+        ) is None:
+            raise ServerNotFoundException()
+
+        return server

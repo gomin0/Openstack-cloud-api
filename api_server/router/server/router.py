@@ -165,13 +165,14 @@ async def get_server_vnc_url(
     client: AsyncClient = Depends(get_async_client),
     server_service: ServerService = Depends(),
 ) -> ServerVncUrlResponse:
-    return await server_service.get_server_vnc_url(
+    url: str = await server_service.get_server_vnc_url(
         session=session,
         client=client,
         server_id=server_id,
         project_id=current_user.project_id,
         keystone_token=current_user.keystone_token,
     )
+    return ServerVncUrlResponse(url=url)
 
 
 @router.post(
