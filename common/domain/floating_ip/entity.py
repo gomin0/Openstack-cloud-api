@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.network_interface.entity import NetworkInterface
-from common.domain.server.entity import Server
 from common.exception.floating_ip_exception import FloatingIpDeletePermissionDeniedException, \
     AttachedFloatingIpDeletionException, FloatingIpAlreadyDeletedException
 
@@ -27,7 +26,9 @@ class FloatingIp(SoftDeleteBaseEntity):
     )
     address: Mapped[str] = mapped_column("address", String(15), nullable=False)
 
-    _network_interface: Mapped[Server] = relationship("NetworkInterface", lazy="select", back_populates="_floating_ip")
+    _network_interface: Mapped[NetworkInterface] = relationship(
+        "NetworkInterface", lazy="select", back_populates="_floating_ip"
+    )
 
     @async_property
     async def network_interface(self) -> NetworkInterface | None:
