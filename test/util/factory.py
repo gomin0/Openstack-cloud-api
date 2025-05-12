@@ -330,6 +330,42 @@ def create_network_interface(
     )
 
 
+def create_volume_stub(
+    volume_id: int = random_int(),
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    server_id: int | None = None,
+    volume_type_openstack_id: str = random_string(),
+    image_openstack_id: str | None = None,
+    name: str = random_string(),
+    description: str = random_string(),
+    status: VolumeStatus = VolumeStatus.AVAILABLE,
+    size: int = random_int(),
+    is_root_volume: bool = False,
+    deleted_at: datetime | None = None,
+    project: Project | None = None,
+    server: Server | None = None,
+) -> Volume:
+    return VolumeStub(
+        project=project or create_project(domain_id=random_int(), project_id=project_id),
+        server=server,
+        id=volume_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        server_id=server_id,
+        volume_type_openstack_id=volume_type_openstack_id,
+        image_openstack_id=image_openstack_id,
+        name=name,
+        description=description,
+        status=status,
+        size=size,
+        is_root_volume=is_root_volume,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=deleted_at,
+    )
+
+
 def create_access_token(
     user_id: int = random_int(),
     user_openstack_id: str = random_string(),
@@ -401,8 +437,23 @@ class SecurityGroupStub(SecurityGroup):
         self._mock_servers = servers
 
     @async_property
-    async def servers(self):
+    async def servers(self) -> list[Server]:
         return self._mock_servers
+
+
+class VolumeStub(Volume):
+    def __init__(self, project: Project, server: Server | None = None, **kwargs):
+        super().__init__(**kwargs)
+        self._mock_project = project
+        self._mock_server = server
+
+    @async_property
+    async def project(self) -> Project:
+        return self._mock_project
+
+    @async_property
+    async def server(self) -> Server | None:
+        return self._mock_server
 
 
 class ServerStub(Server):

@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from api_server.router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
-from common.application.volume.response import VolumesDetailResponse, VolumeResponse, VolumeDetailResponse
+from common.application.volume.response import VolumeDetailsResponse, VolumeResponse, VolumeDetailResponse
 from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.volume.enum import VolumeSortOption
@@ -27,11 +27,19 @@ router = APIRouter(prefix="/volumes", tags=["volume"])
     }
 )
 async def find_volumes_detail(
-    sort_by: VolumeSortOption = Query(default=VolumeSortOption.CREATED_AT),
-    sort_order: SortOrder = Query(default=SortOrder.ASC),
-    _: CurrentUser = Depends(get_current_user)
-) -> VolumesDetailResponse:
-    raise NotImplementedError()
+    sort_by: VolumeSortOption = VolumeSortOption.CREATED_AT,
+    sort_order: SortOrder = SortOrder.ASC,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    volume_service: VolumeService = Depends(),
+) -> VolumeDetailsResponse:
+    volume_details: list[VolumeDetailResponse] = await volume_service.find_volume_details(
+        session=session,
+        current_project_id=current_user.project_id,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+    return VolumeDetailsResponse(volumes=volume_details)
 
 
 @router.get(
@@ -46,9 +54,15 @@ async def find_volumes_detail(
 )
 async def get_volume_detail(
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
+    volume_service: VolumeService = Depends()
 ) -> VolumeDetailResponse:
-    raise NotImplementedError()
+    return await volume_service.get_volume_detail(
+        session=session,
+        current_project_id=current_user.project_id,
+        volume_id=volume_id,
+    )
 
 
 @router.post(

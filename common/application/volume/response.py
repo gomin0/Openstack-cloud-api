@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
+from common.domain.server.entity import Server
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 
@@ -49,6 +50,12 @@ class ServerResponse(BaseModel):
     updated_at: datetime = Field(description="Last update time")
     deleted_at: datetime | None = Field(default=None, description="Deletion time")
 
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, server: Server) -> "ServerResponse":
+        return cls.model_validate(server)
+
 
 class VolumeDetailResponse(BaseModel):
     id: int = Field(description="Id of volume")
@@ -65,6 +72,25 @@ class VolumeDetailResponse(BaseModel):
     updated_at: datetime = Field(description="Last update time")
     deleted_at: datetime | None = Field(default=None, description="Deletion time")
 
+    @classmethod
+    async def from_entity(cls, volume: Volume) -> "VolumeDetailResponse":
+        server: Server | None = await volume.server
+        return cls(
+            id=volume.id,
+            project_id=volume.project_id,
+            server=ServerResponse.from_entity(server) if server is not None else None,
+            volume_type_id=volume.volume_type_openstack_id,
+            image_id=volume.image_openstack_id,
+            name=volume.name,
+            description=volume.description,
+            status=volume.status,
+            size=volume.size,
+            is_root_volume=volume.is_root_volume,
+            created_at=volume.created_at,
+            updated_at=volume.updated_at,
+            deleted_at=volume.deleted_at,
+        )
 
-class VolumesDetailResponse(BaseModel):
+
+class VolumeDetailsResponse(BaseModel):
     volumes: list[VolumeDetailResponse]

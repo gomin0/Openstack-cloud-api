@@ -5,9 +5,83 @@ from common.domain.project.entity import Project
 from common.domain.server.entity import Server
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
+from common.exception.volume_exception import VolumeAccessPermissionDeniedException, VolumeNotFoundException
 from test.util.database import add_to_db
 from test.util.factory import create_access_token, create_volume, create_project, create_domain, create_server
 from test.util.random import random_string, random_int
+
+
+async def test_find_volume_details_success(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_volume(volume_id=1, project_id=project.id))
+    await add_to_db(db_session, create_volume(volume_id=2, project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.get(
+        url="/volumes",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 200
+    assert len(response.json()["volumes"]) == 2
+
+
+async def test_get_volume_detail_success(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.get(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 200
+    assert response.json()["id"] == volume.id
+
+
+async def test_get_volume_detail_fail_not_found(client, db_session):
+    # given
+
+    # when
+    access_token: str = create_access_token(project_id=random_int())
+    response: Response = await client.get(
+        url=f"/volumes/1",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == VolumeNotFoundException().code
+
+
+async def test_get_volume_detail_fail_requester_do_not_have_access_permission(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(project_id=1, domain_id=domain.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=2)
+    response: Response = await client.get(
+        url=f"/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 403
+    assert response.json()["code"] == VolumeAccessPermissionDeniedException().code
 
 
 async def test_create_volume_success(
