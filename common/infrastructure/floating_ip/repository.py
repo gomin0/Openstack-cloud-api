@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 from common.domain.enum import SortOrder
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpSortOption
+from common.domain.network_interface.entity import NetworkInterface
 
 
 class FloatingIpRepository:
@@ -71,4 +72,4 @@ class FloatingIpRepository:
 
     @staticmethod
     def _with_relations():
-        return joinedload(FloatingIp._server)
+        return joinedload(FloatingIp._network_interface).joinedload(NetworkInterface._server)

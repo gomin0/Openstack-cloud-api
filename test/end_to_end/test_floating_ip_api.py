@@ -9,7 +9,7 @@ from test.util.factory import (
     create_project_user,
     create_floating_ip,
     create_access_token,
-    create_server,
+    create_server, create_network_interface,
 )
 
 envs = get_envs()
@@ -228,9 +228,10 @@ async def test_delete_floating_ip_fail_server_attached(client, db_session, mock_
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server = await add_to_db(db_session, create_server(project_id=project.id))
+    network_interface = await add_to_db(db_session, create_network_interface(server_id=server.id))
     floating_ip = await add_to_db(
         db_session,
-        create_floating_ip(project_id=project.id, server_id=server.id)
+        create_floating_ip(project_id=project.id, network_interface_id=network_interface.id)
     )
     await db_session.commit()
     access_token = create_access_token(user_id=user.id, project_id=project.id)
