@@ -3,6 +3,7 @@ from sqlalchemy import BigInteger, CHAR, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
+from common.domain.server.entity import Server
 
 
 class NetworkInterface(SoftDeleteBaseEntity):
@@ -13,11 +14,11 @@ class NetworkInterface(SoftDeleteBaseEntity):
     openstack_id: Mapped[str] = mapped_column("openstack_id", CHAR(36), nullable=False)
     fixed_ip_address: Mapped[str] = mapped_column("fixed_ip_address", String(15), nullable=False)
 
-    _server: Mapped["Server"] = relationship("Server", lazy="select")
-    _floating_ip: Mapped["FloatingIp"] = relationship("FloatingIp", lazy="select")
+    _server: Mapped["Server"] = relationship("Server", lazy="select", back_populates="_linked_network_interfaces")
+    _floating_ip: Mapped["FloatingIp"] = relationship("FloatingIp", lazy="select", back_populates="_network_interface")
 
     @async_property
-    async def server(self) -> "Server":
+    async def server(self) -> Server | None:
         return await self.awaitable_attrs._server
 
     @async_property

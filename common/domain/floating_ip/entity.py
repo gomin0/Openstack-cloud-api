@@ -27,10 +27,10 @@ class FloatingIp(SoftDeleteBaseEntity):
     )
     address: Mapped[str] = mapped_column("address", String(15), nullable=False)
 
-    _network_interface: Mapped[Server] = relationship("NetworkInterface", lazy="select")
+    _network_interface: Mapped[Server] = relationship("NetworkInterface", lazy="select", back_populates="_floating_ip")
 
     @async_property
-    async def network_interface(self) -> NetworkInterface:
+    async def network_interface(self) -> NetworkInterface | None:
         return await self.awaitable_attrs._network_interface
 
     @property

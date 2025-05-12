@@ -22,7 +22,9 @@ class Server(SoftDeleteBaseEntity):
     )
 
     _linked_volumes: Mapped[list["Volume"]] = relationship("Volume", lazy="select")
-    _linked_network_interfaces: Mapped[list["NetworkInterface"]] = relationship("NetworkInterface", lazy="select")
+    _linked_network_interfaces: Mapped[list["NetworkInterface"]] = relationship(
+        "NetworkInterface", lazy="select", back_populates="_server"
+    )
     _linked_security_groups: Mapped[list["ServerSecurityGroup"]] = relationship(
         "ServerSecurityGroup",
         lazy="select",
