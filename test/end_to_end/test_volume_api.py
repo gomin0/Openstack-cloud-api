@@ -11,6 +11,26 @@ from test.util.factory import create_access_token, create_volume, create_project
 from test.util.random import random_string, random_int
 
 
+async def test_find_volume_details_success(client, db_session):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await add_to_db(db_session, create_volume(volume_id=1, project_id=project.id))
+    await add_to_db(db_session, create_volume(volume_id=2, project_id=project.id))
+    await db_session.commit()
+
+    # when
+    access_token: str = create_access_token(project_id=project.id)
+    response: Response = await client.get(
+        url="/volumes",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 200
+    assert len(response.json()["volumes"]) == 2
+
+
 async def test_get_volume_detail_success(client, db_session):
     # given
     domain: Domain = await add_to_db(db_session, create_domain())

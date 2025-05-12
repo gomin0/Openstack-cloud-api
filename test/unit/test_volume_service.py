@@ -3,9 +3,10 @@ from datetime import datetime, timezone
 import pytest
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
+from common.domain.enum import SortOrder
 from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
-from common.domain.volume.enum import VolumeStatus
+from common.domain.volume.enum import VolumeStatus, VolumeSortOption
 from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
@@ -15,6 +16,25 @@ from common.exception.volume_exception import (
 )
 from test.util.factory import create_volume, create_volume_stub
 from test.util.random import random_string, random_int
+
+
+async def test_find_volume_details_success(mock_session, mock_volume_repository, volume_service):
+    # given
+    project_id: int = random_int()
+    expected_result: list[Volume] = [create_volume_stub(project_id=project_id)]
+    mock_volume_repository.find_all_by_project.return_value = expected_result
+
+    # when
+    actual_result = await volume_service.find_volume_details(
+        session=mock_session,
+        current_project_id=project_id,
+        sort_by=VolumeSortOption.NAME,
+        sort_order=SortOrder.DESC,
+    )
+
+    # then
+    mock_volume_repository.find_all_by_project.assert_called_once()
+    assert len(expected_result) == len(actual_result)
 
 
 async def test_get_volume_detail_success(mock_session, mock_volume_repository, volume_service):

@@ -7,9 +7,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
+from common.domain.enum import SortOrder
 from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
-from common.domain.volume.enum import VolumeStatus
+from common.domain.volume.enum import VolumeStatus, VolumeSortOption
 from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletionFailedException, VolumeResizingFailedException
@@ -41,6 +42,22 @@ class VolumeService:
     ):
         self.volume_repository = volume_repository
         self.cinder_client = cinder_client
+
+    @transactional()
+    async def find_volume_details(
+        self,
+        session: AsyncSession,
+        current_project_id: int,
+        sort_by: VolumeSortOption,
+        sort_order: SortOrder,
+    ) -> list[VolumeDetailResponse]:
+        volumes: list[Volume] = await self.volume_repository.find_all_by_project(
+            session=session,
+            project_id=current_project_id,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        return [await VolumeDetailResponse.from_entity(volume) for volume in volumes]
 
     @transactional()
     async def get_volume_detail(

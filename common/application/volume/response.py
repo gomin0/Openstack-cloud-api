@@ -92,5 +92,5 @@ class VolumeDetailResponse(BaseModel):
         )
 
 
-class VolumesDetailResponse(BaseModel):
+class VolumeDetailsResponse(BaseModel):
     volumes: list[VolumeDetailResponse]
