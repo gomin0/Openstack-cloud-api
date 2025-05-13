@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload, InstrumentedAttribute
 
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
-from common.domain.security_group.entity import ServerSecurityGroup
+from common.domain.security_group.entity import NetworkInterfaceSecurityGroup
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
 
@@ -88,5 +88,8 @@ class ServerRepository:
         return (
             selectinload(Server._linked_volumes),
             selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
-            selectinload(Server._linked_security_groups).selectinload(ServerSecurityGroup._security_group)
+            selectinload(Server._linked_network_interfaces)
+            .joinedload(NetworkInterface._linked_security_groups)
+            .selectinload(NetworkInterfaceSecurityGroup._security_group),
+
         )

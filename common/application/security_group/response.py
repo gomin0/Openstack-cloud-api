@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import Field, BaseModel, ConfigDict
 
+from common.domain.network_interface.entity import NetworkInterface
 from common.domain.security_group.dto import SecurityGroupRuleDTO
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.security_group.enum import SecurityGroupRuleDirection, SecurityGroupRuleEtherType
@@ -54,7 +55,8 @@ class SecurityGroupDetailResponse(BaseModel):
         security_group: SecurityGroup,
         rules: list[SecurityGroupRuleDTO]
     ) -> "SecurityGroupDetailResponse":
-        servers: list[Server] = await security_group.servers
+        network_interfaces: list[NetworkInterface] = await security_group.network_interfaces
+        servers: set = {await network_interface.server for network_interface in network_interfaces}
         return cls(
             id=security_group.id,
             name=security_group.name,

@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from common.domain.enum import SortOrder
-from common.domain.security_group.entity import SecurityGroup, ServerSecurityGroup
+from common.domain.network_interface.entity import NetworkInterface
+from common.domain.security_group.entity import SecurityGroup, NetworkInterfaceSecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
 
 
@@ -83,4 +84,8 @@ class SecurityGroupRepository:
         return security_group
 
     def _with_relations(self):
-        return selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
+        return (
+            selectinload(SecurityGroup._linked_network_interfaces)
+            .selectinload(NetworkInterfaceSecurityGroup._network_interface)
+            .selectinload(NetworkInterface._server)
+        )

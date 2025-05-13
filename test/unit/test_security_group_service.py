@@ -365,7 +365,7 @@ async def test_delete_security_group_success(
     mock_session,
     mock_async_client,
     mock_security_group_repository,
-    mock_server_security_group_repository,
+    mock_network_interface_security_group_repository,
     mock_neutron_client,
     security_group_service
 ):
@@ -376,7 +376,7 @@ async def test_delete_security_group_success(
 
     security_group = create_security_group_stub(security_group_id=security_group_id, project_id=project_id)
     mock_security_group_repository.find_by_id.return_value = security_group
-    mock_server_security_group_repository.exists_by_security_group.return_value = False
+    mock_network_interface_security_group_repository.exists_by_security_group.return_value = False
 
     # when
     await security_group_service.delete_security_group(
@@ -392,7 +392,7 @@ async def test_delete_security_group_success(
         session=mock_session,
         security_group_id=security_group_id
     )
-    mock_server_security_group_repository.exists_by_security_group.assert_called_once_with(
+    mock_network_interface_security_group_repository.exists_by_security_group.assert_called_once_with(
         session=mock_session,
         security_group_id=security_group_id
     )
@@ -458,7 +458,7 @@ async def test_delete_security_group_fail_server_attached(
     mock_session,
     mock_async_client,
     mock_security_group_repository,
-    mock_server_security_group_repository,
+    mock_network_interface_security_group_repository,
     security_group_service
 ):
     # given
@@ -466,7 +466,7 @@ async def test_delete_security_group_fail_server_attached(
     project_id = 1
     security_group = create_security_group_stub(security_group_id=security_group_id, project_id=project_id)
     mock_security_group_repository.find_by_id.return_value = security_group
-    mock_server_security_group_repository.exists_by_security_group.return_value = True
+    mock_network_interface_security_group_repository.exists_by_security_group.return_value = True
 
     # when & then
     with pytest.raises(AttachedSecurityGroupDeletionException):
@@ -478,7 +478,7 @@ async def test_delete_security_group_fail_server_attached(
             security_group_id=security_group_id,
         )
 
-    mock_server_security_group_repository.exists_by_security_group.assert_called_once_with(
+    mock_network_interface_security_group_repository.exists_by_security_group.assert_called_once_with(
         session=mock_session,
         security_group_id=security_group_id
     )

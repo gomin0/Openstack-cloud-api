@@ -4,7 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.server.enum import ServerStatus
-from common.exception.server_exception import ServerAccessPermissionDeniedException, ServerUpdatePermissionDeniedException
+from common.exception.server_exception import ServerAccessPermissionDeniedException, \
+    ServerUpdatePermissionDeniedException
 
 
 class Server(SoftDeleteBaseEntity):
@@ -25,16 +26,6 @@ class Server(SoftDeleteBaseEntity):
     _linked_network_interfaces: Mapped[list["NetworkInterface"]] = relationship(
         "NetworkInterface", lazy="select", back_populates="_server"
     )
-    _linked_security_groups: Mapped[list["ServerSecurityGroup"]] = relationship(
-        "ServerSecurityGroup",
-        lazy="select",
-        back_populates="_server"
-    )
-
-    @async_property
-    async def security_groups(self) -> list["SecurityGroup"]:
-        linked_security_group: list["SecurityGroup"] = await self.awaitable_attrs._linked_security_groups
-        return [await link.security_group for link in linked_security_group]
 
     @async_property
     async def volumes(self) -> list["Volume"]:

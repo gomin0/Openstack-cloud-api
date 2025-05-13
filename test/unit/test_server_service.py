@@ -34,14 +34,12 @@ async def test_find_servers_details_success(
             project_id=project.id,
             volumes=[volume1],
             network_interfaces=[network_interface1],
-            security_groups=[]
         ),
         create_server_stub(
             server_id=2,
             project_id=project.id,
             volumes=[volume2],
             network_interfaces=[network_interface2],
-            security_groups=[]
         ),
     ]
     mock_server_repository.find_all_by_project_id.return_value = mock_servers
@@ -94,7 +92,6 @@ async def test_get_server_detail_success(
         project_id=project.id,
         volumes=[volume],
         network_interfaces=[network_interface],
-        security_groups=[]
     )
 
     mock_server_repository.find_by_id.return_value = mock_server
@@ -159,7 +156,6 @@ async def test_get_server_detail_fail_access_denied(
         project_id=2,
         volumes=[volume],
         network_interfaces=[network_interface],
-        security_groups=[],
     )
     mock_server_repository.find_by_id.return_value = mock_server
 
@@ -287,7 +283,6 @@ async def test_get_server_vnc_url_success(
         project_id=project_id,
         volumes=[volume],
         network_interfaces=[network_interface],
-        security_groups=[]
     )
     mock_server_repository.find_by_id.return_value = mock_server
     mock_nova_client.get_vnc_console.return_value = vnc_url
