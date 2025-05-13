@@ -27,8 +27,8 @@ class SecurityGroup(SoftDeleteBaseEntity):
 
     @async_property
     async def network_interfaces(self) -> list["NetworkInterface"]:
-        linked_network_interfaces: list[
-            NetworkInterfaceSecurityGroup] = await self.awaitable_attrs._linked_network_interfaces
+        linked_network_interfaces: list[NetworkInterfaceSecurityGroup] = \
+            await self.awaitable_attrs._linked_network_interfaces
         return [await link.network_interface for link in linked_network_interfaces]
 
     __mapper_args__ = {"version_id_col": version}

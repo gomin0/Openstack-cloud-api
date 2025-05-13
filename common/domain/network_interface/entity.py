@@ -33,6 +33,6 @@ class NetworkInterface(SoftDeleteBaseEntity):
 
     @async_property
     async def security_groups(self) -> list["SecurityGroup"]:
-        linked_security_group: list[
-            "NetworkInterfaceSecurityGroup"] = await self.awaitable_attrs._linked_security_groups
-        return [await link.security_group for link in linked_security_group]
+        linked_security_groups: list["NetworkInterfaceSecurityGroup"] = \
+            await self.awaitable_attrs._linked_security_groups
+        return [await link.security_group for link in linked_security_groups]
