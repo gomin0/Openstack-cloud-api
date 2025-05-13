@@ -18,6 +18,11 @@ class NetworkInterface(SoftDeleteBaseEntity):
 
     _server: Mapped[Server | None] = relationship("Server", lazy="select", back_populates="_linked_network_interfaces")
     _floating_ip: Mapped["FloatingIp"] = relationship("FloatingIp", lazy="select", back_populates="_network_interface")
+    _linked_security_groups: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
+        "NetworkInterfaceSecurityGroup",
+        lazy="select",
+        back_populates="_network_interface"
+    )
 
     @async_property
     async def server(self) -> Server | None:
@@ -26,6 +31,12 @@ class NetworkInterface(SoftDeleteBaseEntity):
     @async_property
     async def floating_ip(self) -> "FloatingIp":
         return await self.awaitable_attrs._floating_ip
+
+    @async_property
+    async def security_groups(self) -> list["SecurityGroup"]:
+        linked_security_groups: list["NetworkInterfaceSecurityGroup"] = \
+            await self.awaitable_attrs._linked_security_groups
+        return [await link.security_group for link in linked_security_groups]
 
     def validate_access_permission(self, project_id):
         if self.project_id != project_id:

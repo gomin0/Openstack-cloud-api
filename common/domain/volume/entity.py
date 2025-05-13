@@ -18,7 +18,6 @@ from common.exception.volume_exception import (
 class Volume(SoftDeleteBaseEntity):
     DELETABLE_STATUSES: list[VolumeStatus] = [
         VolumeStatus.AVAILABLE,
-        VolumeStatus.IN_USE,
         VolumeStatus.ERROR,
         VolumeStatus.ERROR_RESTORING,
         VolumeStatus.ERROR_EXTENDING,

@@ -188,7 +188,6 @@ def create_server(
 def create_server_stub(
     volumes: list[Volume],
     network_interfaces: list[NetworkInterface],
-    security_groups: list[SecurityGroup],
     server_id: int | None = None,
     openstack_id: str = random_string(),
     project_id: int = random_int(),
@@ -210,7 +209,6 @@ def create_server_stub(
         status=status,
         volumes=volumes,
         network_interfaces=network_interfaces,
-        security_groups=security_groups,
         created_at=created_at,
         updated_at=updated_at,
         deleted_at=deleted_at,
@@ -466,11 +464,11 @@ class FloatingIpStub(FloatingIp):
 class SecurityGroupStub(SecurityGroup):
     def __init__(self, servers: list[Server] | None = None, **kwargs):
         super().__init__(**kwargs)
-        self._mock_servers = servers
+        self._mock_network_interfaces = servers
 
     @async_property
-    async def servers(self) -> list[Server]:
-        return self._mock_servers
+    async def network_interfaces(self) -> list[Server]:
+        return self._mock_network_interfaces
 
 
 class VolumeStub(Volume):
@@ -493,13 +491,11 @@ class ServerStub(Server):
         self,
         volumes: list[Volume],
         network_interfaces: list[NetworkInterface],
-        security_groups: list[SecurityGroup],
         **kwargs: Any
     ):
         super().__init__(**kwargs)
         self._mock_volumes: list[Volume] = volumes
         self._mock_network_interfaces: list[NetworkInterface] = network_interfaces
-        self._mock_security_groups: list[SecurityGroup] = security_groups
 
     @async_property
     async def volumes(self) -> list[Volume]:
@@ -508,10 +504,6 @@ class ServerStub(Server):
     @async_property
     async def network_interfaces(self) -> list[NetworkInterface]:
         return self._mock_network_interfaces
-
-    @async_property
-    async def security_groups(self) -> list[SecurityGroup]:
-        return self._mock_security_groups
 
 
 class NetworkInterfaceStub(NetworkInterface):

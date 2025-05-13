@@ -23,9 +23,9 @@ from common.exception.security_group_exception import (
     AttachedSecurityGroupDeletionException
 )
 from common.infrastructure.database import transactional
+from common.infrastructure.network_interface_security_group.repository import NetworkInterfaceSecurityGroupRepository
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
-from common.infrastructure.server_security_group.repository import ServerSecurityGroupRepository
 from common.util.compensating_transaction import CompensationManager
 
 
@@ -33,7 +33,7 @@ class SecurityGroupService:
     def __init__(
         self,
         security_group_repository: SecurityGroupRepository = Depends(),
-        server_security_group_repository: ServerSecurityGroupRepository = Depends(),
+        server_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
         neutron_client: NeutronClient = Depends(),
     ):
         self.security_group_repository = security_group_repository

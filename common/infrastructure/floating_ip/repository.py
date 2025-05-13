@@ -26,7 +26,7 @@ class FloatingIpRepository:
             query = query.where(FloatingIp.deleted_at.is_(None))
 
         if with_relations:
-            query = query.options(self._with_relations())
+            query = query.options(joinedload(FloatingIp._network_interface).joinedload(NetworkInterface._server))
 
         order_by_column = {
             FloatingIpSortOption.ADDRESS: FloatingIp.address,
@@ -55,7 +55,7 @@ class FloatingIpRepository:
             )
 
         if with_relations:
-            query = query.options(self._with_relations())
+            query = query.options(joinedload(FloatingIp._network_interface).joinedload(NetworkInterface._server))
 
         result: FloatingIp | None = await session.scalar(query)
 
@@ -69,7 +69,3 @@ class FloatingIpRepository:
         session.add(floating_ip)
         await session.flush()
         return floating_ip
-
-    @staticmethod
-    def _with_relations():
-        return joinedload(FloatingIp._network_interface).joinedload(NetworkInterface._server)
