@@ -21,7 +21,7 @@ router = APIRouter(prefix="/network-interfaces", tags=["network-interface"])
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "network interface 에 대한 접근 권한이 없는 경우"},
         404: {"description": "자원을 찾을 수 없는 경우"},
-        409: {"description": "network interface 에 연결할 수 없는 floating ip인 경우"},
+        409: {"description": "network interface 에 이미 연결된 floating ip인 경우"},
     }
 )
 async def attach_floating_ip_to_server(
