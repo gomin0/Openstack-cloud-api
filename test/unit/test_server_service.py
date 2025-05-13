@@ -110,7 +110,8 @@ async def test_get_server_detail_success(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
-        with_relations=True
+        with_relations=True,
+        with_deleted=False
     )
     assert response.id == mock_server.id
 
@@ -137,7 +138,8 @@ async def test_get_server_detail_fail_not_found(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
-        with_relations=True
+        with_relations=True,
+        with_deleted=False
     )
 
 
@@ -174,7 +176,8 @@ async def test_get_server_detail_fail_access_denied(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
-        with_relations=True
+        with_relations=True,
+        with_deleted=False
     )
 
 

@@ -319,25 +319,6 @@ def create_volume(
     )
 
 
-def create_network_interface(
-    server_id: int,
-    project_id: int,
-    network_interface_id: int = random_int(),
-    openstack_id: str = random_string(),
-    fixed_ip_address: str = random_string(),
-) -> NetworkInterface:
-    return NetworkInterface(
-        id=network_interface_id,
-        openstack_id=openstack_id,
-        server_id=server_id,
-        project_id=project_id,
-        fixed_ip_address=fixed_ip_address,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-        deleted_at=None,
-    )
-
-
 def create_volume_stub(
     volume_id: int = random_int(),
     openstack_id: str = random_string(),
@@ -368,6 +349,49 @@ def create_volume_stub(
         status=status,
         size=size,
         is_root_volume=is_root_volume,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=deleted_at,
+    )
+
+
+def create_network_interface(
+    server_id: int,
+    project_id: int,
+    network_interface_id: int = random_int(),
+    openstack_id: str = random_string(),
+    fixed_ip_address: str = random_string(),
+) -> NetworkInterface:
+    return NetworkInterface(
+        id=network_interface_id,
+        openstack_id=openstack_id,
+        server_id=server_id,
+        project_id=project_id,
+        fixed_ip_address=fixed_ip_address,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        deleted_at=None,
+    )
+
+
+def create_network_interface_stub(
+    network_interface_id: int = random_int(),
+    openstack_id: str = random_string(),
+    project_id: int = random_int(),
+    server_id: int | None = None,
+    fixed_ip_address: str = random_string(),
+    server: Server | None = None,
+    floating_ip: FloatingIp | None = None,
+    deleted_at: datetime | None = None,
+) -> NetworkInterface:
+    return NetworkInterfaceStub(
+        server=server,
+        floating_ip=floating_ip,
+        id=network_interface_id,
+        openstack_id=openstack_id,
+        project_id=project_id,
+        server_id=server_id,
+        fixed_ip_address=fixed_ip_address,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=deleted_at,
@@ -488,3 +512,23 @@ class ServerStub(Server):
     @async_property
     async def security_groups(self) -> list[SecurityGroup]:
         return self._mock_security_groups
+
+
+class NetworkInterfaceStub(NetworkInterface):
+    def __init__(
+        self,
+        server: Server | None,
+        floating_ip: FloatingIp | None,
+        **kwargs: Any
+    ):
+        super().__init__(**kwargs)
+        self.mock_server = server
+        self._mock_floating_ip: FloatingIp = floating_ip
+
+    @async_property
+    async def floating_ip(self) -> FloatingIp | None:
+        return self._mock_floating_ip
+
+    @async_property
+    async def server(self) -> Server | None:
+        return self.mock_server
