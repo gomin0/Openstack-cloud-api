@@ -26,7 +26,11 @@ class SecurityGroupRepository:
             query = query.where(SecurityGroup.deleted_at.is_(None))
 
         if with_relations:
-            query = query.options(self._with_relations())
+            query = query.options(
+                selectinload(SecurityGroup._linked_network_interfaces)
+                .joinedload(NetworkInterfaceSecurityGroup._network_interface)
+                .joinedload(NetworkInterface._server)
+            )
 
         order_by_column = {
             SecurityGroupSortOption.NAME: SecurityGroup.name,
@@ -54,7 +58,11 @@ class SecurityGroupRepository:
             query = query.where(SecurityGroup.deleted_at.is_(None))
 
         if with_relations:
-            query = query.options(self._with_relations())
+            query = query.options(
+                selectinload(SecurityGroup._linked_network_interfaces)
+                .joinedload(NetworkInterfaceSecurityGroup._network_interface)
+                .joinedload(NetworkInterface._server)
+            )
 
         return await session.scalar(query)
 
@@ -82,10 +90,3 @@ class SecurityGroupRepository:
         await session.flush()
 
         return security_group
-
-    def _with_relations(self):
-        return (
-            selectinload(SecurityGroup._linked_network_interfaces)
-            .selectinload(NetworkInterfaceSecurityGroup._network_interface)
-            .joinedload(NetworkInterface._server)
-        )
