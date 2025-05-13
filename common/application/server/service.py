@@ -61,31 +61,6 @@ class ServerService:
         return await ServerDetailResponse.from_entity(server)
 
     @transactional()
-    async def update_server_info(
-        self,
-        session: AsyncSession,
-        current_project_id: int,
-        server_id: int,
-        name: str,
-        description: str,
-    ) -> ServerResponse:
-        server: Server | None = await self.server_repository.find_by_id(session=session, server_id=server_id)
-        if server is None:
-            raise ServerNotFoundException()
-        server.validate_update_permission(project_id=current_project_id)
-
-        if name != server.name:
-            if await self.server_repository.exists_by_project_and_name(
-                session=session,
-                project_id=current_project_id,
-                name=name
-            ):
-                raise ServerNameDuplicateException()
-
-        server.update_info(name=name, description=description)
-        return ServerResponse.from_entity(server)
-
-    @transactional()
     async def get_server(
         self,
         session: AsyncSession,
@@ -113,8 +88,32 @@ class ServerService:
             keystone_token=keystone_token,
             server_openstack_id=server_openstack_id
         )
-
         return vnc_url
+
+    @transactional()
+    async def update_server_info(
+        self,
+        session: AsyncSession,
+        current_project_id: int,
+        server_id: int,
+        name: str,
+        description: str,
+    ) -> ServerResponse:
+        server: Server | None = await self.server_repository.find_by_id(session=session, server_id=server_id)
+        if server is None:
+            raise ServerNotFoundException()
+        server.validate_update_permission(project_id=current_project_id)
+
+        if name != server.name:
+            if await self.server_repository.exists_by_project_and_name(
+                session=session,
+                project_id=current_project_id,
+                name=name
+            ):
+                raise ServerNameDuplicateException()
+
+        server.update_info(name=name, description=description)
+        return ServerResponse.from_entity(server)
 
     async def _get_server_by_id(
         self,
