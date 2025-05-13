@@ -9,7 +9,8 @@ from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.network_interface.entity import NetworkInterface
 from common.exception.floating_ip_exception import FloatingIpDeletePermissionDeniedException, \
     AttachedFloatingIpDeletionException, FloatingIpAlreadyDeletedException, \
-    FloatingIpAlreadyAttachedToNetworkInterfaceException, NetworkInterfaceNotMatchedException
+    FloatingIpAlreadyAttachedToNetworkInterfaceException, NetworkInterfaceNotMatchedException, \
+    FloatingIpAccessPermissionDeniedException
 
 
 class FloatingIp(SoftDeleteBaseEntity):
@@ -78,6 +79,10 @@ class FloatingIp(SoftDeleteBaseEntity):
         self._network_interface = None
         self.network_interface_id = None
 
-    def check_network_interface_match(self, network_interface_id=network_interface_id):
+    def validate_network_interface_match(self, network_interface_id=network_interface_id):
         if self.network_interface_id != network_interface_id:
             raise NetworkInterfaceNotMatchedException()
+
+    def validate_access_permission(self, project_id):
+        if self.project_id != project_id:
+            raise FloatingIpAccessPermissionDeniedException()
