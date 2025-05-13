@@ -56,7 +56,9 @@ class SecurityGroupDetailResponse(BaseModel):
         rules: list[SecurityGroupRuleDTO]
     ) -> "SecurityGroupDetailResponse":
         network_interfaces: list[NetworkInterface] = await security_group.network_interfaces
-        servers: set = {await network_interface.server for network_interface in network_interfaces}
+        servers: set[Server] = {
+            await network_interface.server for network_interface in network_interfaces
+        }
         return cls(
             id=security_group.id,
             name=security_group.name,
