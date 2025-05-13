@@ -37,7 +37,7 @@ async def test_attach_floating_ip_success(client, db_session, mock_async_client)
     )
 
     # then
-    assert response.status_code == 200
+    assert response.status_code == 204
 
 
 async def test_attach_floating_ip_fail_network_interface_not_found(client, db_session):
@@ -172,16 +172,17 @@ async def test_detach_floating_ip_success(client, db_session, mock_async_client)
 
     # when
     response = await client.delete(
-        f"/network-interfaces/floating-ips/{floating_ip.id}",
+        f"/network-interfaces/{network_interface.id}/floating-ips/{floating_ip.id}",
         headers={"Authorization": f"Bearer {access_token}"}
     )
 
     # then
-    assert response.status_code == 200
+    assert response.status_code == 204
 
 
 async def test_detach_floating_ip_fail_floating_ip_not_found(client, db_session):
     # given
+    network_interface_id = 1
     floating_ip_id = 1
     domain = await add_to_db(db_session, create_domain())
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
@@ -190,7 +191,7 @@ async def test_detach_floating_ip_fail_floating_ip_not_found(client, db_session)
 
     # when
     response = await client.delete(
-        f"/network-interfaces/floating-ips/{floating_ip_id}",
+        f"/network-interfaces/{network_interface_id}/floating-ips/{floating_ip_id}",
         headers={"Authorization": f"Bearer {access_token}"}
     )
 
@@ -201,6 +202,7 @@ async def test_detach_floating_ip_fail_floating_ip_not_found(client, db_session)
 
 async def test_detach_floating_ip_fail_not_attached(client, db_session):
     # given
+    network_interface_id = 1
     domain = await add_to_db(db_session, create_domain())
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
     floating_ip = await add_to_db(db_session, create_floating_ip(project_id=project.id))
@@ -210,7 +212,7 @@ async def test_detach_floating_ip_fail_not_attached(client, db_session):
 
     # when
     response = await client.delete(
-        f"/network-interfaces/floating-ips/{floating_ip.id}",
+        f"/network-interfaces/{network_interface_id}/floating-ips/{floating_ip.id}",
         headers={"Authorization": f"Bearer {access_token}"}
     )
 
