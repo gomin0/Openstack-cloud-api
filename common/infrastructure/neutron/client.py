@@ -180,12 +180,12 @@ class NeutronClient(OpenStackClient):
             },
         )
 
-    async def attach_floating_ip_to_server(
+    async def attach_floating_ip_to_network_interface(
         self,
         client: AsyncClient,
         keystone_token: str,
         floating_ip_openstack_id: str,
-        port_id: str
+        network_interface_id: str
     ) -> None:
         await self.request(
             client=client,
@@ -194,12 +194,12 @@ class NeutronClient(OpenStackClient):
             headers={"X-Auth-Token": keystone_token},
             json={
                 "floatingip": {
-                    "port_id": port_id
+                    "port_id": network_interface_id
                 }
             }
         )
 
-    async def detach_floating_ip_from_server(
+    async def detach_floating_ip_from_network_interface(
         self,
         client: AsyncClient,
         keystone_token: str,
