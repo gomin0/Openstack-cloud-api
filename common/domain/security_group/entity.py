@@ -21,12 +21,12 @@ class SecurityGroup(SoftDeleteBaseEntity):
     description: Mapped[str | None] = mapped_column("description", String(255), nullable=True)
     version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
-    _linked_network_interfaces: Mapped[list[NetworkInterface]] = relationship(
+    _linked_network_interfaces: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
         "NetworkInterfaceSecurityGroup", lazy="select", back_populates="_security_group"
     )
 
     @async_property
-    async def network_interfaces(self) -> list[NetworkInterface]:
+    async def network_interfaces(self) -> list["NetworkInterface"]:
         linked_network_interfaces: list[
             NetworkInterfaceSecurityGroup] = await self.awaitable_attrs._linked_network_interfaces
         return [await link.network_interface for link in linked_network_interfaces]
