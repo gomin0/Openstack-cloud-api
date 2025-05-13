@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload, InstrumentedAttribute
 
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
-from common.domain.security_group.entity import ServerSecurityGroup
+from common.domain.security_group.entity import NetworkInterfaceSecurityGroup
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
 
@@ -31,7 +31,15 @@ class ServerRepository:
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
         if with_relations:
-            query = query.options(*self._with_relations())
+            query = query.options(
+                selectinload(Server._linked_volumes),
+
+                selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
+
+                selectinload(Server._linked_network_interfaces)
+                .selectinload(NetworkInterface._linked_security_groups)
+                .joinedload(NetworkInterfaceSecurityGroup._security_group),
+            )
         if id_:
             query = query.where(Server.id == id_)
         if ids_contain:
@@ -68,7 +76,15 @@ class ServerRepository:
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
         if with_relations:
-            query = query.options(*self._with_relations())
+            query = query.options(
+                selectinload(Server._linked_volumes),
+
+                selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
+
+                selectinload(Server._linked_network_interfaces)
+                .selectinload(NetworkInterface._linked_security_groups)
+                .joinedload(NetworkInterfaceSecurityGroup._security_group),
+            )
 
         return await session.scalar(query)
 
@@ -82,11 +98,4 @@ class ServerRepository:
                     Server.name == name,
                 )
             )
-        )
-
-    def _with_relations(self):
-        return (
-            selectinload(Server._linked_volumes),
-            selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
-            selectinload(Server._linked_security_groups).selectinload(ServerSecurityGroup._security_group)
         )

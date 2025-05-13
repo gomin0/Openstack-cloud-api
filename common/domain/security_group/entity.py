@@ -5,6 +5,7 @@ from sqlalchemy import BigInteger, CHAR, ForeignKey, String, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
+from common.domain.network_interface.entity import NetworkInterface
 from common.domain.server.entity import Server
 from common.exception.security_group_exception import SecurityGroupDeletePermissionDeniedException, \
     SecurityGroupUpdatePermissionDeniedException
@@ -20,14 +21,15 @@ class SecurityGroup(SoftDeleteBaseEntity):
     description: Mapped[str | None] = mapped_column("description", String(255), nullable=True)
     version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
-    _linked_servers: Mapped[list[Server]] = relationship(
-        "ServerSecurityGroup", lazy="select", back_populates="_security_group"
+    _linked_network_interfaces: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
+        "NetworkInterfaceSecurityGroup", lazy="select", back_populates="_security_group"
     )
 
     @async_property
-    async def servers(self) -> list[Server]:
-        linked_servers: list[ServerSecurityGroup] = await self.awaitable_attrs._linked_servers
-        return [await link.server for link in linked_servers]
+    async def network_interfaces(self) -> list["NetworkInterface"]:
+        linked_network_interfaces: list[NetworkInterfaceSecurityGroup] = \
+            await self.awaitable_attrs._linked_network_interfaces
+        return [await link.network_interface for link in linked_network_interfaces]
 
     __mapper_args__ = {"version_id_col": version}
 
@@ -63,11 +65,13 @@ class SecurityGroup(SoftDeleteBaseEntity):
         self.description = description
 
 
-class ServerSecurityGroup(BaseEntity):
-    __tablename__ = "server_security_group"
+class NetworkInterfaceSecurityGroup(BaseEntity):
+    __tablename__ = "network_interface_security_group"
 
     id: Mapped[int] = mapped_column("id", BigInteger, primary_key=True, autoincrement=True)
-    server_id: Mapped[int] = mapped_column("server_id", BigInteger, ForeignKey("server.id"), nullable=False)
+    network_interface_id: Mapped[int] = mapped_column(
+        "network_interface_id", BigInteger, ForeignKey("network_interface.id"), nullable=False
+    )
     security_group_id: Mapped[int] = mapped_column(
         "security_group_id",
         BigInteger,
@@ -75,13 +79,15 @@ class ServerSecurityGroup(BaseEntity):
         nullable=False
     )
 
-    _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_security_groups")
+    _network_interface: Mapped[Server] = relationship(
+        "NetworkInterface", lazy="select", back_populates="_linked_security_groups"
+    )
     _security_group: Mapped["SecurityGroup"] = relationship("SecurityGroup", lazy="select",
-                                                            back_populates="_linked_servers")
+                                                            back_populates="_linked_network_interfaces")
 
     @async_property
-    async def server(self) -> Server:
-        return await self.awaitable_attrs._server
+    async def network_interface(self) -> NetworkInterface:
+        return await self.awaitable_attrs._network_interface
 
     @async_property
     async def security_group(self) -> SecurityGroup:

@@ -89,8 +89,11 @@ class ServerDetailResponse(BaseModel):
     @classmethod
     async def from_entity(cls, server: Server) -> "ServerDetailResponse":
         volumes: list[Volume] = await server.volumes
-        security_groups: list[SecurityGroup] = await server.security_groups
         network_interfaces: list[NetworkInterface] = await server.network_interfaces
+        security_groups: set[SecurityGroup] = set()
+        for network_interface in network_interfaces:
+            for security_group in await network_interface.security_groups:
+                security_groups.add(security_group)
         root_volume: Volume = next(volume for volume in volumes if volume.is_root_volume)
         floating_ips: list[FloatingIp] = []
         for network_interface in network_interfaces:

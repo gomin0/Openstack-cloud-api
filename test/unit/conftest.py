@@ -57,7 +57,7 @@ def mock_security_group_repository():
 
 
 @pytest.fixture(scope='function')
-def mock_server_security_group_repository():
+def mock_network_interface_security_group_repository():
     return AsyncMock()
 
 
@@ -114,12 +114,12 @@ def auth_service(mock_user_repository, mock_keystone_client):
 @pytest.fixture(scope='function')
 def security_group_service(
     mock_security_group_repository,
-    mock_server_security_group_repository,
+    mock_network_interface_security_group_repository,
     mock_neutron_client
 ):
     return SecurityGroupService(
         security_group_repository=mock_security_group_repository,
-        server_security_group_repository=mock_server_security_group_repository,
+        server_security_group_repository=mock_network_interface_security_group_repository,
         neutron_client=mock_neutron_client
     )
 

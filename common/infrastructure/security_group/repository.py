@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from common.domain.enum import SortOrder
-from common.domain.security_group.entity import SecurityGroup, ServerSecurityGroup
+from common.domain.network_interface.entity import NetworkInterface
+from common.domain.security_group.entity import SecurityGroup, NetworkInterfaceSecurityGroup
 from common.domain.security_group.enum import SecurityGroupSortOption
 
 
@@ -25,7 +26,11 @@ class SecurityGroupRepository:
             query = query.where(SecurityGroup.deleted_at.is_(None))
 
         if with_relations:
-            query = query.options(self._with_relations())
+            query = query.options(
+                selectinload(SecurityGroup._linked_network_interfaces)
+                .joinedload(NetworkInterfaceSecurityGroup._network_interface)
+                .joinedload(NetworkInterface._server)
+            )
 
         order_by_column = {
             SecurityGroupSortOption.NAME: SecurityGroup.name,
@@ -53,7 +58,11 @@ class SecurityGroupRepository:
             query = query.where(SecurityGroup.deleted_at.is_(None))
 
         if with_relations:
-            query = query.options(self._with_relations())
+            query = query.options(
+                selectinload(SecurityGroup._linked_network_interfaces)
+                .joinedload(NetworkInterfaceSecurityGroup._network_interface)
+                .joinedload(NetworkInterface._server)
+            )
 
         return await session.scalar(query)
 
@@ -81,6 +90,3 @@ class SecurityGroupRepository:
         await session.flush()
 
         return security_group
-
-    def _with_relations(self):
-        return selectinload(SecurityGroup._linked_servers).selectinload(ServerSecurityGroup._server)
