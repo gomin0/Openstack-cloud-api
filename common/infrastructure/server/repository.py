@@ -87,9 +87,10 @@ class ServerRepository:
     def _with_relations(self):
         return (
             selectinload(Server._linked_volumes),
-            selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
-            selectinload(Server._linked_network_interfaces)
-            .joinedload(NetworkInterface._linked_security_groups)
-            .selectinload(NetworkInterfaceSecurityGroup._security_group),
 
+            selectinload(Server._linked_network_interfaces).joinedload(NetworkInterface._floating_ip),
+
+            selectinload(Server._linked_network_interfaces)
+            .selectinload(NetworkInterface._linked_security_groups)
+            .joinedload(NetworkInterfaceSecurityGroup._security_group),
         )

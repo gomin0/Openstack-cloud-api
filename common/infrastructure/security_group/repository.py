@@ -87,5 +87,5 @@ class SecurityGroupRepository:
         return (
             selectinload(SecurityGroup._linked_network_interfaces)
             .selectinload(NetworkInterfaceSecurityGroup._network_interface)
-            .selectinload(NetworkInterface._server)
+            .joinedload(NetworkInterface._server)
         )
