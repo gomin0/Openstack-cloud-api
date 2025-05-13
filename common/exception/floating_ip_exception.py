@@ -62,3 +62,12 @@ class FloatingIpNotAttachedToNetworkInterfaceException(CustomException):
             status_code=409,
             message="해당 floating ip는 network interface 에 할당되어 있지 않습니다."
         )
+
+
+class NetworkInterfaceNotMatchedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="NETWORK_INTERFACE_NOT_MATCHED",
+            status_code=400,
+            message="floating ip에 연결된 network interface 와 요청한 network interface 가 일치하지 않습니다."
+        )
