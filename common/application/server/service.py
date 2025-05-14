@@ -159,12 +159,7 @@ class ServerService:
         network_interface_ids: list[int] = [network_interface.id for network_interface in network_interfaces]
 
         volumes: list[Volume] = await server.volumes
-        root_volume_id: int | None = None
-        for volume in volumes:
-            if volume.is_root_volume:
-                root_volume_id: int = volume.id
-                continue
-            volume.detach_from_server()
+        root_volume_id: int | None = next((volume.id for volume in volumes if volume.is_root_volume), None)
 
         await self.nova_client.delete_server(
             client=client,
@@ -228,6 +223,10 @@ class ServerService:
 
         server.delete()
 
+        volumes: list[Volume] = await server.volumes
+        for volume in volumes:
+            volume.detach_from_server()
+
     @transactional()
     async def delete_server_resources(
         self,
@@ -257,7 +256,7 @@ class ServerService:
             network_interface.delete()
             floating_ip: FloatingIp = await network_interface.floating_ip
             if floating_ip:
-                floating_ip.down_floating_ip()
+                floating_ip.detach_from_network_interface()
 
     async def _exists_server_from_openstack(
         self,
