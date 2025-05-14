@@ -132,3 +132,4 @@ class Volume(SoftDeleteBaseEntity):
     def detach_from_server(self):
         self._server = None
         self.server_id = None
+        self.status = VolumeStatus.AVAILABLE
