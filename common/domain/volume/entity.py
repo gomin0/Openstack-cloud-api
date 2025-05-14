@@ -41,7 +41,7 @@ class Volume(SoftDeleteBaseEntity):
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
 
     _project: Mapped[Project] = relationship("Project", lazy="select")
-    _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_volumes")
+    _server: Mapped[Server | None] = relationship("Server", lazy="select", back_populates="_linked_volumes")
 
     @async_property
     async def project(self) -> Project:
@@ -128,3 +128,7 @@ class Volume(SoftDeleteBaseEntity):
 
     def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR
+
+    def detach_from_server(self):
+        self._server = None
+        self.server_id = None

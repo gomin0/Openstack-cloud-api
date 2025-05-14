@@ -66,3 +66,6 @@ class FloatingIp(SoftDeleteBaseEntity):
             raise AttachedFloatingIpDeletionException()
         if self.is_deleted:
             raise FloatingIpAlreadyDeletedException()
+
+    def down_floating_ip(self):
+        self.status = FloatingIpStatus.DOWN
