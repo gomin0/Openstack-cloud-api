@@ -31,6 +31,7 @@ class VolumeService:
 
     MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION: int = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION
     CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION: int = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION
+    CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION
 
     MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING: int = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING
     CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING: int = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING
@@ -263,12 +264,45 @@ class VolumeService:
         else:
             logger.error(
                 f"볼륨({volume.openstack_id})을 삭제 시도했으나, "
-                f"{self.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION * self.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION}초 동안 "
+                f"{self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION * self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DELETION}초 동안 "
                 f"정상적으로 삭제되지 않았습니다."
             )
             raise VolumeDeletionFailedException()
 
         # (DB) delete volume
+        volume.delete()
+
+    @transactional()
+    async def check_volume_until_deleted(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        volume_id: int,
+        project_openstack_id: str,
+    ) -> None:
+        volume: Volume | None = await self.volume_repository.find_by_id(session=session, volume_id=volume_id)
+        if not volume:
+            raise VolumeNotFoundException()
+
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
+            is_volume_deleted: bool = not await self._exists_volume_from_openstack(
+                client=client,
+                keystone_token=keystone_token,
+                project_openstack_id=project_openstack_id,
+                volume_openstack_id=volume.openstack_id
+            )
+            if is_volume_deleted:
+                break
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION)
+        else:
+            logger.error(
+                f"볼륨({volume.openstack_id})를 삭제 시도했으나, "
+                f"{self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION}초 동안 "
+                f"정상적으로 삭제되지 않았습니다."
+            )
+            raise VolumeDeletionFailedException()
+
         volume.delete()
 
     async def _get_volume_by_id(

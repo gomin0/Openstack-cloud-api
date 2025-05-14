@@ -1,25 +1,52 @@
+import asyncio
+import logging
+from logging import Logger
+
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse
+from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse, \
+    DeleteServerResponse
 from common.domain.enum import SortOrder
+from common.domain.floating_ip.entity import FloatingIp
+from common.domain.network_interface.entity import NetworkInterface
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
-from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
+from common.domain.volume.entity import Volume
+from common.exception.openstack_exception import OpenStackException
+from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException, \
+    ServerDeletionFailedException
 from common.infrastructure.database import transactional
+from common.infrastructure.network_interface.repository import NetworkInterfaceRepository
+from common.infrastructure.network_interface_security_group.repository import NetworkInterfaceSecurityGroupRepository
+from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
+from common.util.envs import get_envs, Envs
+
+envs: Envs = get_envs()
+logger: Logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class ServerService:
+    MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION: int = envs.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION
+    CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION
+
     def __init__(
         self,
         server_repository: ServerRepository = Depends(),
-        nova_client: NovaClient = Depends()
+        network_interface_repository: NetworkInterfaceRepository = Depends(),
+        network_interface_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
+        nova_client: NovaClient = Depends(),
+        neutron_client: NeutronClient = Depends()
     ):
         self.server_repository = server_repository
+        self.network_interface_repository = network_interface_repository
+        self.network_interface_security_group_repository = network_interface_security_group_repository
         self.nova_client = nova_client
+        self.neutron_client = neutron_client
 
     @transactional()
     async def find_servers_details(
@@ -121,3 +148,155 @@ class ServerService:
         )
 
         return vnc_url
+
+    @transactional()
+    async def delete_server(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_id: int,
+        project_id: int
+    ) -> DeleteServerResponse:
+        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+        server.validate_delete_permission(project_id=project_id)
+
+        network_interfaces: list[NetworkInterface] = await server.network_interfaces
+        network_interface_ids: list[int] = [network_interface.id for network_interface in network_interfaces]
+
+        volumes: list[Volume] = await server.volumes
+        root_volume_id: int | None = None
+        for volume in volumes:
+            if volume.is_root_volume:
+                root_volume_id: int = volume.id
+                continue
+            volume.detach_from_server()
+
+        await self.nova_client.delete_server(
+            client=client,
+            keystone_token=keystone_token,
+            server_openstack_id=server.openstack_id,
+        )
+
+        return DeleteServerResponse(
+            server_id=server.id,
+            volume_id=root_volume_id,
+            network_interface_ids=network_interface_ids,
+        )
+
+    async def delete_server_and_resources(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        network_interface_ids: list[int],
+        server_id: int,
+    ) -> None:
+        await self.check_server_until_deleted(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            server_id=server_id,
+        )
+        await self.delete_server_resources(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            network_interface_ids=network_interface_ids,
+        )
+
+    @transactional()
+    async def check_server_until_deleted(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_id: int,
+    ) -> None:
+        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
+            is_server_deleted: bool = not await self._exists_server_from_openstack(
+                client=client,
+                keystone_token=keystone_token,
+                server_openstack_id=server.openstack_id,
+            )
+            if is_server_deleted:
+                break
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION)
+        else:
+            logger.error(
+                f"서버({server.openstack_id})를 삭제 시도했으나, "
+                f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION}초 동안 "
+                f"정상적으로 삭제되지 않았습니다."
+            )
+            raise ServerDeletionFailedException()
+
+        server.delete()
+
+    @transactional()
+    async def delete_server_resources(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        network_interface_ids: list[int],
+    ) -> None:
+        network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_by_ids(
+            session=session, network_interface_ids=network_interface_ids
+        )
+        tasks = [
+            self.neutron_client.delete_network_interface(
+                client=client,
+                keystone_token=keystone_token,
+                network_interface_openstack_id=network_interface.openstack_id
+            )
+            for network_interface in network_interfaces
+        ]
+        await asyncio.gather(*tasks)
+
+        for network_interface in network_interfaces:
+            await self.network_interface_security_group_repository.delete_all_by_network_interface(
+                session=session,
+                network_interface_id=network_interface.id
+            )
+            network_interface.delete()
+            floating_ip: FloatingIp = await network_interface.floating_ip
+            if floating_ip:
+                floating_ip.down_floating_ip()
+
+    async def _exists_server_from_openstack(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str,
+    ) -> bool:
+        try:
+            await self.nova_client.get_server(
+                client=client,
+                keystone_token=keystone_token,
+                server_openstack_id=server_openstack_id,
+            )
+        except OpenStackException as ex:
+            if ex.openstack_status_code == 404:
+                return False
+            raise ex
+        return True
+
+    async def _get_server_by_id(
+        self,
+        session: AsyncSession,
+        server_id: int,
+        with_deleted: bool = False,
+        with_relations: bool = False,
+    ) -> Server:
+        if (
+            server := await self.server_repository.find_by_id(
+                session=session,
+                server_id=server_id,
+                with_deleted=with_deleted,
+                with_relations=with_relations,
+            )
+        ) is None:
+            raise ServerNotFoundException()
+        return server
