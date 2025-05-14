@@ -218,3 +218,16 @@ class NeutronClient(OpenStackClient):
             url=f"{self._NEUTRON_URL}/v2.0/floatingips/{floating_ip_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
         )
+
+    async def delete_network_interface(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        network_interface_openstack_id: str
+    ) -> None:
+        await self.request(
+            client=client,
+            method="DELETE",
+            url=f"{self._NEUTRON_URL}/v2.0/ports/{network_interface_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+        )
