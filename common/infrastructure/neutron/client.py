@@ -180,6 +180,43 @@ class NeutronClient(OpenStackClient):
             },
         )
 
+    async def attach_floating_ip_to_network_interface(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        floating_ip_openstack_id: str,
+        network_interface_id: str
+    ) -> None:
+        await self.request(
+            client=client,
+            method="PUT",
+            url=f"{self._NEUTRON_URL}/v2.0/floatingips/{floating_ip_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+            json={
+                "floatingip": {
+                    "port_id": network_interface_id
+                }
+            }
+        )
+
+    async def detach_floating_ip_from_network_interface(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        floating_ip_openstack_id: str,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="PUT",
+            url=f"{self._NEUTRON_URL}/v2.0/floatingips/{floating_ip_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+            json={
+                "floatingip": {
+                    "port_id": None
+                }
+            }
+        )
+
     async def delete_security_group(
         self,
         client: AsyncClient,

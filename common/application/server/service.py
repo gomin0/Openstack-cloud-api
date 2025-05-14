@@ -82,13 +82,7 @@ class ServerService:
         server_id: int,
         project_id: int,
     ) -> ServerDetailResponse:
-        server: Server | None = await self.server_repository.find_by_id(
-            session=session,
-            server_id=server_id,
-            with_relations=True,
-        )
-        if not server:
-            raise ServerNotFoundException()
+        server: Server | None = await self._get_server_by_id(session=session, server_id=server_id, with_relations=True)
         server.validate_access_permission(project_id=project_id)
 
         return await ServerDetailResponse.from_entity(server)

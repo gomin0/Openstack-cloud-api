@@ -44,3 +44,39 @@ class FloatingIpAlreadyDeletedException(CustomException):
             status_code=409,
             message="이미 삭제된 floating ip 입니다."
         )
+
+
+class FloatingIpAlreadyAttachedToNetworkInterfaceException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="FLOATING_IP_ALREADY_ATTACHED_TO_NETWORK_INTERFACE",
+            status_code=409,
+            message="해당 floating ip는 이미 network interface 에 할당되어 있습니다."
+        )
+
+
+class FloatingIpNotAttachedToNetworkInterfaceException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="FLOATING_IP_NOT_ATTACHED_TO_NETWORK_INTERFACE",
+            status_code=409,
+            message="해당 floating ip는 network interface 에 할당되어 있지 않습니다."
+        )
+
+
+class NetworkInterfaceNotMatchedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="NETWORK_INTERFACE_NOT_MATCHED",
+            status_code=400,
+            message="floating ip에 연결된 network interface 와 요청한 network interface 가 일치하지 않습니다."
+        )
+
+
+class FloatingIpAccessPermissionDeniedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="FLOATING_IP_ACCESS_PERMISSION_DENIED",
+            status_code=403,
+            message="해당 floating ip에 접근할 수 있는 권한이 없습니다."
+        )

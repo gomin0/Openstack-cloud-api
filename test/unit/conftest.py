@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.auth.service import AuthService
 from common.application.floating_ip.service import FloatingIpService
+from common.application.network_interface.service import NetworkInterfaceService
 from common.application.project.service import ProjectService
 from common.application.security_group.service import SecurityGroupService
 from common.application.server.service import ServerService
@@ -68,6 +69,11 @@ def mock_floating_ip_repository():
 
 @pytest.fixture(scope='function')
 def mock_server_repository():
+    return AsyncMock()
+
+
+@pytest.fixture(scope='function')
+def mock_network_interface_repository():
     return AsyncMock()
 
 
@@ -138,8 +144,26 @@ def floating_ip_service(mock_floating_ip_repository, mock_neutron_client):
 
 
 @pytest.fixture(scope='function')
-def server_service(mock_server_repository, mock_nova_client):
+def server_service(
+    mock_server_repository,
+    mock_nova_client
+):
     return ServerService(
         server_repository=mock_server_repository,
         nova_client=mock_nova_client
+    )
+
+
+@pytest.fixture(scope='function')
+def network_interface_service(
+    mock_server_repository,
+    mock_floating_ip_repository,
+    mock_network_interface_repository,
+    mock_neutron_client
+):
+    return NetworkInterfaceService(
+        server_repository=mock_server_repository,
+        floating_ip_repository=mock_floating_ip_repository,
+        network_interface_repository=mock_network_interface_repository,
+        neutron_client=mock_neutron_client
     )
