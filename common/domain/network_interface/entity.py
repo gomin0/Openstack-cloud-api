@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.server.entity import Server
+from common.exception.network_interface_exception import NetworkInterfaceAccessPermissionDeniedException
 
 
 class NetworkInterface(SoftDeleteBaseEntity):
@@ -15,7 +16,7 @@ class NetworkInterface(SoftDeleteBaseEntity):
     server_id: Mapped[int | None] = mapped_column("server_id", BigInteger, ForeignKey("server.id"), nullable=True)
     fixed_ip_address: Mapped[str] = mapped_column("fixed_ip_address", String(15), nullable=False)
 
-    _server: Mapped["Server"] = relationship("Server", lazy="select", back_populates="_linked_network_interfaces")
+    _server: Mapped[Server | None] = relationship("Server", lazy="select", back_populates="_linked_network_interfaces")
     _floating_ip: Mapped["FloatingIp"] = relationship("FloatingIp", lazy="select", back_populates="_network_interface")
     _linked_security_groups: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
         "NetworkInterfaceSecurityGroup",
@@ -36,3 +37,7 @@ class NetworkInterface(SoftDeleteBaseEntity):
         linked_security_groups: list["NetworkInterfaceSecurityGroup"] = \
             await self.awaitable_attrs._linked_security_groups
         return [await link.security_group for link in linked_security_groups]
+
+    def validate_access_permission(self, project_id):
+        if self.project_id != project_id:
+            raise NetworkInterfaceAccessPermissionDeniedException()

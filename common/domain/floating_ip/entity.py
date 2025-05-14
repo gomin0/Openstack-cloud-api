@@ -8,7 +8,9 @@ from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.network_interface.entity import NetworkInterface
 from common.exception.floating_ip_exception import FloatingIpDeletePermissionDeniedException, \
-    AttachedFloatingIpDeletionException, FloatingIpAlreadyDeletedException
+    AttachedFloatingIpDeletionException, FloatingIpAlreadyDeletedException, \
+    FloatingIpAlreadyAttachedToNetworkInterfaceException, NetworkInterfaceNotMatchedException, \
+    FloatingIpAccessPermissionDeniedException
 
 
 class FloatingIp(SoftDeleteBaseEntity):
@@ -26,7 +28,7 @@ class FloatingIp(SoftDeleteBaseEntity):
     )
     address: Mapped[str] = mapped_column("address", String(15), nullable=False)
 
-    _network_interface: Mapped[NetworkInterface] = relationship(
+    _network_interface: Mapped[NetworkInterface | None] = relationship(
         "NetworkInterface", lazy="select", back_populates="_floating_ip"
     )
 
@@ -66,3 +68,21 @@ class FloatingIp(SoftDeleteBaseEntity):
             raise AttachedFloatingIpDeletionException()
         if self.is_deleted:
             raise FloatingIpAlreadyDeletedException()
+
+    def attach_to_network_interface(self, network_interface: NetworkInterface):
+        if self.network_interface_id is not None:
+            raise FloatingIpAlreadyAttachedToNetworkInterfaceException()
+        self._network_interface = network_interface
+        self.network_interface_id = network_interface.id
+
+    def detach_from_network_interface(self):
+        self._network_interface = None
+        self.network_interface_id = None
+
+    def validate_network_interface_match(self, network_interface_id=network_interface_id):
+        if self.network_interface_id != network_interface_id:
+            raise NetworkInterfaceNotMatchedException()
+
+    def validate_access_permission(self, project_id):
+        if self.project_id != project_id:
+            raise FloatingIpAccessPermissionDeniedException()

@@ -9,6 +9,7 @@ from api_server.exception_handler import (
 )
 from api_server.router.auth.router import router as auth_router
 from api_server.router.floating_ip.router import router as floating_ip_router
+from api_server.router.network_interface.router import router as network_interface_router
 from api_server.router.project.router import router as project_router
 from api_server.router.security_group.router import router as security_group_router
 from api_server.router.server.router import router as server_router
@@ -34,6 +35,7 @@ app.include_router(volume_router)
 app.include_router(security_group_router)
 app.include_router(floating_ip_router)
 app.include_router(server_router)
+app.include_router(network_interface_router)
 
 app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
 app.add_exception_handler(CustomException, custom_exception_handler)
