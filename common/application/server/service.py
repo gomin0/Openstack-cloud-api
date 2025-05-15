@@ -190,6 +190,7 @@ class ServerService:
             session=session,
             client=client,
             keystone_token=keystone_token,
+            server_id=server_id,
             network_interface_ids=network_interface_ids,
         )
 
@@ -222,31 +223,24 @@ class ServerService:
 
         server.delete()
 
-        volumes: list[Volume] = await server.volumes
-        for volume in volumes:
-            volume.detach_from_server()
-
     @transactional()
     async def delete_server_resources(
         self,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
+        server_id: int,
         network_interface_ids: list[int],
     ) -> None:
+        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+
+        volumes: list[Volume] = await server.volumes
+        for volume in volumes:
+            volume.detach_from_server()
+
         network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_by_ids(
             session=session, network_interface_ids=network_interface_ids
         )
-        tasks = [
-            self.neutron_client.delete_network_interface(
-                client=client,
-                keystone_token=keystone_token,
-                network_interface_openstack_id=network_interface.openstack_id
-            )
-            for network_interface in network_interfaces
-        ]
-        await asyncio.gather(*tasks)
-
         for network_interface in network_interfaces:
             await self.network_interface_security_group_repository.delete_all_by_network_interface(
                 session=session,
@@ -256,6 +250,16 @@ class ServerService:
             floating_ip: FloatingIp = await network_interface.floating_ip
             if floating_ip:
                 floating_ip.detach_from_network_interface()
+
+        tasks = [
+            self.neutron_client.delete_network_interface(
+                client=client,
+                keystone_token=keystone_token,
+                network_interface_openstack_id=network_interface.openstack_id
+            )
+            for network_interface in network_interfaces
+        ]
+        await asyncio.gather(*tasks)
 
     async def _exists_server_from_openstack(
         self,
