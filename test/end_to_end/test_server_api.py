@@ -334,8 +334,7 @@ async def test_delete_server_success(mocker, client, db_session, async_session_m
                 status_code=204,
                 request=Request(url=url, method=method)
             )
-        else:
-            raise ValueError("Unknown API endpoint")
+        raise ValueError("Unknown API endpoint")
 
     mock_async_client.request.side_effect = mock_client_request_side_effect
     access_token = create_access_token(
