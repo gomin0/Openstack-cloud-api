@@ -40,7 +40,6 @@ class NovaClient(OpenStackClient):
         keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
-
         try:
             await self.request(
                 client=client,
