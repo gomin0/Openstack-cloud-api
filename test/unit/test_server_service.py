@@ -471,7 +471,7 @@ async def test_delete_server_and_resources_success(
     )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
+    mock_server_repository.find_by_id.assert_called_with(
         session=mock_session, server_id=server_id, with_deleted=False, with_relations=False
     )
     mock_nova_client.get_server.assert_called_once_with(

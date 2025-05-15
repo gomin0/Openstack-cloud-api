@@ -163,12 +163,14 @@ def server_service(
 @pytest.fixture(scope='function')
 def network_interface_service(
     mock_server_repository,
+    mock_volume_repository,
     mock_floating_ip_repository,
     mock_network_interface_repository,
     mock_neutron_client
 ):
     return NetworkInterfaceService(
         server_repository=mock_server_repository,
+        volume_repository=mock_volume_repository,
         floating_ip_repository=mock_floating_ip_repository,
         network_interface_repository=mock_network_interface_repository,
         neutron_client=mock_neutron_client

@@ -17,12 +17,14 @@ from common.domain.volume.entity import Volume
 from common.exception.openstack_exception import OpenStackException
 from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException, \
     ServerDeletionFailedException
+from common.exception.volume_exception import VolumeNotFoundException
 from common.infrastructure.database import transactional
 from common.infrastructure.network_interface.repository import NetworkInterfaceRepository
 from common.infrastructure.network_interface_security_group.repository import NetworkInterfaceSecurityGroupRepository
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
+from common.infrastructure.volume.repository import VolumeRepository
 from common.util.envs import get_envs, Envs
 
 envs: Envs = get_envs()
@@ -36,12 +38,14 @@ class ServerService:
     def __init__(
         self,
         server_repository: ServerRepository = Depends(),
+        volume_repository: VolumeRepository = Depends(),
         network_interface_repository: NetworkInterfaceRepository = Depends(),
         network_interface_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
         nova_client: NovaClient = Depends(),
         neutron_client: NeutronClient = Depends()
     ):
         self.server_repository = server_repository
+        self.volume_repository = volume_repository
         self.network_interface_repository = network_interface_repository
         self.network_interface_security_group_repository = network_interface_security_group_repository
         self.nova_client = nova_client
@@ -180,7 +184,7 @@ class ServerService:
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
-        await self.check_and_delete_server(
+        volume_ids: list[int] = await self.check_and_delete_server(
             session=session,
             client=client,
             keystone_token=keystone_token,
@@ -190,7 +194,7 @@ class ServerService:
             session=session,
             client=client,
             keystone_token=keystone_token,
-            server_id=server_id,
+            volume_ids=volume_ids,
             network_interface_ids=network_interface_ids,
         )
 
@@ -201,8 +205,9 @@ class ServerService:
         client: AsyncClient,
         keystone_token: str,
         server_id: int,
-    ) -> None:
+    ) -> list[int]:
         server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+        volume_ids: list[int] = [volume.id for volume in await server.volumes]
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
             is_server_deleted: bool = not await self._exists_server_from_openstack(
@@ -222,19 +227,19 @@ class ServerService:
             )
             raise ServerDeletionFailedException()
 
+        return volume_ids
+
     @transactional()
     async def delete_server_resources(
         self,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
-        server_id: int,
+        volume_ids: list[int],
         network_interface_ids: list[int],
     ) -> None:
-        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
-
-        volumes: list[Volume] = await server.volumes
-        for volume in volumes:
+        for volume_id in volume_ids:
+            volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
             volume.detach_from_server()
 
         network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_all_by_ids(
@@ -294,4 +299,22 @@ class ServerService:
             )
         ) is None:
             raise ServerNotFoundException()
+        return server
+
+    async def _get_volume_by_id(
+        self,
+        session: AsyncSession,
+        volume_id: int,
+        with_deleted: bool = False,
+        with_relations: bool = False,
+    ) -> Volume:
+        if (
+            server := await self.volume_repository.find_by_id(
+                session=session,
+                volume_id=volume_id,
+                with_deleted=with_deleted,
+                with_relations=with_relations,
+            )
+        ) is None:
+            raise VolumeNotFoundException()
         return server
