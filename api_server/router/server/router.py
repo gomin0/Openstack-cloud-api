@@ -93,7 +93,7 @@ async def create_server(
     session: AsyncSession = Depends(get_db_session),
     client: AsyncClient = Depends(get_async_client),
     server_service: ServerService = Depends(),
-):
+) -> ServerResponse:
     async with compensating_transaction() as compensating_tx:
         server: ServerResponse = await server_service.create_server(
             compensating_tx=compensating_tx,
