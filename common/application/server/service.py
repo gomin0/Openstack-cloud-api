@@ -1,18 +1,31 @@
+import asyncio
+import logging
+from logging import Logger
+
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse
 from common.domain.enum import SortOrder
+from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
-from common.domain.server.enum import ServerSortOption
-from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
+from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException, \
+    InvalidServerStatusRequestException, ServerStatusUpdateFailedException
 from common.infrastructure.database import transactional
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
+from common.util.envs import Envs, get_envs
+
+envs: Envs = get_envs()
+logger: Logger = logging.getLogger(__name__)
 
 
 class ServerService:
+    MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE: int = envs.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION
+    CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION
+
     def __init__(
         self,
         server_repository: ServerRepository = Depends(),
@@ -116,6 +129,74 @@ class ServerService:
 
         return vnc_url
 
+    @transactional()
+    async def update_server_status(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        project_id: int,
+        server_id: int,
+        status: ServerStatus,
+    ) -> ServerResponse:
+        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+        server.validate_access_permission(project_id=project_id)
+
+        if status == ServerStatus.ACTIVE:
+            server.validate_able_to_start()
+
+            await self.nova_client.start_server(
+                client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
+            )
+        elif status == ServerStatus.SHUTOFF:
+            server.validate_able_to_stop()
+
+            await self.nova_client.stop_server(
+                client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
+            )
+        else:
+            raise InvalidServerStatusRequestException()
+
+        return ServerResponse.from_entity(server)
+
+    @transactional()
+    async def wait_until_status_changed(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str,
+        status: ServerStatus,
+    ) -> None:
+        server: Server = await self._get_server_by_openstack_id(
+            session=session, openstack_id=server_openstack_id
+        )
+
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
+
+            os_server: OsServerDto = await self.nova_client.get_server(
+                client=client,
+                keystone_token=keystone_token,
+                server_openstack_id=server_openstack_id,
+            )
+
+            if os_server.status != status:
+                continue
+            elif status == ServerStatus.ACTIVE:
+                server.start()
+                return
+            elif status == ServerStatus.SHUTOFF:
+                server.stop()
+                return
+
+        logger.error(
+            f"서버({server.openstack_id})를 상태 변경을 시도했으나, "
+            f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE}초 동안 "
+            f"정상적으로 변경되지 않았습니다."
+        )
+        raise ServerStatusUpdateFailedException()
+
     async def _get_server_by_id(
         self,
         session: AsyncSession,
@@ -131,5 +212,15 @@ class ServerService:
                 with_relations=with_relations,
             )
         ) is None:
+            raise ServerNotFoundException()
+        return server
+
+    async def _get_server_by_openstack_id(
+        self,
+        session: AsyncSession,
+        openstack_id: str,
+        with_deleted: bool = False,
+    ):
+        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id, with_deleted)) is None:
             raise ServerNotFoundException()
         return server
