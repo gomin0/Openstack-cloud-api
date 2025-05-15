@@ -62,9 +62,11 @@ class NetworkInterface(SoftDeleteBaseEntity):
     async def add_security_groups(self, security_groups: list["SecurityGroup"]) -> None:
         from common.domain.security_group.entity import NetworkInterfaceSecurityGroup
 
+        linked_security_groups: list[NetworkInterfaceSecurityGroup] = await self.awaitable_attrs._linked_security_groups
         for security_group in security_groups:
-            # 객체 생성 시, SQLAlchemy에 의해 NetworkInterface와 SecurityGroup의 collection에도 반영됨
-            NetworkInterfaceSecurityGroup.create(
-                network_interface=self,
-                security_group=security_group,
+            linked_security_groups.append(
+                NetworkInterfaceSecurityGroup.create(
+                    network_interface=self,
+                    security_group=security_group,
+                )
             )
