@@ -221,6 +221,8 @@ class ServerService:
         openstack_id: str,
         with_deleted: bool = False,
     ):
-        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id, with_deleted)) is None:
+        if (server := await self.server_repository.find_by_openstack_id(
+            session=session, openstack_id=openstack_id, with_deleted=with_deleted
+        )) is None:
             raise ServerNotFoundException()
         return server
