@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Depends, BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
+from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
 from common.application.server.response import (
@@ -123,7 +123,7 @@ async def update_server_info(
 
 @router.delete(
     path="/{server_id}",
-    status_code=HTTP_204_NO_CONTENT,
+    status_code=HTTP_202_ACCEPTED,
     summary="서버 삭제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -152,8 +152,7 @@ async def delete_server(
         background_tasks,
         volume_service.check_volume_until_deleted,
         keystone_token=request_user.keystone_token,
-        volume_ids=response.volume_ids,
-        root_volume_id=response.root_volume_id,
+        volume_id=response.volume_id,
         project_openstack_id=request_user.project_openstack_id
     )
     run_background_task(

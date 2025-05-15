@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from httpx import Response
+from httpx import Response, Request
 
 from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
@@ -300,3 +300,73 @@ async def test_get_server_vnc_url_fail_access_denied(client, db_session, mock_as
     # then
     assert response.status_code == 403
     assert response.json()["code"] == "SERVER_ACCESS_PERMISSION_DENIED"
+
+
+async def test_delete_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
+    # given
+    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
+    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    volume = await add_to_db(db_session, create_volume(project_id=project.id, server_id=server.id, is_root_volume=True))
+    await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs):
+        if method == "DELETE" and f"/v2.1/servers/{server.openstack_id}" in url:
+            return Response(
+                status_code=204,
+                request=Request(method=method, url=url)
+            )
+        elif method == "GET" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=404,
+                request=Request(url=url, method=method)
+            )
+        elif method == "GET" and f"/v2.1/servers/{server.openstack_id}" in url:
+            return Response(
+                status_code=404,
+                request=Request(url=url, method=method)
+            )
+        elif method == "DELETE" and f"/v2.0/ports/" in url:
+            return Response(
+                status_code=204,
+                request=Request(url=url, method=method)
+            )
+        else:
+            raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+    access_token = create_access_token(
+        user_id=user.id, project_id=project.id, project_openstack_id=project.openstack_id
+    )
+
+    # when
+    response = await client.delete(
+        f"/servers/{server.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 202
+
+
+async def test_delete_server_fail_server_not_found(client, db_session, mock_async_client):
+    # given
+    server_id = 1
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await db_session.commit()
+    access_token = create_access_token(user_id=user.id, project_id=project.id)
+
+    # when
+    response = await client.delete(
+        f"/servers/{server_id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == "SERVER_NOT_FOUND"
