@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
@@ -15,6 +15,7 @@ from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
+from common.util.background_task_runner import run_background_task
 from common.util.context import CurrentUser
 
 router = APIRouter(prefix="/servers", tags=["server"])
@@ -151,10 +152,29 @@ async def delete_server(
 )
 async def update_server_status(
     server_id: int,
+    background_tasks: BackgroundTasks,
     status: Annotated[ServerStatus, Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)")],
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+) -> ServerResponse:
+    response: ServerResponse = await server_service.update_server_status(
+        session=session,
+        client=client,
+        keystone_token=current_user.keystone_token,
+        project_id=current_user.project_id,
+        server_id=server_id,
+        status=status
+    )
+    run_background_task(
+        background_tasks,
+        server_service.wait_until_status_changed,
+        keystone_token=current_user.keystone_token,
+        server_openstack_id=response.openstack_id,
+        status=status,
+    )
+    return response
 
 
 @router.get(
