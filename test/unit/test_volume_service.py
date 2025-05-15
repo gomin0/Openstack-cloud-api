@@ -7,7 +7,6 @@ from common.domain.enum import SortOrder
 from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus, VolumeSortOption
-from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
     VolumeAlreadyDeletedException, VolumeStatusInvalidForDeletionException, AttachedVolumeDeletionException,
@@ -553,7 +552,7 @@ async def test_delete_volume_success(
     volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.AVAILABLE)
     mock_volume_repository.find_by_id.return_value = volume
     mock_cinder_client.delete_volume.return_value = None
-    mock_cinder_client.get_volume.side_effect = OpenStackException(openstack_status_code=404)
+    mock_cinder_client.get_volume.return_value = False
 
     # when
     await volume_service.delete_volume(

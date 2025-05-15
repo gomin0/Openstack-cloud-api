@@ -11,7 +11,6 @@ from common.domain.enum import SortOrder
 from common.domain.volume.dto import VolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus, VolumeSortOption
-from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletionFailedException, VolumeResizingFailedException
 )
@@ -252,7 +251,7 @@ class VolumeService:
 
         # (OpenStack) Check volume is deleted
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
-            is_volume_deleted: bool = not await self._exists_volume_from_openstack(
+            is_volume_deleted: bool = not await self.cinder_client.exists_volume(
                 client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=current_project_openstack_id,
@@ -273,7 +272,7 @@ class VolumeService:
         volume.delete()
 
     @transactional()
-    async def check_and_delete_volume(
+    async def check_volume_deletion_and_remove(
         self,
         session: AsyncSession,
         client: AsyncClient,
@@ -286,7 +285,7 @@ class VolumeService:
             raise VolumeNotFoundException()
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
-            is_volume_deleted: bool = not await self._exists_volume_from_openstack(
+            is_volume_deleted: bool = not await self.cinder_client.exists_volume(
                 client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=project_openstack_id,
@@ -327,26 +326,6 @@ class VolumeService:
         if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id=openstack_id)) is None:
             raise VolumeNotFoundException()
         return volume
-
-    async def _exists_volume_from_openstack(
-        self,
-        client: AsyncClient,
-        keystone_token: str,
-        project_openstack_id: str,
-        volume_openstack_id: str,
-    ):
-        try:
-            await self.cinder_client.get_volume(
-                client=client,
-                keystone_token=keystone_token,
-                project_openstack_id=project_openstack_id,
-                volume_openstack_id=volume_openstack_id,
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 404:
-                return False
-            raise ex
-        return True
 
     @transactional()
     async def _prepare_volume_for_resize(

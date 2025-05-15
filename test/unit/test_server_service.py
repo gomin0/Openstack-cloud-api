@@ -6,7 +6,6 @@ from common.domain.network_interface.entity import NetworkInterface
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
-from common.exception.openstack_exception import OpenStackException
 from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
     ServerUpdatePermissionDeniedException, ServerNameDuplicateException, ServerDeletionFailedException
 from test.util.factory import create_server_stub, create_volume, create_project, create_server, \
@@ -457,7 +456,7 @@ async def test_delete_server_and_resources_success(
     )
 
     mock_server_repository.find_by_id.return_value = server
-    mock_nova_client.get_server.side_effect = OpenStackException(openstack_status_code=404)
+    mock_nova_client.exists_server.return_value = False
     mock_network_interface_repository.find_all_by_ids.return_value = [network_interface]
     mock_neutron_client.delete_network_interface.return_value = None
 
@@ -474,7 +473,7 @@ async def test_delete_server_and_resources_success(
     mock_server_repository.find_by_id.assert_called_with(
         session=mock_session, server_id=server_id, with_deleted=False, with_relations=False
     )
-    mock_nova_client.get_server.assert_called_once_with(
+    mock_nova_client.exists_server.assert_called_once_with(
         client=mock_async_client,
         keystone_token=keystone_token,
         server_openstack_id=server.openstack_id,
@@ -583,10 +582,10 @@ async def test_delete_server_and_resources_fail_timeout(
         )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
+    mock_server_repository.find_by_id.assert_called_with(
         session=mock_session, server_id=server_id, with_deleted=False, with_relations=False
     )
-    mock_nova_client.get_server.assert_called_once_with(
+    mock_nova_client.exists_server.assert_called_once_with(
         client=mock_async_client,
         keystone_token=keystone_token,
         server_openstack_id=server.openstack_id,

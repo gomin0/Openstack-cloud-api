@@ -21,7 +21,8 @@ class NetworkInterface(SoftDeleteBaseEntity):
     _linked_security_groups: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
         "NetworkInterfaceSecurityGroup",
         lazy="select",
-        back_populates="_network_interface"
+        back_populates="_network_interface",
+        cascade="save-update, merge, delete-orphan",
     )
 
     @async_property
@@ -41,3 +42,7 @@ class NetworkInterface(SoftDeleteBaseEntity):
     def validate_access_permission(self, project_id):
         if self.project_id != project_id:
             raise NetworkInterfaceAccessPermissionDeniedException()
+
+    async def detach_all_security_groups(self):
+        security_groups: list["SecurityGroup"] = await self.awaitable_attrs._linked_security_groups
+        security_groups.clear()

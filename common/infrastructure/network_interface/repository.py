@@ -30,7 +30,7 @@ class NetworkInterfaceRepository:
         session: AsyncSession,
         network_interface_ids: list[int],
     ) -> list[NetworkInterface]:
-        query: Select = select(NetworkInterface).filter(
+        query: Select = select(NetworkInterface).where(
             NetworkInterface.id.in_(network_interface_ids),
             NetworkInterface.deleted_at.is_(None)
         )

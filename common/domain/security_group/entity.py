@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
 from common.domain.network_interface.entity import NetworkInterface
-from common.domain.server.entity import Server
 from common.exception.security_group_exception import SecurityGroupDeletePermissionDeniedException, \
     SecurityGroupUpdatePermissionDeniedException
 
@@ -22,7 +21,10 @@ class SecurityGroup(SoftDeleteBaseEntity):
     version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
     _linked_network_interfaces: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
-        "NetworkInterfaceSecurityGroup", lazy="select", back_populates="_security_group"
+        "NetworkInterfaceSecurityGroup",
+        lazy="select",
+        back_populates="_security_group",
+        cascade="save-update, merge, delete-orphan",
     )
 
     @async_property
@@ -79,7 +81,7 @@ class NetworkInterfaceSecurityGroup(BaseEntity):
         nullable=False
     )
 
-    _network_interface: Mapped[Server] = relationship(
+    _network_interface: Mapped[NetworkInterface] = relationship(
         "NetworkInterface", lazy="select", back_populates="_linked_security_groups"
     )
     _security_group: Mapped["SecurityGroup"] = relationship("SecurityGroup", lazy="select",

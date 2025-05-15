@@ -157,7 +157,7 @@ async def delete_server(
     )
     run_background_task(
         background_tasks,
-        volume_service.check_and_delete_volume,
+        volume_service.check_volume_deletion_and_remove,
         keystone_token=current_user.keystone_token,
         volume_id=response.volume_id,
         project_openstack_id=current_user.project_openstack_id

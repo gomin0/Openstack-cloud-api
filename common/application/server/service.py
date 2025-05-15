@@ -14,7 +14,6 @@ from common.domain.network_interface.entity import NetworkInterface
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
 from common.domain.volume.entity import Volume
-from common.exception.openstack_exception import OpenStackException
 from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException, \
     ServerDeletionFailedException
 from common.exception.volume_exception import VolumeNotFoundException
@@ -184,33 +183,32 @@ class ServerService:
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
-        volume_ids: list[int] = await self.check_and_delete_server(
+        await self.remove_server_resources(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            server_id=server_id,
+            network_interface_ids=network_interface_ids,
+        )
+        await self.check_server_deletion_and_remove(
             session=session,
             client=client,
             keystone_token=keystone_token,
             server_id=server_id,
         )
-        await self.delete_server_resources(
-            session=session,
-            client=client,
-            keystone_token=keystone_token,
-            volume_ids=volume_ids,
-            network_interface_ids=network_interface_ids,
-        )
 
     @transactional()
-    async def check_and_delete_server(
+    async def check_server_deletion_and_remove(
         self,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
         server_id: int,
-    ) -> list[int]:
+    ) -> None:
         server: Server = await self._get_server_by_id(session=session, server_id=server_id)
-        volume_ids: list[int] = [volume.id for volume in await server.volumes]
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
-            is_server_deleted: bool = not await self._exists_server_from_openstack(
+            is_server_deleted: bool = not await self.nova_client.exists_server(
                 client=client,
                 keystone_token=keystone_token,
                 server_openstack_id=server.openstack_id,
@@ -227,29 +225,25 @@ class ServerService:
             )
             raise ServerDeletionFailedException()
 
-        return volume_ids
-
     @transactional()
-    async def delete_server_resources(
+    async def remove_server_resources(
         self,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
-        volume_ids: list[int],
+        server_id: int,
         network_interface_ids: list[int],
     ) -> None:
-        for volume_id in volume_ids:
-            volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+        volumes: list[Volume] = await server.volumes
+        for volume in volumes:
             volume.detach_from_server()
 
         network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_all_by_ids(
             session=session, network_interface_ids=network_interface_ids
         )
         for network_interface in network_interfaces:
-            await self.network_interface_security_group_repository.delete_all_by_network_interface(
-                session=session,
-                network_interface_id=network_interface.id
-            )
+            await network_interface.detach_all_security_groups()
             network_interface.delete()
             floating_ip: FloatingIp = await network_interface.floating_ip
             if floating_ip:
@@ -264,24 +258,6 @@ class ServerService:
             for network_interface in network_interfaces
         ]
         await asyncio.gather(*tasks)
-
-    async def _exists_server_from_openstack(
-        self,
-        client: AsyncClient,
-        keystone_token: str,
-        server_openstack_id: str,
-    ) -> bool:
-        try:
-            await self.nova_client.get_server(
-                client=client,
-                keystone_token=keystone_token,
-                server_openstack_id=server_openstack_id,
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 404:
-                return False
-            raise ex
-        return True
 
     async def _get_server_by_id(
         self,
