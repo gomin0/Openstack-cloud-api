@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.server.enum import ServerStatus
 from common.exception.server_exception import ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException
+    ServerUpdatePermissionDeniedException, ServerStatusInvalidToStartException, ServerStatusInvalidToStopException
 
 
 class Server(SoftDeleteBaseEntity):
@@ -46,3 +46,17 @@ class Server(SoftDeleteBaseEntity):
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
+
+    def validate_able_to_start(self):
+        if self.status != ServerStatus.SHUTOFF:
+            raise ServerStatusInvalidToStartException(self.status)
+
+    def validate_able_to_stop(self):
+        if self.status != ServerStatus.ACTIVE and self.status != ServerStatus.ERROR:
+            raise ServerStatusInvalidToStopException(self.status)
+
+    def start(self):
+        self.status = ServerStatus.ACTIVE
+
+    def stop(self):
+        self.status = ServerStatus.SHUTOFF
