@@ -1,3 +1,4 @@
+from common.domain.server.enum import ServerStatus
 from common.exception.base_exception import CustomException
 
 
@@ -34,4 +35,40 @@ class ServerNameDuplicateException(CustomException):
             code="SERVER_NAME_DUPLICATE",
             status_code=409,
             message="이미 사용중인 서버 이름입니다."
+        )
+
+
+class ServerStatusInvalidToStartException(CustomException):
+    def __init__(self, status: ServerStatus):
+        super().__init__(
+            code="SERVER_STATUS_INVALID_TO_START",
+            status_code=409,
+            message=f"현재 서버 상태({status.value} 에서는 시작할 수 없습니다."
+        )
+
+
+class ServerStatusInvalidToStopException(CustomException):
+    def __init__(self, status: ServerStatus):
+        super().__init__(
+            code="SERVER_STATUS_INVALID_TO_STOP",
+            status_code=409,
+            message=f"현재 서버 상태{status.value} 에서는 중지할 수 없습니다."
+        )
+
+
+class InvalidServerStatusRequestException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="INVALID_SERVER_STATUS_REQUEST",
+            status_code=400,
+            message="해당 상태로 변경 할 수 없습니다. ACTICE or SHUTOFF 상태만 요청 가능합니다."
+        )
+
+
+class ServerStatusUpdateFailedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="SERVER_STATUS_UPDATE_FAILED",
+            status_code=500,
+            message="서버 상태 변경 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
         )
