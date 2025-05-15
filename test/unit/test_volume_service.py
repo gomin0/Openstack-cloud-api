@@ -552,7 +552,7 @@ async def test_delete_volume_success(
     volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.AVAILABLE)
     mock_volume_repository.find_by_id.return_value = volume
     mock_cinder_client.delete_volume.return_value = None
-    mock_cinder_client.get_volume.return_value = False
+    mock_cinder_client.exists_volume.return_value = False
 
     # when
     await volume_service.delete_volume(
@@ -567,7 +567,7 @@ async def test_delete_volume_success(
     # then
     mock_volume_repository.find_by_id.assert_called_once()
     mock_cinder_client.delete_volume.assert_called_once()
-    mock_cinder_client.get_volume.assert_called_once()
+    mock_cinder_client.exists_volume.assert_called_once()
     assert volume.deleted_at is not None
 
 

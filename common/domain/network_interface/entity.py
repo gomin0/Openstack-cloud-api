@@ -43,6 +43,7 @@ class NetworkInterface(SoftDeleteBaseEntity):
         if self.project_id != project_id:
             raise NetworkInterfaceAccessPermissionDeniedException()
 
-    async def detach_all_security_groups(self):
+    async def delete(self):
         security_groups: list["SecurityGroup"] = await self.awaitable_attrs._linked_security_groups
         security_groups.clear()
+        super().delete()

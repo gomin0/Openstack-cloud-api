@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from logging import Logger
+from typing import Coroutine
 
 from fastapi import Depends
 from httpx import AsyncClient
@@ -9,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse, \
     DeleteServerResponse
 from common.domain.enum import SortOrder
-from common.domain.floating_ip.entity import FloatingIp
 from common.domain.network_interface.entity import NetworkInterface
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
@@ -175,7 +175,7 @@ class ServerService:
             network_interface_ids=network_interface_ids,
         )
 
-    async def check_server_and_remove_resources(
+    async def check_server_until_deleted_and_remove_resources(
         self,
         session: AsyncSession,
         client: AsyncClient,
@@ -190,7 +190,7 @@ class ServerService:
             server_id=server_id,
             network_interface_ids=network_interface_ids,
         )
-        await self.check_server_deletion_and_remove(
+        await self.wait_server_until_deleted_and_finalize(
             session=session,
             client=client,
             keystone_token=keystone_token,
@@ -198,7 +198,7 @@ class ServerService:
         )
 
     @transactional()
-    async def check_server_deletion_and_remove(
+    async def wait_server_until_deleted_and_finalize(
         self,
         session: AsyncSession,
         client: AsyncClient,
@@ -215,15 +215,14 @@ class ServerService:
             )
             if is_server_deleted:
                 server.delete()
-                break
+                return
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION)
-        else:
-            logger.error(
-                f"서버({server.openstack_id})를 삭제 시도했으나, "
-                f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION}초 동안 "
-                f"정상적으로 삭제되지 않았습니다."
-            )
-            raise ServerDeletionFailedException()
+        logger.error(
+            f"서버({server.openstack_id})를 삭제 시도했으나, "
+            f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION}초 동안 "
+            f"정상적으로 삭제되지 않았습니다."
+        )
+        raise ServerDeletionFailedException()
 
     @transactional()
     async def remove_server_resources(
@@ -243,13 +242,11 @@ class ServerService:
             session=session, network_interface_ids=network_interface_ids
         )
         for network_interface in network_interfaces:
-            await network_interface.detach_all_security_groups()
-            network_interface.delete()
-            floating_ip: FloatingIp = await network_interface.floating_ip
-            if floating_ip:
+            await network_interface.delete()
+            if floating_ip := await network_interface.floating_ip:
                 floating_ip.detach_from_network_interface()
 
-        tasks = [
+        delete_network_interface_tasks: list[Coroutine] = [
             self.neutron_client.delete_network_interface(
                 client=client,
                 keystone_token=keystone_token,
@@ -257,7 +254,7 @@ class ServerService:
             )
             for network_interface in network_interfaces
         ]
-        await asyncio.gather(*tasks)
+        await asyncio.gather(*delete_network_interface_tasks)
 
     async def _get_server_by_id(
         self,

@@ -272,7 +272,7 @@ class VolumeService:
         volume.delete()
 
     @transactional()
-    async def check_volume_deletion_and_remove(
+    async def wait_volume_until_deleted_and_finalize(
         self,
         session: AsyncSession,
         client: AsyncClient,
