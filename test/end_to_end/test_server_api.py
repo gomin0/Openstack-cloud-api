@@ -1,10 +1,11 @@
 from unittest.mock import Mock
 
-from httpx import Response
+from httpx import Response, Request
 
 from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
+from common.domain.server.enum import ServerStatus
 from common.exception.server_exception import ServerNotFoundException, ServerUpdatePermissionDeniedException
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_server, create_access_token, \
@@ -300,3 +301,125 @@ async def test_get_server_vnc_url_fail_access_denied(client, db_session, mock_as
     # then
     assert response.status_code == 403
     assert response.json()["code"] == "SERVER_ACCESS_PERMISSION_DENIED"
+
+
+async def test_start_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
+    # given
+    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
+    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id, status=ServerStatus.SHUTOFF))
+    await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs):
+        if method == "POST" and f"/v2.1/servers/{server.openstack_id}/action" in url:
+            return Response(
+                status_code=202,
+                request=Request(method=method, url=url)
+            )
+        elif method == "GET" and f"/v2.1/servers/{server.openstack_id}" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "server": {
+                        "id": server.openstack_id,
+                        "tenant_id": project.openstack_id,
+                        "status": ServerStatus.ACTIVE.value,
+                        "os-extended-volumes:volumes_attached": [
+                            {"id": random_string(length=36)},
+                        ]
+                    }
+                },
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+    access_token = create_access_token(
+        user_id=user.id, project_id=project.id, project_openstack_id=project.openstack_id
+    )
+
+    # when
+    response = await client.put(
+        f"/servers/{server.id}/status",
+        params={"status": ServerStatus.ACTIVE.value},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 202
+
+
+async def test_stop_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
+    # given
+    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
+    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id, status=ServerStatus.ACTIVE))
+    await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs):
+        if method == "POST" and f"/v2.1/servers/{server.openstack_id}/action" in url:
+            return Response(
+                status_code=202,
+                request=Request(method=method, url=url)
+            )
+        elif method == "GET" and f"/v2.1/servers/{server.openstack_id}" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "server": {
+                        "id": server.openstack_id,
+                        "tenant_id": project.openstack_id,
+                        "status": ServerStatus.SHUTOFF.value,
+                        "os-extended-volumes:volumes_attached": [
+                            {"id": random_string(length=36)},
+                        ]
+                    }
+                },
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+    access_token = create_access_token(
+        user_id=user.id, project_id=project.id, project_openstack_id=project.openstack_id
+    )
+
+    # when
+    response = await client.put(
+        f"/servers/{server.id}/status",
+        params={"status": ServerStatus.SHUTOFF.value},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 202
+
+
+async def test_update_server_status_fail_not_found(client, db_session, mock_async_client):
+    # given
+    server_id = 1
+    domain = await add_to_db(db_session, create_domain())
+    user = await add_to_db(db_session, create_user(domain_id=domain.id))
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    await db_session.commit()
+
+    access_token = create_access_token(
+        user_id=user.id, project_id=project.id, project_openstack_id=project.openstack_id
+    )
+
+    # when
+    response = await client.put(
+        f"/servers/{server_id}/status",
+        params={"status": ServerStatus.SHUTOFF.value},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+
+    # then
+    assert response.status_code == 404
+    assert response.json()["code"] == "SERVER_NOT_FOUND"
