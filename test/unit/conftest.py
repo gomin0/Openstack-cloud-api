@@ -146,11 +146,19 @@ def floating_ip_service(mock_floating_ip_repository, mock_neutron_client):
 @pytest.fixture(scope='function')
 def server_service(
     mock_server_repository,
-    mock_nova_client
-):
+    mock_volume_repository,
+    mock_network_interface_repository,
+    mock_security_group_repository,
+    mock_nova_client,
+    mock_neutron_client,
+) -> ServerService:
     return ServerService(
         server_repository=mock_server_repository,
-        nova_client=mock_nova_client
+        volume_repository=mock_volume_repository,
+        network_interface_repository=mock_network_interface_repository,
+        security_group_repository=mock_security_group_repository,
+        nova_client=mock_nova_client,
+        neutron_client=mock_neutron_client,
     )
 
 
