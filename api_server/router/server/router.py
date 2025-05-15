@@ -140,7 +140,7 @@ async def delete_server(
     client: AsyncClient = Depends(get_async_client),
     server_service: ServerService = Depends(),
     volume_service: VolumeService = Depends()
-) -> None:
+) -> DeleteServerResponse:
     response: DeleteServerResponse = await server_service.delete_server(
         session=session,
         client=client,
@@ -157,11 +157,13 @@ async def delete_server(
     )
     run_background_task(
         background_tasks,
-        volume_service.check_volume_until_deleted,
+        volume_service.check_volume_and_delete,
         keystone_token=current_user.keystone_token,
         volume_id=response.volume_id,
         project_openstack_id=current_user.project_openstack_id
     )
+
+    return response
 
 
 @router.put(

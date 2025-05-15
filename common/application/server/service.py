@@ -180,7 +180,7 @@ class ServerService:
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
-        await self.check_server_until_deleted(
+        await self.check_server_and_delete(
             session=session,
             client=client,
             keystone_token=keystone_token,
@@ -195,7 +195,7 @@ class ServerService:
         )
 
     @transactional()
-    async def check_server_until_deleted(
+    async def check_server_and_delete(
         self,
         session: AsyncSession,
         client: AsyncClient,
