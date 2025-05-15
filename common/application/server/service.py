@@ -27,7 +27,6 @@ from common.util.envs import get_envs, Envs
 
 envs: Envs = get_envs()
 logger: Logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 
 class ServerService:
