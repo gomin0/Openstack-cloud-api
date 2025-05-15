@@ -135,7 +135,7 @@ async def update_server_info(
 async def delete_server(
     server_id: int,
     background_tasks: BackgroundTasks,
-    request_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
     client: AsyncClient = Depends(get_async_client),
     server_service: ServerService = Depends(),
@@ -145,22 +145,22 @@ async def delete_server(
         session=session,
         client=client,
         server_id=server_id,
-        project_id=request_user.project_id,
-        keystone_token=request_user.keystone_token,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
     )
     run_background_task(
         background_tasks,
         server_service.check_server_and_remove_resources,
-        keystone_token=request_user.keystone_token,
+        keystone_token=current_user.keystone_token,
         network_interface_ids=response.network_interface_ids,
         server_id=response.server_id,
     )
     run_background_task(
         background_tasks,
         volume_service.check_volume_until_deleted,
-        keystone_token=request_user.keystone_token,
+        keystone_token=current_user.keystone_token,
         volume_id=response.volume_id,
-        project_openstack_id=request_user.project_openstack_id
+        project_openstack_id=current_user.project_openstack_id
     )
 
 
