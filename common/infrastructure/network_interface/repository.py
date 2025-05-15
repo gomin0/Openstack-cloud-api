@@ -25,7 +25,7 @@ class NetworkInterfaceRepository:
 
         return result
 
-    async def find_by_ids(
+    async def find_all_by_ids(
         self,
         session: AsyncSession,
         network_interface_ids: list[int],

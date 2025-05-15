@@ -238,7 +238,7 @@ class ServerService:
         for volume in volumes:
             volume.detach_from_server()
 
-        network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_by_ids(
+        network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_all_by_ids(
             session=session, network_interface_ids=network_interface_ids
         )
         for network_interface in network_interfaces:

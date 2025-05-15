@@ -458,7 +458,7 @@ async def test_delete_server_and_resources_success(
 
     mock_server_repository.find_by_id.return_value = server
     mock_nova_client.get_server.side_effect = OpenStackException(openstack_status_code=404)
-    mock_network_interface_repository.find_by_ids.return_value = [network_interface]
+    mock_network_interface_repository.find_all_by_ids.return_value = [network_interface]
     mock_neutron_client.delete_network_interface.return_value = None
 
     # when
@@ -479,7 +479,7 @@ async def test_delete_server_and_resources_success(
         keystone_token=keystone_token,
         server_openstack_id=server.openstack_id,
     )
-    mock_network_interface_repository.find_by_ids.assert_called_once_with(
+    mock_network_interface_repository.find_all_by_ids.assert_called_once_with(
         session=mock_session, network_interface_ids=[network_interface_id]
     )
     mock_neutron_client.delete_network_interface.assert_called_once_with(
