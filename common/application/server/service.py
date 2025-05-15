@@ -211,6 +211,7 @@ class ServerService:
                 server_openstack_id=server.openstack_id,
             )
             if is_server_deleted:
+                server.delete()
                 break
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION)
         else:
@@ -220,8 +221,6 @@ class ServerService:
                 f"정상적으로 삭제되지 않았습니다."
             )
             raise ServerDeletionFailedException()
-
-        server.delete()
 
     @transactional()
     async def delete_server_resources(
