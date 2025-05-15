@@ -337,8 +337,6 @@ async def test_create_server_success(mocker, client, db_session, mock_async_clie
                 },
                 request=Request(method=method, url=url),
             )
-        if method == "PUT" and "/v2.0/ports" in url:
-            return Response(status_code=200, json={}, request=Request(method=method, url=url))
         if method == "POST" and "/v2.1/servers" in url:
             return Response(
                 status_code=202,

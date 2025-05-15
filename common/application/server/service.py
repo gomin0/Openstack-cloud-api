@@ -164,6 +164,7 @@ class ServerService:
             client=client,
             keystone_token=command.keystone_token,
             network_openstack_id=command.network_openstack_id,
+            security_group_openstack_ids=[sg.openstack_id for sg in security_groups],
         )
         compensating_tx.add_task(
             lambda: self.neutron_client.delete_network_interface(
@@ -171,12 +172,6 @@ class ServerService:
                 keystone_token=command.keystone_token,
                 network_interface_openstack_id=os_network_interface.openstack_id
             )
-        )
-        await self.neutron_client.update_network_interface_security_groups(
-            client=client,
-            keystone_token=command.keystone_token,
-            network_interface_openstack_id=os_network_interface.openstack_id,
-            security_group_openstack_ids=[sg.openstack_id for sg in security_groups],
         )
 
         server_openstack_id: str = await self.nova_client.create_server(

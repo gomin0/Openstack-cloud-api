@@ -346,7 +346,6 @@ async def test_create_server_success(
         [create_security_group(id_=command.security_group_ids[0], project_id=command.current_project_id)]
     mock_neutron_client.create_network_interface.return_value = \
         create_os_network_interface_dto(openstack_id=network_interface_os_id)
-    mock_neutron_client.update_network_interface_security_groups.return_value = None
     mock_nova_client.create_server.return_value = server_os_id
     mock_server_repository.create.return_value = expected_result
     mock_network_interface_repository.create.return_value = create_network_interface()
@@ -363,7 +362,6 @@ async def test_create_server_success(
     mock_server_repository.exists_by_project_and_name.assert_called_once()
     mock_security_group_repository.find_all_by_ids.assert_called_once()
     mock_neutron_client.create_network_interface.assert_called_once()
-    mock_neutron_client.update_network_interface_security_groups.assert_called_once()
     mock_nova_client.create_server.assert_called_once()
     mock_server_repository.create.assert_called_once()
     mock_network_interface_repository.create.assert_called_once()

@@ -56,7 +56,11 @@ class NeutronClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         network_openstack_id: str,
+        security_group_openstack_ids: list[str] | None = None,
     ) -> OsNetworkInterfaceDto:
+        req_port_data: dict = {"network_id": network_openstack_id}
+        if security_group_openstack_ids is not None:
+            req_port_data["security_groups"] = security_group_openstack_ids
         response: Response = await self.request(
             client=client,
             method="POST",
@@ -65,11 +69,7 @@ class NeutronClient(OpenStackClient):
                 "Content-Type": "application/json",
                 "X-Auth-Token": keystone_token,
             },
-            json={
-                "port": {
-                    "network_id": network_openstack_id,
-                }
-            }
+            json={"port": req_port_data}
         )
 
         port: dict = response.json().get("port", {})
@@ -196,28 +196,6 @@ class NeutronClient(OpenStackClient):
             openstack_id=data["id"],
             status=data["status"],
             address=data["floating_ip_address"],
-        )
-
-    async def update_network_interface_security_groups(
-        self,
-        client: AsyncClient,
-        keystone_token: str,
-        network_interface_openstack_id: str,
-        security_group_openstack_ids: list[str],
-    ) -> None:
-        await self.request(
-            client=client,
-            method="PUT",
-            url=f"{self._NEUTRON_URL}/v2.0/ports/{network_interface_openstack_id}",
-            headers={
-                "Content-Type": "application/json",
-                "X-Auth-Token": keystone_token
-            },
-            json={
-                "port": {
-                    "security_groups": [openstack_id for openstack_id in security_group_openstack_ids]
-                }
-            }
         )
 
     async def update_security_group(
