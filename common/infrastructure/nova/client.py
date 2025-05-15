@@ -1,5 +1,6 @@
 from httpx import AsyncClient, Response
 
+from common.domain.server.dto import OsServerDto
 from common.infrastructure.openstack_client import OpenStackClient
 from common.util.envs import Envs, get_envs
 
@@ -50,12 +51,21 @@ class NovaClient(OpenStackClient):
         self,
         client: AsyncClient,
         keystone_token: str,
-        server_openstack_id: str
-    ) -> str:
+        server_openstack_id: str,
+    ) -> OsServerDto:
         response: Response = await self.request(
-            client,
+            client=client,
             method="GET",
-            url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}",
+            url=f"{self._NOVA_URL}/v2.1/servers/{server_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
         )
-        return response.json()["server"]["id"]
+        server: dict = response.json().get("server", {})
+        return OsServerDto(
+            openstack_id=server.get("id"),
+            project_openstack_id=server.get("tenant_id"),
+            status=server.get("status"),
+            volume_openstack_ids=[
+                volume_dict.get("id")
+                for volume_dict in server.get("os-extended-volumes:volumes_attached")
+            ],
+        )
