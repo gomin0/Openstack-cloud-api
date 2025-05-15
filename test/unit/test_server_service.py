@@ -462,7 +462,7 @@ async def test_delete_server_and_resources_success(
     mock_neutron_client.delete_network_interface.return_value = None
 
     # when
-    await server_service.delete_server_and_resources(
+    await server_service.check_server_and_remove_resources(
         session=mock_session,
         client=mock_async_client,
         keystone_token=keystone_token,
@@ -523,7 +523,7 @@ async def test_delete_server_and_resources_fail_server_not_found(
 
     # when
     with pytest.raises(ServerNotFoundException):
-        await server_service.delete_server_and_resources(
+        await server_service.check_server_and_remove_resources(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,
@@ -574,7 +574,7 @@ async def test_delete_server_and_resources_fail_timeout(
 
     # when
     with pytest.raises(ServerDeletionFailedException):
-        await server_service.delete_server_and_resources(
+        await server_service.check_server_and_remove_resources(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,

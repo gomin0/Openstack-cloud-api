@@ -172,7 +172,7 @@ class ServerService:
             network_interface_ids=network_interface_ids,
         )
 
-    async def delete_server_and_resources(
+    async def check_server_and_remove_resources(
         self,
         session: AsyncSession,
         client: AsyncClient,
