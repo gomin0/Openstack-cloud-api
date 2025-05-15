@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
 from common.domain.enum import SortOrder
-from common.domain.volume.dto import VolumeDto
+from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus, VolumeSortOption
 from common.exception.volume_exception import (
@@ -355,7 +355,7 @@ class VolumeService:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_RESIZING):
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING)
 
-            vol: VolumeDto = await self.cinder_client.get_volume(
+            vol: OsVolumeDto = await self.cinder_client.get_volume(
                 client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=project_openstack_id,

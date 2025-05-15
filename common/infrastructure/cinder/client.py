@@ -1,6 +1,6 @@
 from httpx import AsyncClient, Response
 
-from common.domain.volume.dto import VolumeDto
+from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.enum import VolumeStatus
 from common.exception.openstack_exception import OpenStackException
 from common.infrastructure.openstack_client import OpenStackClient
@@ -20,7 +20,7 @@ class CinderClient(OpenStackClient):
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
-    ) -> VolumeDto:
+    ) -> OsVolumeDto:
         response: Response = await self.request(
             client,
             method="GET",
@@ -28,7 +28,7 @@ class CinderClient(OpenStackClient):
             headers={"X-Auth-Token": keystone_token},
         )
         volume_data: dict = response.json()["volume"]
-        return VolumeDto(
+        return OsVolumeDto(
             openstack_id=volume_data["id"],
             volume_type_name=volume_data["volume_type"],
             image_openstack_id=(volume_data.get("volume_image_metadata") or {}).get("volume_type"),

@@ -4,7 +4,7 @@ import pytest
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
 from common.domain.enum import SortOrder
-from common.domain.volume.dto import VolumeDto
+from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus, VolumeSortOption
 from common.exception.volume_exception import (
@@ -370,7 +370,7 @@ async def test_update_volume_size_success(
     volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
     mock_volume_repository.find_by_id.return_value = volume
     mock_cinder_client.extend_volume_size.return_value = None
-    mock_cinder_client.get_volume.return_value = VolumeDto(
+    mock_cinder_client.get_volume.return_value = OsVolumeDto(
         openstack_id=volume.openstack_id,
         volume_type_name="DEFAULT",
         image_openstack_id=None,
@@ -516,7 +516,7 @@ async def test_update_volume_size_fail_resize_from_openstack(
     volume: Volume = create_volume(status=VolumeStatus.AVAILABLE, size=1)
     mock_volume_repository.find_by_id.return_value = volume
     mock_cinder_client.extend_volume_size.return_value = None
-    mock_cinder_client.get_volume.return_value = VolumeDto(
+    mock_cinder_client.get_volume.return_value = OsVolumeDto(
         openstack_id=volume.openstack_id,
         volume_type_name="DEFAULT",
         image_openstack_id=None,
@@ -705,7 +705,7 @@ async def test_delete_volume_fail_deletion_not_completed(
     volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.ERROR)
     mock_volume_repository.find_by_id.return_value = volume
     mock_cinder_client.delete_volume.return_value = None
-    mock_cinder_client.get_volume.return_value = VolumeDto(
+    mock_cinder_client.get_volume.return_value = OsVolumeDto(
         openstack_id=volume.openstack_id,
         volume_type_name=random_string(),
         image_openstack_id=volume.image_openstack_id,
