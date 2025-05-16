@@ -108,3 +108,21 @@ class VolumeResizingFailedException(CustomException):
             status_code=500,
             message=f"알 수 없는 문제로 볼륨 용량 변경에 실패했습니다. 잠시 후 다시 시도해주세요."
         )
+
+
+class VolumeAlreadyAttachedException(CustomException):
+    def __init__(self, volume_id: int):
+        super().__init__(
+            code="VOLUME_ALREADY_ATTACHED",
+            status_code=409,
+            message=f"볼륨({volume_id})이 이미 서버에 연결되어 있습니다. 볼륨을 서버에서 연결 해제한 후 다시 시도해주세요."
+        )
+
+
+class VolumeAttachmentFailedException(CustomException):
+    def __init__(self, server_id: int, volume_id: int):
+        super().__init__(
+            code="VOLUME_ALREADY_ATTACHED",
+            status_code=409,
+            message=f"볼륨({volume_id})을 서버({server_id})에 연결하는데 실패했습니다."
+        )

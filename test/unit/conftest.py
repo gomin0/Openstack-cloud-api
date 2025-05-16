@@ -152,6 +152,7 @@ def server_service(
     mock_network_interface_security_group_repository,
     mock_nova_client,
     mock_neutron_client,
+    mock_cinder_client,
 ) -> ServerService:
     return ServerService(
         server_repository=mock_server_repository,
@@ -161,6 +162,7 @@ def server_service(
         security_group_repository=mock_security_group_repository,
         nova_client=mock_nova_client,
         neutron_client=mock_neutron_client,
+        cinder_client=mock_cinder_client
     )
 
 
