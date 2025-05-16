@@ -12,7 +12,7 @@ from common.application.server.response import (
 from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
-from common.exception.server_exception import UnsupportedServerStatusRequestException
+from common.exception.server_exception import UnsupportedServerStatusUpdateRequestException
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
@@ -174,7 +174,8 @@ async def update_server_status(
             keystone_token=current_user.keystone_token,
             server_openstack_id=response.openstack_id,
         )
-    elif status == ServerStatus.SHUTOFF:
+        return response
+    if status == ServerStatus.SHUTOFF:
         response: ServerResponse = await server_service.stop_server(
             session=session,
             client=client,
@@ -188,10 +189,9 @@ async def update_server_status(
             keystone_token=current_user.keystone_token,
             server_openstack_id=response.openstack_id,
         )
-    else:
-        raise UnsupportedServerStatusRequestException()
+        return response
 
-    return response
+    raise UnsupportedServerStatusUpdateRequestException()
 
 
 @router.get(

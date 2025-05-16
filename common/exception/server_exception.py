@@ -56,10 +56,10 @@ class ServerStatusInvalidToStopException(CustomException):
         )
 
 
-class UnsupportedServerStatusRequestException(CustomException):
+class UnsupportedServerStatusUpdateRequestException(CustomException):
     def __init__(self):
         super().__init__(
-            code="INVALID_SERVER_STATUS_REQUEST",
+            code="INVALID_SERVER_STATUS_UPDATE_REQUEST",
             status_code=400,
             message="해당 상태로 변경 할 수 없습니다. ACTICE or SHUTOFF 상태만 요청 가능합니다."
         )
