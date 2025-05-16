@@ -56,7 +56,7 @@ class ServerStatusInvalidToStopException(CustomException):
         )
 
 
-class InvalidServerStatusRequestException(CustomException):
+class UnsupportedServerStatusRequestException(CustomException):
     def __init__(self):
         super().__init__(
             code="INVALID_SERVER_STATUS_REQUEST",
@@ -65,10 +65,19 @@ class InvalidServerStatusRequestException(CustomException):
         )
 
 
-class ServerStatusUpdateFailedException(CustomException):
+class ServerStartFailedException(CustomException):
     def __init__(self):
         super().__init__(
-            code="SERVER_STATUS_UPDATE_FAILED",
+            code="SERVER_START_FAILED",
             status_code=500,
-            message="서버 상태 변경 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
+            message="서버 시작 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
+        )
+
+
+class ServerStopFailedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="SERVER_STOP_FAILED",
+            status_code=500,
+            message="서버 중지 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요."
         )

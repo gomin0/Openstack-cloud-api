@@ -12,6 +12,7 @@ from common.application.server.response import (
 from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.exception.server_exception import UnsupportedServerStatusRequestException
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
@@ -159,21 +160,37 @@ async def update_server_status(
     client: AsyncClient = Depends(get_async_client),
     server_service: ServerService = Depends(),
 ) -> ServerResponse:
-    response: ServerResponse = await server_service.update_server_status(
-        session=session,
-        client=client,
-        keystone_token=current_user.keystone_token,
-        project_id=current_user.project_id,
-        server_id=server_id,
-        status=status
-    )
-    run_background_task(
-        background_tasks,
-        server_service.wait_until_server_status_changed,
-        keystone_token=current_user.keystone_token,
-        server_openstack_id=response.openstack_id,
-        status=status,
-    )
+    if status == ServerStatus.ACTIVE:
+        response: ServerResponse = await server_service.start_server(
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            server_id=server_id,
+        )
+        run_background_task(
+            background_tasks,
+            server_service.wait_until_server_started,
+            keystone_token=current_user.keystone_token,
+            server_openstack_id=response.openstack_id,
+        )
+    elif status == ServerStatus.SHUTOFF:
+        response: ServerResponse = await server_service.stop_server(
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            server_id=server_id,
+        )
+        run_background_task(
+            background_tasks,
+            server_service.wait_until_server_stopped,
+            keystone_token=current_user.keystone_token,
+            server_openstack_id=response.openstack_id,
+        )
+    else:
+        raise UnsupportedServerStatusRequestException()
+
     return response
 
 

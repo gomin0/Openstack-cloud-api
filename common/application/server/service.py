@@ -12,7 +12,7 @@ from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException, \
-    InvalidServerStatusRequestException, ServerStatusUpdateFailedException
+    ServerStartFailedException, ServerStopFailedException
 from common.infrastructure.database import transactional
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.server.repository import ServerRepository
@@ -130,46 +130,49 @@ class ServerService:
         return vnc_url
 
     @transactional()
-    async def update_server_status(
+    async def start_server(
         self,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
         project_id: int,
         server_id: int,
-        status: ServerStatus,
     ) -> ServerResponse:
         server: Server = await self._get_server_by_id(session=session, server_id=server_id)
         server.validate_access_permission(project_id=project_id)
-
-        if status == ServerStatus.ACTIVE:
-            server.validate_startable()
-            await self.nova_client.start_server(
-                client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
-            )
-        elif status == ServerStatus.SHUTOFF:
-            server.validate_stoppable()
-            await self.nova_client.stop_server(
-                client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
-            )
-        else:
-            raise InvalidServerStatusRequestException()
+        server.validate_startable()
+        await self.nova_client.start_server(
+            client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
+        )
 
         return ServerResponse.from_entity(server)
 
     @transactional()
-    async def wait_until_server_status_changed(
+    async def stop_server(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        project_id: int,
+        server_id: int,
+    ) -> ServerResponse:
+        server: Server = await self._get_server_by_id(session=session, server_id=server_id)
+        server.validate_access_permission(project_id=project_id)
+        server.validate_stoppable()
+        await self.nova_client.stop_server(
+            client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
+        )
+
+        return ServerResponse.from_entity(server)
+
+    @transactional()
+    async def wait_until_server_started(
         self,
         session: AsyncSession,
         client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
-        status: ServerStatus,
     ) -> None:
-        server: Server = await self._get_server_by_openstack_id(
-            session=session, openstack_id=server_openstack_id
-        )
-
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
 
@@ -179,21 +182,50 @@ class ServerService:
                 server_openstack_id=server_openstack_id,
             )
 
-            if os_server.status != status:
-                continue
-            elif status == ServerStatus.ACTIVE:
+            if os_server.status == ServerStatus.ACTIVE:
+                server: Server = await self._get_server_by_openstack_id(
+                    session=session, openstack_id=server_openstack_id
+                )
                 server.start()
                 return
-            elif status == ServerStatus.SHUTOFF:
+
+        logger.error(
+            f"서버({server_openstack_id}) 시작을 시도했으나, "
+            f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE}초 동안 "
+            f"정상적으로 시작되지 않았습니다."
+        )
+        raise ServerStartFailedException()
+
+    @transactional()
+    async def wait_until_server_stopped(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str,
+    ) -> None:
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
+
+            os_server: OsServerDto = await self.nova_client.get_server(
+                client=client,
+                keystone_token=keystone_token,
+                server_openstack_id=server_openstack_id,
+            )
+
+            if os_server.status == ServerStatus.SHUTOFF:
+                server: Server = await self._get_server_by_openstack_id(
+                    session=session, openstack_id=server_openstack_id
+                )
                 server.stop()
                 return
 
         logger.error(
-            f"서버({server.openstack_id})를 상태 변경을 시도했으나, "
+            f"서버({server_openstack_id}) 중지를 시도했으나, "
             f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE}초 동안 "
-            f"정상적으로 변경되지 않았습니다."
+            f"정상적으로 중지되지 않았습니다."
         )
-        raise ServerStatusUpdateFailedException()
+        raise ServerStopFailedException()
 
     async def _get_server_by_id(
         self,

@@ -8,7 +8,7 @@ from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException, ServerNameDuplicateException, ServerStatusUpdateFailedException
+    ServerUpdatePermissionDeniedException, ServerNameDuplicateException, ServerStartFailedException
 from test.util.factory import create_server_stub, create_volume, create_project, create_server, \
     create_network_interface_stub, create_volume_stub
 from test.util.random import random_int, random_string
@@ -373,13 +373,12 @@ async def test_start_server_success(
     mock_nova_client.start_server.return_value = None
 
     # when
-    await server_service.update_server_status(
+    await server_service.start_server(
         session=mock_session,
         client=mock_async_client,
         keystone_token=keystone_token,
         project_id=project_id,
         server_id=server_id,
-        status=ServerStatus.ACTIVE,
     )
 
     # then
@@ -422,13 +421,12 @@ async def test_stop_server_success(
     mock_nova_client.stop_server.return_value = None
 
     # when
-    await server_service.update_server_status(
+    await server_service.stop_server(
         session=mock_session,
         client=mock_async_client,
         keystone_token=keystone_token,
         project_id=project_id,
         server_id=server_id,
-        status=ServerStatus.SHUTOFF,
     )
 
     # then
@@ -451,19 +449,17 @@ async def test_update_server_status_fail_server_not_found(
     server_id = random_int()
     project_id = random_int()
     keystone_token = random_string()
-    server_openstack_id = random_string()
 
     mock_server_repository.find_by_id.return_value = None
 
     # when
     with pytest.raises(ServerNotFoundException):
-        await server_service.update_server_status(
+        await server_service.start_server(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             server_id=server_id,
-            status=ServerStatus.ACTIVE,
         )
 
     # then
@@ -509,12 +505,11 @@ async def test_wait_until_status_changed_success(
     mock_nova_client.get_server.return_value = mock_server
 
     # when
-    await server_service.wait_until_server_status_changed(
+    await server_service.wait_until_server_started(
         session=mock_session,
         client=mock_async_client,
         keystone_token=keystone_token,
         server_openstack_id=server_openstack_id,
-        status=ServerStatus.ACTIVE,
     )
 
     # then
@@ -549,12 +544,11 @@ async def test_wait_until_status_changed_fail_server_not_found(
 
     # when
     with pytest.raises(ServerNotFoundException):
-        await server_service.wait_until_server_status_changed(
+        await server_service.wait_until_server_started(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,
             server_openstack_id=server_openstack_id,
-            status=ServerStatus.ACTIVE,
         )
 
     # then
@@ -573,24 +567,9 @@ async def test_wait_until_status_changed_fail_time_out(
     # given
     server_service.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE = 1
     server_service.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE = 0
-    server_id = random_int()
-    project_id = random_int()
-    volume_id = random_int()
-    network_interface_id = random_int()
     keystone_token = random_string()
     server_openstack_id = random_string()
-    network_interface = create_network_interface_stub(
-        server_id=server_id, project_id=project_id, network_interface_id=network_interface_id
-    )
-    volume = create_volume_stub(volume_id=volume_id, is_root_volume=True)
-    server = create_server_stub(
-        server_id=server_id,
-        status=ServerStatus.SHUTOFF,
-        openstack_id=server_openstack_id,
-        project_id=project_id,
-        volumes=[volume],
-        network_interfaces=[network_interface]
-    )
+
     mock_server = OsServerDto(
         openstack_id=server_openstack_id,
         project_openstack_id="project-openstack-id",
@@ -598,23 +577,18 @@ async def test_wait_until_status_changed_fail_time_out(
         volume_openstack_ids=["volume-openstack-id"]
     )
 
-    mock_server_repository.find_by_openstack_id.return_value = server
     mock_nova_client.get_server.return_value = mock_server
 
     # when
-    with pytest.raises(ServerStatusUpdateFailedException):
-        await server_service.wait_until_server_status_changed(
+    with pytest.raises(ServerStartFailedException):
+        await server_service.wait_until_server_started(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,
             server_openstack_id=server_openstack_id,
-            status=ServerStatus.ACTIVE,
         )
 
     # then
-    mock_server_repository.find_by_openstack_id.assert_called_once_with(
-        session=mock_session, openstack_id=server_openstack_id, with_deleted=False
-    )
     mock_nova_client.get_server.assert_called_with(
         client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
     )
