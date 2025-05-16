@@ -282,7 +282,7 @@ class ServerService:
         with_relations: bool = False,
     ) -> Volume:
         if (
-            server := await self.volume_repository.find_by_id(
+            volume := await self.volume_repository.find_by_id(
                 session=session,
                 volume_id=volume_id,
                 with_deleted=with_deleted,
@@ -290,4 +290,4 @@ class ServerService:
             )
         ) is None:
             raise VolumeNotFoundException()
-        return server
+        return volume
