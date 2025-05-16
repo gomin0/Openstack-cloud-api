@@ -43,7 +43,7 @@ class ServerStatusInvalidToStartException(CustomException):
         super().__init__(
             code="SERVER_STATUS_INVALID_TO_START",
             status_code=409,
-            message=f"현재 서버 상태({status.value} 에서는 시작할 수 없습니다."
+            message=f"현재 서버 상태{status.value} 에서는 시작할 수 없습니다."
         )
 
 
