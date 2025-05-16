@@ -509,7 +509,7 @@ async def test_wait_until_status_changed_success(
     mock_nova_client.get_server.return_value = mock_server
 
     # when
-    await server_service.wait_until_status_changed(
+    await server_service.wait_until_server_status_changed(
         session=mock_session,
         client=mock_async_client,
         keystone_token=keystone_token,
@@ -549,7 +549,7 @@ async def test_wait_until_status_changed_fail_server_not_found(
 
     # when
     with pytest.raises(ServerNotFoundException):
-        await server_service.wait_until_status_changed(
+        await server_service.wait_until_server_status_changed(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,
@@ -603,7 +603,7 @@ async def test_wait_until_status_changed_fail_time_out(
 
     # when
     with pytest.raises(ServerStatusUpdateFailedException):
-        await server_service.wait_until_status_changed(
+        await server_service.wait_until_server_status_changed(
             session=mock_session,
             client=mock_async_client,
             keystone_token=keystone_token,

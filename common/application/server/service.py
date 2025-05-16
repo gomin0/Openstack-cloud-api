@@ -144,13 +144,11 @@ class ServerService:
 
         if status == ServerStatus.ACTIVE:
             server.validate_able_to_start()
-
             await self.nova_client.start_server(
                 client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
             )
         elif status == ServerStatus.SHUTOFF:
             server.validate_able_to_stop()
-
             await self.nova_client.stop_server(
                 client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
             )
@@ -160,7 +158,7 @@ class ServerService:
         return ServerResponse.from_entity(server)
 
     @transactional()
-    async def wait_until_status_changed(
+    async def wait_until_server_status_changed(
         self,
         session: AsyncSession,
         client: AsyncClient,

@@ -143,11 +143,11 @@ async def delete_server(
     status_code=HTTP_202_ACCEPTED,
     summary="서버 상태 변경",
     responses={
+        400: {"description": "시작/정지가 아닌 다른 서버 상태를 요청한 경우"},
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "서버에 대한 접근 권한이 없는 경우"},
         404: {"description": "서버를 찾을 수 없는 경우"},
         409: {"description": "서버를 시작/정지할 수 없는 상태인 경우"},
-        422: {"description": "지원하지 않는 서버 상태인 경우"},
     }
 )
 async def update_server_status(
@@ -169,7 +169,7 @@ async def update_server_status(
     )
     run_background_task(
         background_tasks,
-        server_service.wait_until_status_changed,
+        server_service.wait_until_server_status_changed,
         keystone_token=current_user.keystone_token,
         server_openstack_id=response.openstack_id,
         status=status,
