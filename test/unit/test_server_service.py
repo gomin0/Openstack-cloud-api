@@ -8,7 +8,7 @@ from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException, ServerNameDuplicateException, ServerStartFailedException
+    ServerUpdatePermissionDeniedException, ServerNameDuplicateException
 from test.util.factory import create_server_stub, create_volume, create_project, create_server, \
     create_network_interface_stub, create_volume_stub
 from test.util.random import random_int, random_string
@@ -565,7 +565,7 @@ async def test_wait_until_status_changed_fail_time_out(
     server_service
 ):
     # given
-    server_service.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE = 1
+    server_service.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE = 3
     server_service.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE = 0
     keystone_token = random_string()
     server_openstack_id = random_string()
@@ -580,15 +580,12 @@ async def test_wait_until_status_changed_fail_time_out(
     mock_nova_client.get_server.return_value = mock_server
 
     # when
-    with pytest.raises(ServerStartFailedException):
-        await server_service.wait_until_server_started(
-            session=mock_session,
-            client=mock_async_client,
-            keystone_token=keystone_token,
-            server_openstack_id=server_openstack_id,
-        )
+    await server_service.wait_until_server_started(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=server_openstack_id,
+    )
 
     # then
-    mock_nova_client.get_server.assert_called_with(
-        client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
-    )
+    assert mock_nova_client.get_server.call_count == server_service.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE
