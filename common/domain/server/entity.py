@@ -47,11 +47,11 @@ class Server(SoftDeleteBaseEntity):
         self.name = name
         self.description = description
 
-    def validate_able_to_start(self):
+    def validate_startable(self):
         if self.status != ServerStatus.SHUTOFF:
             raise ServerStatusInvalidToStartException(self.status)
 
-    def validate_able_to_stop(self):
+    def validate_stoppable(self):
         if self.status != ServerStatus.ACTIVE and self.status != ServerStatus.ERROR:
             raise ServerStatusInvalidToStopException(self.status)
 

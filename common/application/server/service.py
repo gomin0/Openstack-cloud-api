@@ -143,12 +143,12 @@ class ServerService:
         server.validate_access_permission(project_id=project_id)
 
         if status == ServerStatus.ACTIVE:
-            server.validate_able_to_start()
+            server.validate_startable()
             await self.nova_client.start_server(
                 client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
             )
         elif status == ServerStatus.SHUTOFF:
-            server.validate_able_to_stop()
+            server.validate_stoppable()
             await self.nova_client.stop_server(
                 client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
             )
