@@ -158,7 +158,7 @@ class ServerService:
             server_id=server_id,
             volume_id=volume_id,
         )
-        is_success: bool = await self._wait_until_volume_detach_and_finalize(
+        is_success: bool = await self._wait_until_volume_detachment_and_finalize(
             session=session,
             client=client,
             keystone_token=keystone_token,
@@ -195,7 +195,7 @@ class ServerService:
         return server, volume
 
     @transactional()
-    async def _wait_until_volume_detach_and_finalize(
+    async def _wait_until_volume_detachment_and_finalize(
         self,
         session: AsyncSession,
         client: AsyncClient,
