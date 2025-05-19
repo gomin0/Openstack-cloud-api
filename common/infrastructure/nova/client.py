@@ -130,3 +130,25 @@ class NovaClient(OpenStackClient):
             url=f"{self._NOVA_URL}/v2.1/servers/{server_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
         )
+
+    async def attach_volume_to_server(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str,
+        volume_openstack_id: str,
+    ) -> None:
+        await self.request(
+            client=client,
+            method="POST",
+            url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/os-volume_attachments",
+            headers={
+                "Content-Type": "application/json",
+                "X-Auth-Token": keystone_token,
+            },
+            json={
+                "volumeAttachment": {
+                    "volumeId": volume_openstack_id,
+                },
+            },
+        )

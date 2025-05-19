@@ -16,6 +16,7 @@ from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerStatus
 from common.domain.user.entity import User
+from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.util import auth_token_manager
@@ -288,6 +289,7 @@ def create_floating_ip_stub(
 
 
 def create_volume(
+    server: Server | None = None,
     volume_id: int = random_int(),
     openstack_id: str = random_string(),
     project_id: int = random_int(),
@@ -305,7 +307,7 @@ def create_volume(
         id=volume_id,
         openstack_id=openstack_id,
         project_id=project_id,
-        server_id=server_id,
+        server_id=server.id if server is not None else server_id,
         volume_type_openstack_id=volume_type_openstack_id,
         image_openstack_id=image_openstack_id,
         name=name,
@@ -316,6 +318,7 @@ def create_volume(
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=deleted_at,
+        _server=server
     )
 
 
@@ -447,6 +450,22 @@ def create_os_server_dto(
         project_openstack_id=project_openstack_id,
         status=status,
         volume_openstack_ids=volume_openstack_ids or [random_string()],
+    )
+
+
+def create_os_volume_dto(
+    openstack_id: str = random_string(),
+    volume_type_name: str = random_string(length=36),
+    image_openstack_id: str | None = None,
+    status: VolumeStatus = VolumeStatus.AVAILABLE,
+    size: int = random_int(),
+) -> OsVolumeDto:
+    return OsVolumeDto(
+        openstack_id=openstack_id,
+        volume_type_name=volume_type_name,
+        image_openstack_id=image_openstack_id,
+        status=status,
+        size=size,
     )
 
 

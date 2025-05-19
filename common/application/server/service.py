@@ -1,8 +1,7 @@
 import asyncio
-import logging
 import uuid
-from logging import Logger
 from typing import Coroutine
+from logging import getLogger, Logger
 
 from fastapi import Depends
 from httpx import AsyncClient
@@ -18,11 +17,13 @@ from common.domain.security_group.entity import SecurityGroup
 from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.exception.server_exception import ServerDeletionFailedException
 from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
-from common.exception.volume_exception import VolumeNotFoundException
+from common.exception.volume_exception import VolumeNotFoundException, VolumeAttachmentFailedException
+from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
 from common.infrastructure.network_interface.repository import NetworkInterfaceRepository
 from common.infrastructure.network_interface_security_group.repository import NetworkInterfaceSecurityGroupRepository
@@ -34,7 +35,7 @@ from common.infrastructure.volume.repository import VolumeRepository
 from common.util.compensating_transaction import CompensationManager
 from common.util.envs import get_envs, Envs
 
-logger: Logger = logging.getLogger(__name__)
+logger: Logger = getLogger(__name__)
 envs: Envs = get_envs()
 
 
@@ -44,6 +45,8 @@ class ServerService:
 
     MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION: int = envs.MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION
     CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION
+    MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT: int = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT
+    CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT: int = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT
 
     def __init__(
         self,
@@ -54,6 +57,7 @@ class ServerService:
         network_interface_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
         nova_client: NovaClient = Depends(),
         neutron_client: NeutronClient = Depends(),
+        cinder_client: CinderClient = Depends(),
     ):
         self.server_repository = server_repository
         self.volume_repository = volume_repository
@@ -62,6 +66,7 @@ class ServerService:
         self.network_interface_security_group_repository = network_interface_security_group_repository
         self.nova_client = nova_client
         self.neutron_client = neutron_client
+        self.cinder_client = cinder_client
 
     @transactional()
     async def find_servers_details(
@@ -311,6 +316,38 @@ class ServerService:
         server: Server = await self._get_server_by_openstack_id(session=session, openstack_id=server_openstack_id)
         server.fail_creation()
 
+    async def attach_volume_to_server(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        current_project_id: int,
+        current_project_openstack_id: str,
+        server_id: int,
+        volume_id: int,
+    ) -> ServerDetailResponse:
+        server: Server
+        volume: Volume
+        server, volume = await self._initiate_volume_attachment(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            current_project_id=current_project_id,
+            server_id=server_id,
+            volume_id=volume_id,
+        )
+        is_success: bool = await self._wait_until_volume_attachment_and_finalize(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            current_project_openstack_id=current_project_openstack_id,
+            server_openstack_id=server.openstack_id,
+            volume_openstack_id=volume.openstack_id,
+        )
+        if not is_success:
+            raise VolumeAttachmentFailedException(server_id=server.id, volume_id=volume.id)
+        return await ServerDetailResponse.from_entity(server)
+
     @transactional()
     async def delete_server(
         self,
@@ -433,30 +470,116 @@ class ServerService:
             raise ServerNotFoundException()
         return server
 
-    async def _get_server_by_openstack_id(
-        self,
-        session: AsyncSession,
-        openstack_id: str,
-        with_deleted: bool = False,
-    ):
-        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id, with_deleted)) is None:
+    async def _get_server_by_openstack_id(self, session: AsyncSession, openstack_id: str):
+        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id)) is None:
             raise ServerNotFoundException()
         return server
 
-    async def _get_volume_by_id(
-        self,
-        session: AsyncSession,
-        volume_id: int,
-        with_deleted: bool = False,
-        with_relations: bool = False,
-    ) -> Volume:
-        if (
-            volume := await self.volume_repository.find_by_id(
-                session=session,
-                volume_id=volume_id,
-                with_deleted=with_deleted,
-                with_relations=with_relations,
-            )
-        ) is None:
+    async def _get_volume_by_id(self, session: AsyncSession, volume_id: int) -> Volume:
+        if (volume := await self.volume_repository.find_by_id(session, volume_id)) is None:
             raise VolumeNotFoundException()
         return volume
+
+    async def _get_volume_by_openstack_id(self, session, openstack_id):
+        if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id)) is None:
+            raise VolumeNotFoundException()
+        return volume
+
+    @transactional()
+    async def _initiate_volume_attachment(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        current_project_id: int,
+        server_id: int,
+        volume_id: int,
+    ) -> tuple[Server, Volume]:
+        """
+        볼륨 연결을 위한, 다음의 초기 작업을 수행합니다.
+
+        - 볼륨 상태를 `ATTACHING` 으로 변경
+        - OpenStack에 서버와 볼륨 연결 요청 (async API)
+
+        볼륨 연결 작업은 비동기로 동작하기에,
+        `ServerService.wait_until_volume_attachment_and_finalize()`를 사용해 후처리 작업을 진행해야 합니다.
+
+        :return: 연결하는 서버와 볼륨 객체
+        """
+        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server.validate_update_permission(project_id=current_project_id)
+
+        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        volume.validate_update_permission(project_id=current_project_id)
+
+        volume.prepare_for_attachment()
+
+        await self.nova_client.attach_volume_to_server(
+            client=client,
+            keystone_token=keystone_token,
+            server_openstack_id=server.openstack_id,
+            volume_openstack_id=volume.openstack_id,
+        )
+
+        return server, volume
+
+    @transactional()
+    async def _wait_until_volume_attachment_and_finalize(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        current_project_openstack_id: str,
+        server_openstack_id: str,
+        volume_openstack_id: str,
+    ) -> bool:
+        """
+        `ServerService.initiate_volume_attachment()`에서 볼륨 연결 요청을 한 후,
+        OpenStack에서 볼륨 연결이 완료될 때까지 대기합니다.
+
+        볼륨 연결이 완료되었다면, 볼륨 연결 완료 후에 처리해야 할 다음과 같은 작업들을 수행합니다.
+
+        - 볼륨의 상태를 `IN_USE` 로 변경
+        - DB에서 볼륨과 서버를 연결
+        """
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT):
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT)
+            os_volume: OsVolumeDto = await self.cinder_client.get_volume(
+                client=client,
+                keystone_token=keystone_token,
+                project_openstack_id=current_project_openstack_id,
+                volume_openstack_id=volume_openstack_id,
+            )
+
+            if os_volume.status in [VolumeStatus.RESERVED, VolumeStatus.ATTACHING]:
+                continue
+
+            if os_volume.status == VolumeStatus.IN_USE:
+                server: Server = \
+                    await self._get_server_by_openstack_id(session=session, openstack_id=server_openstack_id)
+                volume: Volume = \
+                    await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
+                volume.attach_to_server(server=server)
+                return True
+
+            logger.error(
+                f"볼륨 {volume_openstack_id}을 서버 {server_openstack_id}에 연결하는데 실패했습니다. "
+                f"Volume openstack id={volume_openstack_id}, status={os_volume.status}. "
+                f"Target server id={server_openstack_id}"
+            )
+            volume: Volume = await self.volume_repository.find_by_openstack_id(
+                session=session, openstack_id=volume_openstack_id
+            )
+            volume.update_status(os_volume.status)
+            return False
+
+        logger.error(
+            f"볼륨 연결에 실패했습니다. 볼륨 {volume_openstack_id}을 서버{server_openstack_id}에 연결되기를 "
+            f"{self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT * self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT}초 "
+            f"동안 기다렸으나, 볼륨 연결이 완료되지 않았습니다."
+        )
+        volume: Volume = await self.volume_repository.find_by_openstack_id(
+            session=session, openstack_id=volume_openstack_id
+        )
+        volume.fail_attachment()
+        return False
