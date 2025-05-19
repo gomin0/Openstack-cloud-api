@@ -1,3 +1,5 @@
+import uuid
+
 from httpx import AsyncClient, Response
 
 from common.infrastructure.openstack_client import OpenStackClient
@@ -59,7 +61,6 @@ class KeystoneClient(OpenStackClient):
         client: AsyncClient,
         keystone_token: str,
         domain_openstack_id: str,
-        account_id: str,
         password: str,
     ) -> str:
         """
@@ -76,7 +77,7 @@ class KeystoneClient(OpenStackClient):
             json={
                 "user": {
                     "domain_id": domain_openstack_id,
-                    "name": account_id,
+                    "name": f"user_{uuid.uuid4()}",
                     "password": password,
                 }
             }

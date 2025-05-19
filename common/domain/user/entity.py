@@ -4,6 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.domain.entity import Domain
 from common.domain.entity import SoftDeleteBaseEntity
+from common.exception.user_exception import UserDeletePermissionDeniedException
 
 
 class User(SoftDeleteBaseEntity):
@@ -17,7 +18,12 @@ class User(SoftDeleteBaseEntity):
     password: Mapped[str] = mapped_column("password", String(255), nullable=False)
 
     _domain: Mapped[Domain] = relationship("Domain", lazy="select")
-    _linked_projects: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select", back_populates="_user")
+    _linked_projects: Mapped[list["ProjectUser"]] = relationship(
+        "ProjectUser",
+        lazy="select",
+        back_populates="_user",
+        cascade="save-update, merge, delete, delete-orphan",
+    )
 
     @async_property
     async def domain(self) -> Domain:
@@ -47,3 +53,12 @@ class User(SoftDeleteBaseEntity):
 
     def update_info(self, name: str):
         self.name = name
+
+    def validate_delete_permission(self, req_user_id: int) -> None:
+        if self.id != req_user_id:
+            raise UserDeletePermissionDeniedException()
+
+    async def delete(self):
+        super().delete()
+        linked_projects: list["ProjectUser"] = await self.awaitable_attrs._linked_projects
+        linked_projects.clear()
