@@ -219,7 +219,6 @@ class ServerService:
                 volume: Volume = \
                     await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
                 volume.detach_from_server()
-                volume.update_to_available()
                 return True
             logger.error(f"볼륨({volume_openstack_id}) 연결 해제 도중 에러가 발생했습니다. status={os_volume.status}")
             volume: Volume = await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)

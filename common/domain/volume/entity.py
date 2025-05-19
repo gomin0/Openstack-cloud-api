@@ -146,9 +146,6 @@ class Volume(SoftDeleteBaseEntity):
         self._server = None
         self.server_id = None
 
-    def update_to_available(self):
-        self.status = VolumeStatus.AVAILABLE
-
     def validate_detachable(self):
         self.validate_attached()
         if self.is_root_volume:
