@@ -123,6 +123,6 @@ class VolumeAttachmentFailedException(CustomException):
     def __init__(self, server_id: int, volume_id: int):
         super().__init__(
             code="VOLUME_ALREADY_ATTACHED",
-            status_code=409,
+            status_code=500,
             message=f"볼륨({volume_id})을 서버({server_id})에 연결하는데 실패했습니다."
         )
