@@ -17,6 +17,7 @@ from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.background_task_runner import run_background_task
+from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
 
 router = APIRouter(prefix="/servers", tags=["server"])
@@ -88,9 +89,32 @@ async def get_server(
 )
 async def create_server(
     request: CreateServerRequest,
-    _: CurrentUser = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
 ) -> ServerResponse:
-    raise NotImplementedError()
+    async with compensating_transaction() as compensating_tx:
+        server: ServerResponse = await server_service.create_server(
+            compensating_tx=compensating_tx,
+            session=session,
+            client=client,
+            command=request.to_command(
+                keystone_token=current_user.keystone_token,
+                current_project_id=current_user.project_id,
+                current_project_openstack_id=current_user.project_openstack_id,
+            ),
+        )
+    run_background_task(
+        background_task=background_tasks,
+        task=server_service.finalize_server_creation,
+        keystone_token=current_user.keystone_token,
+        server_openstack_id=server.openstack_id,
+        image_openstack_id=request.root_volume.image_id,
+        root_volume_size=request.root_volume.size,
+    )
+    return server
 
 
 @router.put(

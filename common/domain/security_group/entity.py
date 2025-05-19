@@ -6,8 +6,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity, BaseEntity
 from common.domain.network_interface.entity import NetworkInterface
-from common.exception.security_group_exception import SecurityGroupDeletePermissionDeniedException, \
-    SecurityGroupUpdatePermissionDeniedException
+from common.exception.security_group_exception import (
+    SecurityGroupDeletePermissionDeniedException, SecurityGroupUpdatePermissionDeniedException,
+    SecurityGroupAccessDeniedException
+)
 
 
 class SecurityGroup(SoftDeleteBaseEntity):
@@ -54,6 +56,10 @@ class SecurityGroup(SoftDeleteBaseEntity):
             deleted_at=None,
         )
 
+    def validate_accessible_by(self, project_id):
+        if self.project_id != project_id:
+            raise SecurityGroupAccessDeniedException()
+
     def validate_delete_permission(self, project_id):
         if self.project_id != project_id:
             raise SecurityGroupDeletePermissionDeniedException()
@@ -84,8 +90,9 @@ class NetworkInterfaceSecurityGroup(BaseEntity):
     _network_interface: Mapped[NetworkInterface] = relationship(
         "NetworkInterface", lazy="select", back_populates="_linked_security_groups"
     )
-    _security_group: Mapped["SecurityGroup"] = relationship("SecurityGroup", lazy="select",
-                                                            back_populates="_linked_network_interfaces")
+    _security_group: Mapped["SecurityGroup"] = relationship(
+        "SecurityGroup", lazy="select", back_populates="_linked_network_interfaces"
+    )
 
     @async_property
     async def network_interface(self) -> NetworkInterface:
@@ -94,3 +101,16 @@ class NetworkInterfaceSecurityGroup(BaseEntity):
     @async_property
     async def security_group(self) -> SecurityGroup:
         return await self.awaitable_attrs._security_group
+
+    @classmethod
+    def create(
+        cls,
+        network_interface: NetworkInterface,
+        security_group: SecurityGroup
+    ) -> "NetworkInterfaceSecurityGroup":
+        return cls(
+            network_interface_id=network_interface.id,
+            security_group_id=security_group.id,
+            _network_interface=network_interface,
+            _security_group=security_group,
+        )

@@ -23,6 +23,14 @@ class ServerStatus(Enum):
     UNKNOWN = "UNKNOWN"
     VERIFY_RESIZE = "VERIFY_RESIZE"
 
+    @classmethod
+    def parse(cls, status: str) -> "ServerStatus":
+        normalized_val = status.replace("-", "_").replace(" ", "_").upper()
+        try:
+            return cls[normalized_val]
+        except KeyError:
+            raise ValueError(f"Unknown OpenStack server status: {status} → normalized: {normalized_val}")
+
 
 class ServerSortOption(Enum):
     NAME = "name"
