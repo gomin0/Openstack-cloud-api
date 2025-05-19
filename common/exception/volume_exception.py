@@ -126,3 +126,12 @@ class VolumeAttachmentFailedException(CustomException):
             status_code=500,
             message=f"볼륨({volume_id})을 서버({server_id})에 연결하는데 실패했습니다."
         )
+
+
+class ServerNotMatchedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="SERVER_NOT_MATCHED",
+            status_code=400,
+            message="볼륨이 해당 서버에 연결되어 있지 않습니다."
+        )

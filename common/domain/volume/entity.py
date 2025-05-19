@@ -8,10 +8,12 @@ from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
 from common.domain.volume.enum import VolumeStatus
+from common.exception.server_exception import VolumeNotAttachedToServerException, CannotDetachRootVolumeException
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
     VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException, VolumeResizeNotAllowedException,
-    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException, VolumeAlreadyAttachedException
+    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException, VolumeAlreadyAttachedException,
+    ServerNotMatchedException
 )
 
 
@@ -152,3 +154,20 @@ class Volume(SoftDeleteBaseEntity):
         self._server = None
         self.server_id = None
         self.status = VolumeStatus.AVAILABLE
+
+    def validate_server_match(self, server_id=server_id):
+        if self.server_id != server_id:
+            raise ServerNotMatchedException()
+
+    def validate_attached(self):
+        if self.status != VolumeStatus.IN_USE or self.server_id is None:
+            raise VolumeNotAttachedToServerException()
+
+    def validate_detachable(self):
+        self.validate_attached()
+        if self.is_root_volume:
+            raise CannotDetachRootVolumeException()
+
+    def prepare_for_detachment(self):
+        self.validate_detachable()
+        self.status = VolumeStatus.DETACHING
