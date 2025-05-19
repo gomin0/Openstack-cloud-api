@@ -32,3 +32,17 @@ class NovaClient(OpenStackClient):
             }
         )
         return response.json().get("console").get("url")
+
+    async def detach_volume_from_server(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str,
+        volume_openstack_id: str
+    ) -> None:
+        await self.request(
+            client=client,
+            method="DELETE",
+            url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/os-volume_attachments/{volume_openstack_id}",
+            headers={"X-Auth-Token": keystone_token},
+        )
