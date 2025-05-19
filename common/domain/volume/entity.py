@@ -8,10 +8,11 @@ from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
 from common.domain.volume.enum import VolumeStatus
+from common.exception.server_exception import VolumeNotAttachedToServerException, CannotDetachRootVolumeException
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
     VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException, VolumeResizeNotAllowedException,
-    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException
+    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException, ServerNotMatchedException
 )
 
 
@@ -41,7 +42,7 @@ class Volume(SoftDeleteBaseEntity):
     is_root_volume: Mapped[bool] = mapped_column("is_root_volume", Boolean, nullable=False)
 
     _project: Mapped[Project] = relationship("Project", lazy="select")
-    _server: Mapped[Server] = relationship("Server", lazy="select", back_populates="_linked_volumes")
+    _server: Mapped[Server | None] = relationship("Server", lazy="select", back_populates="_linked_volumes")
 
     @async_property
     async def project(self) -> Project:
@@ -116,6 +117,9 @@ class Volume(SoftDeleteBaseEntity):
         self.name = name
         self.description = description
 
+    def update_status(self, status: VolumeStatus):
+        self.status = status
+
     def resize(self, size: int):
         self.validate_resizable(size=size)
         self.size = size
@@ -128,3 +132,28 @@ class Volume(SoftDeleteBaseEntity):
 
     def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR
+
+    def validate_server_match(self, server_id=server_id):
+        if self.server_id != server_id:
+            raise ServerNotMatchedException()
+
+    def validate_attached(self):
+        if self.status != VolumeStatus.IN_USE or self.server_id is None:
+            raise VolumeNotAttachedToServerException()
+
+    def detach_from_server(self):
+        self.status = VolumeStatus.AVAILABLE
+        self._server = None
+        self.server_id = None
+
+    def update_to_available(self):
+        self.status = VolumeStatus.AVAILABLE
+
+    def validate_detachable(self):
+        self.validate_attached()
+        if self.is_root_volume:
+            raise CannotDetachRootVolumeException()
+
+    def prepare_for_detachment(self):
+        self.validate_detachable()
+        self.status = VolumeStatus.DETACHING
