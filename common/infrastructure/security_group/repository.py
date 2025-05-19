@@ -9,6 +9,18 @@ from common.domain.security_group.enum import SecurityGroupSortOption
 
 
 class SecurityGroupRepository:
+    async def find_all_by_ids(
+        self,
+        session: AsyncSession,
+        ids: list[int],
+        with_deleted: bool = False,
+    ) -> list[SecurityGroup]:
+        query: Select = select(SecurityGroup).where(SecurityGroup.id.in_(ids))
+        if not with_deleted:
+            query = query.where(SecurityGroup.deleted_at.is_(None))
+        result: ScalarResult = await session.scalars(query)
+        return result.all()
+
     async def find_all_by_project_id(
         self,
         session: AsyncSession,

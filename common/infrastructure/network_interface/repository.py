@@ -24,3 +24,8 @@ class NetworkInterfaceRepository:
         result: NetworkInterface | None = await session.scalar(query)
 
         return result
+
+    async def create(self, session: AsyncSession, network_interface: NetworkInterface):
+        session.add(network_interface)
+        await session.flush()
+        return network_interface
