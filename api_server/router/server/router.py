@@ -13,6 +13,7 @@ from common.application.server.service import ServerService
 from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.exception.server_exception import UnsupportedServerStatusUpdateRequestException
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
@@ -195,19 +196,54 @@ async def delete_server(
     status_code=HTTP_202_ACCEPTED,
     summary="서버 상태 변경",
     responses={
+        400: {"description": "시작/정지가 아닌 다른 서버 상태를 요청한 경우"},
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "서버에 대한 접근 권한이 없는 경우"},
         404: {"description": "서버를 찾을 수 없는 경우"},
         409: {"description": "서버를 시작/정지할 수 없는 상태인 경우"},
-        422: {"description": "지원하지 않는 서버 상태인 경우"},
     }
 )
 async def update_server_status(
     server_id: int,
+    background_tasks: BackgroundTasks,
     status: Annotated[ServerStatus, Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)")],
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+) -> ServerResponse:
+    if status == ServerStatus.ACTIVE:
+        response: ServerResponse = await server_service.start_server(
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            server_id=server_id,
+        )
+        run_background_task(
+            background_tasks,
+            server_service.wait_until_server_started,
+            keystone_token=current_user.keystone_token,
+            server_openstack_id=response.openstack_id,
+        )
+        return response
+    if status == ServerStatus.SHUTOFF:
+        response: ServerResponse = await server_service.stop_server(
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            server_id=server_id,
+        )
+        run_background_task(
+            background_tasks,
+            server_service.wait_until_server_stopped,
+            keystone_token=current_user.keystone_token,
+            server_openstack_id=response.openstack_id,
+        )
+        return response
+
+    raise UnsupportedServerStatusUpdateRequestException()
 
 
 @router.get(

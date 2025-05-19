@@ -96,6 +96,17 @@ class ServerRepository:
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
         return await session.scalar(query)
+    
+    async def find_by_openstack_id(
+        self,
+        session: AsyncSession,
+        openstack_id: str,
+        with_deleted: bool = False,
+    ) -> Server | None:
+        query: Select = select(Server).where(Server.openstack_id == openstack_id)
+        if not with_deleted:
+            query = query.where(Server.deleted_at.is_(None))
+        return await session.scalar(query)
 
     async def find_by_openstack_id(
         self,
