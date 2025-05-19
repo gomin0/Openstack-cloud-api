@@ -14,6 +14,7 @@ from common.domain.security_group.entity import SecurityGroup
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerStatus
 from common.domain.user.entity import User
+from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
 from common.util import auth_token_manager
@@ -413,6 +414,22 @@ def create_access_token(
             token=keystone_token,
             expires_at=keystone_token_expires_at
         )
+    )
+
+
+def create_os_volume_dto(
+    openstack_id: str = random_string(),
+    volume_type_name: str = random_string(length=36),
+    image_openstack_id: str | None = None,
+    status: VolumeStatus = VolumeStatus.AVAILABLE,
+    size: int = random_int(),
+) -> OsVolumeDto:
+    return OsVolumeDto(
+        openstack_id=openstack_id,
+        volume_type_name=volume_type_name,
+        image_openstack_id=image_openstack_id,
+        status=status,
+        size=size,
     )
 
 

@@ -1,10 +1,11 @@
 from unittest.mock import Mock
 
-from httpx import Response
+from httpx import Response, Request
 
 from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
+from common.domain.volume.enum import VolumeStatus
 from common.exception.server_exception import ServerNotFoundException, ServerUpdatePermissionDeniedException
 from test.util.database import add_to_db
 from test.util.factory import create_domain, create_user, create_project, create_server, create_access_token, \
@@ -300,3 +301,125 @@ async def test_get_server_vnc_url_fail_access_denied(client, db_session, mock_as
     # then
     assert response.status_code == 403
     assert response.json()["code"] == "SERVER_ACCESS_PERMISSION_DENIED"
+
+
+async def test_detach_volume_from_server_success(client, db_session, mock_async_client, async_session_maker):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    root_volume = await add_to_db(
+        db_session,
+        create_volume(
+            volume_id=1,
+            openstack_id=random_string(),
+            project_id=project.id,
+            image_openstack_id=random_string(),
+            server_id=server.id,
+            is_root_volume=True,
+            status=VolumeStatus.IN_USE,
+        )
+    )
+    volume = await add_to_db(db_session, create_volume(
+        volume_id=2, project_id=project.id, is_root_volume=False, server_id=server.id, status=VolumeStatus.IN_USE
+    ))
+    await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs) -> Response:
+        if method == "DELETE" and f"/v2.1/servers/{server.openstack_id}/os-volume_attachments/{volume.openstack_id}" in url:
+            return Response(
+                status_code=200,
+                request=Request(url=url, method=method)
+            )
+        if method == "GET" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "volume": {
+                        "id": volume.openstack_id,
+                        "volume_type": "DEFAULT",
+                        "status": "available",
+                        "size": 1
+                    }
+                },
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+    access_token = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+
+    # when
+    response = await client.delete(
+        url=f"/servers/{server.id}/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 200
+
+
+async def test_detach_volume_from_server_fail_volume_not_attached(
+    client, db_session, mock_async_client, async_session_maker
+):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    root_volume = await add_to_db(
+        db_session,
+        create_volume(
+            volume_id=1,
+            openstack_id=random_string(),
+            project_id=project.id,
+            server_id=server.id,
+            is_root_volume=True,
+            image_openstack_id=random_string(length=36)
+        )
+    )
+    volume = await add_to_db(
+        db_session,
+        create_volume(volume_id=2, project_id=project.id, is_root_volume=False, server_id=server.id)
+    )
+    await db_session.commit()
+
+    access_token = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+
+    # when
+    response = await client.delete(
+        url=f"/servers/{server.id}/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+
+
+async def test_detach_volume_from_server_fail_cannot_detach_root_volume(
+    client, db_session, mock_async_client, async_session_maker):
+    # given
+    domain = await add_to_db(db_session, create_domain())
+    project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server = await add_to_db(db_session, create_server(project_id=project.id))
+    root_volume = await add_to_db(
+        db_session,
+        create_volume(
+            volume_id=1,
+            project_id=project.id,
+            server_id=server.id,
+            is_root_volume=True,
+            image_openstack_id=random_string(length=36)
+        )
+    )
+    await db_session.commit()
+
+    access_token = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+
+    # when
+    response = await client.delete(
+        url=f"/servers/{server.id}/volumes/{root_volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409

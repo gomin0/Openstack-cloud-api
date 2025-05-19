@@ -1,14 +1,18 @@
 import pytest
 
 from common.application.server.response import ServerResponse
+from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption
+from common.domain.volume.enum import VolumeStatus
 from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException, ServerNameDuplicateException
-from test.util.factory import create_server_stub, create_volume, create_project, create_server
+    ServerUpdatePermissionDeniedException, ServerNameDuplicateException, VolumeDetachFailedException, \
+    CannotDetachRootVolumeException
+from common.exception.volume_exception import ServerNotMatchedException
+from test.util.factory import create_server_stub, create_volume, create_project, create_server, create_os_volume_dto
 from test.util.random import random_int, random_string
 
 
@@ -337,4 +341,206 @@ async def test_get_server_vnc_url_fail_not_found(
     mock_server_repository.find_by_id.assert_called_once_with(
         session=mock_session,
         server_id=server_id,
+    )
+
+
+async def test_detach_volume_from_server_success(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    server_id = random_int()
+    project_id = random_int()
+    project_openstack_id = random_string()
+    network_interface = NetworkInterface(fixed_ip_address="123")
+    volume = create_volume(
+        volume_id=2,
+        openstack_id=random_string(),
+        project_id=project_id,
+        server_id=server_id,
+        is_root_volume=False,
+        image_openstack_id=random_string(),
+        status=VolumeStatus.IN_USE
+    )
+    root_volume = create_volume(
+        volume_id=1,
+        openstack_id=random_string(),
+        project_id=project_id,
+        server_id=server_id,
+        is_root_volume=True,
+        image_openstack_id=random_string()
+    )
+    server = create_server_stub(
+        project_id=project_id,
+        server_id=server_id,
+        volumes=[volume, root_volume],
+        network_interfaces=[network_interface]
+    )
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_server_repository.find_by_id.return_value = server
+    mock_nova_client.detach_volume_from_server.return_value = None
+    mock_cinder_client.get_volume.return_value = create_os_volume_dto(status=VolumeStatus.AVAILABLE)
+    mock_volume_repository.find_by_openstack_id.return_value = volume
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT = 0
+
+    # when
+    result = await server_service.detach_volume_from_server(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        project_openstack_id=project_openstack_id,
+        project_id=project_id,
+        server_id=server.id,
+        volume_id=volume.id,
+    )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_nova_client.detach_volume_from_server.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+    mock_volume_repository.find_by_openstack_id.assert_called_once()
+
+
+async def test_detach_volume_from_server_fail_volume_is_not_attached_to_server(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id = random_int()
+    project_openstack_id = random_string()
+    server = create_server(project_id=project_id)
+    root_volume = create_volume(
+        volume_id=1, project_id=project_id, server_id=server.id, is_root_volume=True, image_openstack_id=random_string()
+    )
+    volume = create_volume(
+        volume_id=2,
+        project_id=project_id,
+        server_id=random_int(),
+        is_root_volume=True,
+        image_openstack_id=random_string(),
+        status=VolumeStatus.IN_USE
+    )
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when
+    with pytest.raises(ServerNotMatchedException):
+        await server_service.detach_volume_from_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            project_openstack_id=project_openstack_id,
+            project_id=project_id,
+            server_id=server.id,
+            volume_id=volume.id,
+        )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_detach_volume_from_server_fail_cannot_detach_root_volume(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id = random_int()
+    project_openstack_id = random_string()
+    server = create_server(project_id=project_id)
+    root_volume = create_volume(
+        volume_id=1,
+        project_id=project_id,
+        server_id=server.id,
+        is_root_volume=True,
+        image_openstack_id=random_string(),
+        status=VolumeStatus.IN_USE
+    )
+    mock_volume_repository.find_by_id.return_value = root_volume
+
+    # when
+    with pytest.raises(CannotDetachRootVolumeException):
+        await server_service.detach_volume_from_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            project_openstack_id=project_openstack_id,
+            project_id=project_id,
+            server_id=server.id,
+            volume_id=root_volume.id,
+        )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_detach_volume_from_server_fail_time_out(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id = random_int()
+    project_openstack_id = random_string()
+    server = create_server(project_id=project_id)
+    keystone_token = random_string()
+    volume_openstack_id = random_string()
+    root_volume = create_volume(
+        volume_id=1, project_id=project_id, server_id=server.id, is_root_volume=True, image_openstack_id=random_string()
+    )
+    volume = create_volume(
+        volume_id=2,
+        openstack_id=volume_openstack_id,
+        project_id=project_id,
+        server_id=server.id,
+        is_root_volume=False,
+        image_openstack_id=random_string(),
+        status=VolumeStatus.IN_USE
+    )
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_server_repository.find_by_id.return_value = server
+    mock_nova_client.detach_volume_from_server.return_value = None
+    mock_cinder_client.get_volume.return_value = create_os_volume_dto(status=VolumeStatus.IN_USE)
+    ServerService.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DETACHMENT = 3
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT = 0
+
+    # when
+    with pytest.raises(VolumeDetachFailedException):
+        await server_service.detach_volume_from_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=keystone_token,
+            project_openstack_id=project_openstack_id,
+            project_id=project_id,
+            server_id=server.id,
+            volume_id=volume.id,
+        )
+
+    # then
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_nova_client.detach_volume_from_server.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_with(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        project_openstack_id=project_openstack_id,
+        volume_openstack_id=volume_openstack_id
     )
