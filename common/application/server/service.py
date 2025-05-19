@@ -2,13 +2,15 @@ import asyncio
 import logging
 import uuid
 from logging import Logger
+from typing import Coroutine
 
 from fastapi import Depends
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.dto import CreateServerCommand
-from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse
+from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse, \
+    DeleteServerResponse
 from common.domain.enum import SortOrder
 from common.domain.network_interface.dto import OsNetworkInterfaceDto
 from common.domain.network_interface.entity import NetworkInterface
@@ -18,9 +20,12 @@ from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
+from common.exception.server_exception import ServerDeletionFailedException
 from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
+from common.exception.volume_exception import VolumeNotFoundException
 from common.infrastructure.database import transactional
 from common.infrastructure.network_interface.repository import NetworkInterfaceRepository
+from common.infrastructure.network_interface_security_group.repository import NetworkInterfaceSecurityGroupRepository
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
@@ -34,6 +39,9 @@ envs: Envs = get_envs()
 
 
 class ServerService:
+    MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION: int = envs.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION
+    CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION
+
     MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION: int = envs.MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION
     CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION
 
@@ -43,6 +51,7 @@ class ServerService:
         volume_repository: VolumeRepository = Depends(),
         network_interface_repository: NetworkInterfaceRepository = Depends(),
         security_group_repository: SecurityGroupRepository = Depends(),
+        network_interface_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
         nova_client: NovaClient = Depends(),
         neutron_client: NeutronClient = Depends(),
     ):
@@ -50,6 +59,7 @@ class ServerService:
         self.volume_repository = volume_repository
         self.network_interface_repository = network_interface_repository
         self.security_group_repository = security_group_repository
+        self.network_interface_security_group_repository = network_interface_security_group_repository
         self.nova_client = nova_client
         self.neutron_client = neutron_client
 
@@ -301,6 +311,117 @@ class ServerService:
         server: Server = await self._get_server_by_openstack_id(session=session, openstack_id=server_openstack_id)
         server.fail_creation()
 
+    @transactional()
+    async def delete_server(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_id: int,
+        project_id: int
+    ) -> DeleteServerResponse:
+        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server.validate_delete_permission(project_id=project_id)
+
+        network_interfaces: list[NetworkInterface] = await server.network_interfaces
+        network_interface_ids: list[int] = [network_interface.id for network_interface in network_interfaces]
+
+        volumes: list[Volume] = await server.volumes
+        root_volume_id: int | None = next((volume.id for volume in volumes if volume.is_root_volume), None)
+
+        await self.nova_client.delete_server(
+            client=client,
+            keystone_token=keystone_token,
+            server_openstack_id=server.openstack_id,
+        )
+
+        return DeleteServerResponse(
+            server_id=server.id,
+            volume_id=root_volume_id,
+            network_interface_ids=network_interface_ids,
+        )
+
+    async def check_server_until_deleted_and_remove_resources(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        network_interface_ids: list[int],
+        server_id: int,
+    ) -> None:
+        await self.remove_server_resources(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            server_id=server_id,
+            network_interface_ids=network_interface_ids,
+        )
+        await self.wait_server_until_deleted_and_finalize(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            server_id=server_id,
+        )
+
+    @transactional()
+    async def wait_server_until_deleted_and_finalize(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_id: int,
+    ) -> None:
+        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
+            is_server_deleted: bool = not await self.nova_client.exists_server(
+                client=client,
+                keystone_token=keystone_token,
+                server_openstack_id=server.openstack_id,
+            )
+            if is_server_deleted:
+                server.delete()
+                return
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION)
+        logger.error(
+            f"서버({server.openstack_id})를 삭제 시도했으나, "
+            f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION}초 동안 "
+            f"정상적으로 삭제되지 않았습니다."
+        )
+        raise ServerDeletionFailedException()
+
+    @transactional()
+    async def remove_server_resources(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        server_id: int,
+        network_interface_ids: list[int],
+    ) -> None:
+        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        volumes: list[Volume] = await server.volumes
+        for volume in volumes:
+            volume.detach_from_server()
+
+        network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_all_by_ids(
+            session=session, network_interface_ids=network_interface_ids
+        )
+        for network_interface in network_interfaces:
+            await network_interface.delete()
+            if floating_ip := await network_interface.floating_ip:
+                floating_ip.detach_from_network_interface()
+
+        delete_network_interface_tasks: list[Coroutine] = [
+            self.neutron_client.delete_network_interface(
+                client=client,
+                keystone_token=keystone_token,
+                network_interface_openstack_id=network_interface.openstack_id
+            )
+            for network_interface in network_interfaces
+        ]
+        await asyncio.gather(*delete_network_interface_tasks)
+
     async def _get_server_by_id(
         self,
         session: AsyncSession,
@@ -321,3 +442,21 @@ class ServerService:
         if (server := await self.server_repository.find_by_openstack_id(session, openstack_id, with_deleted)) is None:
             raise ServerNotFoundException()
         return server
+
+    async def _get_volume_by_id(
+        self,
+        session: AsyncSession,
+        volume_id: int,
+        with_deleted: bool = False,
+        with_relations: bool = False,
+    ) -> Volume:
+        if (
+            volume := await self.volume_repository.find_by_id(
+                session=session,
+                volume_id=volume_id,
+                with_deleted=with_deleted,
+                with_relations=with_relations,
+            )
+        ) is None:
+            raise VolumeNotFoundException()
+        return volume

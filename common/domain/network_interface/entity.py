@@ -21,7 +21,8 @@ class NetworkInterface(SoftDeleteBaseEntity):
     _linked_security_groups: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
         "NetworkInterfaceSecurityGroup",
         lazy="select",
-        back_populates="_network_interface"
+        back_populates="_network_interface",
+        cascade="save-update, merge, delete-orphan",
     )
 
     @async_property
@@ -70,3 +71,8 @@ class NetworkInterface(SoftDeleteBaseEntity):
                     security_group=security_group,
                 )
             )
+
+    async def delete(self):
+        security_groups: list["SecurityGroup"] = await self.awaitable_attrs._linked_security_groups
+        security_groups.clear()
+        super().delete()

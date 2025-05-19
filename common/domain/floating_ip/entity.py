@@ -74,10 +74,12 @@ class FloatingIp(SoftDeleteBaseEntity):
             raise FloatingIpAlreadyAttachedToNetworkInterfaceException()
         self._network_interface = network_interface
         self.network_interface_id = network_interface.id
+        self.status = FloatingIpStatus.ACTIVE
 
     def detach_from_network_interface(self):
         self._network_interface = None
         self.network_interface_id = None
+        self.status = FloatingIpStatus.DOWN
 
     def validate_network_interface_match(self, network_interface_id=network_interface_id):
         if self.network_interface_id != network_interface_id:

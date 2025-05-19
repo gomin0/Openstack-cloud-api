@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.server.enum import ServerStatus
 from common.exception.server_exception import (
-    ServerAccessPermissionDeniedException, ServerUpdatePermissionDeniedException
+    ServerAccessPermissionDeniedException, ServerUpdatePermissionDeniedException, ServerDeletePermissionDeniedException
 )
 
 
@@ -66,6 +66,14 @@ class Server(SoftDeleteBaseEntity):
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise ServerDeletePermissionDeniedException()
+
+    def delete(self) -> None:
+        super().delete()
+        self.status = ServerStatus.DELETED
 
     def active(self):
         self.status = ServerStatus.ACTIVE

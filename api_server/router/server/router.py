@@ -3,13 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Depends, BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
+from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
 from common.application.server.response import (
-    ServerResponse, ServerDetailResponse, ServerDetailsResponse, ServerVncUrlResponse
+    ServerResponse, ServerDetailResponse, ServerDetailsResponse, ServerVncUrlResponse, DeleteServerResponse
 )
 from common.application.server.service import ServerService
+from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.infrastructure.async_client import get_async_client
@@ -146,7 +147,7 @@ async def update_server_info(
 
 @router.delete(
     path="/{server_id}",
-    status_code=HTTP_204_NO_CONTENT,
+    status_code=HTTP_202_ACCEPTED,
     summary="서버 삭제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -157,9 +158,36 @@ async def update_server_info(
 )
 async def delete_server(
     server_id: int,
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    background_tasks: BackgroundTasks,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+    volume_service: VolumeService = Depends()
+) -> DeleteServerResponse:
+    response: DeleteServerResponse = await server_service.delete_server(
+        session=session,
+        client=client,
+        server_id=server_id,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+    )
+    run_background_task(
+        background_tasks,
+        server_service.check_server_until_deleted_and_remove_resources,
+        keystone_token=current_user.keystone_token,
+        network_interface_ids=response.network_interface_ids,
+        server_id=response.server_id,
+    )
+    run_background_task(
+        background_tasks,
+        volume_service.wait_volume_until_deleted_and_finalize,
+        keystone_token=current_user.keystone_token,
+        volume_id=response.volume_id,
+        project_openstack_id=current_user.project_openstack_id
+    )
+
+    return response
 
 
 @router.put(
