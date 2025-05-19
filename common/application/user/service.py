@@ -13,7 +13,7 @@ from common.exception.openstack_exception import OpenStackException
 from common.exception.user_exception import (
     UserNotFoundException,
     UserAccountIdDuplicateException,
-    UserUpdatePermissionDeniedException
+    UserUpdatePermissionDeniedException, LastUserDeletionNotAllowedException
 )
 from common.infrastructure.database import transactional
 from common.infrastructure.keystone.client import KeystoneClient
@@ -99,7 +99,6 @@ class UserService:
                 client=client,
                 domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
                 keystone_token=cloud_admin_keystone_token,
-                account_id=account_id,
                 password=password,
             )
             compensating_tx.add_task(
@@ -149,6 +148,32 @@ class UserService:
 
         user.update_info(name=name)
         return UserResponse.from_entity(user)
+
+    @transactional()
+    async def delete_user(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        current_user_id: int,
+        user_id: int,
+    ) -> None:
+        user: User | None = await self.user_repository.find_by_id(session, user_id=user_id)
+        if user is None:
+            raise UserNotFoundException()
+        user.validate_delete_permission(req_user_id=current_user_id)
+
+        num_of_users: int = await self.user_repository.count_by_domain(session=session, domain_id=user.domain_id)
+        if num_of_users <= 1:
+            raise LastUserDeletionNotAllowedException()
+
+        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
+        await self.keystone_client.delete_user(
+            client=client,
+            keystone_token=cloud_admin_keystone_token,
+            user_openstack_id=user.openstack_id,
+        )
+
+        await user.delete()
 
     async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
         keystone_token: str

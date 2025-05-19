@@ -115,5 +115,16 @@ async def update_user_info(
         409: {"description": "마지막 남은 계정을 삭제하려고 하는 경우"},
     }
 )
-def delete_user(user_id: int) -> None:
-    raise NotImplementedError()
+async def delete_user(
+    user_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    user_service: UserService = Depends(),
+) -> None:
+    await user_service.delete_user(
+        session=session,
+        client=client,
+        current_user_id=current_user.user_id,
+        user_id=user_id,
+    )

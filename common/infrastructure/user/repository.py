@@ -3,6 +3,7 @@ from typing import Sequence
 from sqlalchemy import select, Select, ScalarResult, exists, ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.sql.functions import count
 
 from common.domain.enum import SortOrder
 from common.domain.project.entity import ProjectUser
@@ -102,6 +103,17 @@ class UserRepository:
     ) -> bool:
         is_not_deleted: ColumnElement = User.deleted_at.is_(None)
         query: Select = select(exists().where(is_not_deleted, User.account_id == account_id))
+        return await session.scalar(query)
+
+    async def count_by_domain(
+        self,
+        session: AsyncSession,
+        domain_id: int,
+        with_deleted: bool = False,
+    ) -> int:
+        query = select(count()).select_from(User).where(User.domain_id == domain_id)
+        if not with_deleted:
+            query = query.where(User.deleted_at.is_(None))
         return await session.scalar(query)
 
     async def create(self, session: AsyncSession, user: User) -> User:
