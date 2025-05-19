@@ -35,3 +35,30 @@ class ServerNameDuplicateException(CustomException):
             status_code=409,
             message="이미 사용중인 서버 이름입니다."
         )
+
+
+class VolumeNotAttachedToServerException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="VOLUME_NOT_ATTACHED_TO_SERVER",
+            status_code=409,
+            message="서버에 할당되지 않은 볼륨입니다."
+        )
+
+
+class CannotDetachRootVolumeException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="CANNOT_DETACH_ROOT_VOLUME",
+            status_code=409,
+            message="루트 볼륨은 삭제할 수 없습니다."
+        )
+
+
+class VolumeDetachFailedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="VOLUME_DETACH_FAILED",
+            status_code=500,
+            message="볼륨을 서버에서 연결 해제하는 데 실패했습니다."
+        )
