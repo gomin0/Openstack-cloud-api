@@ -76,7 +76,7 @@ class ServerDetailResponse(BaseModel):
     description: str | None = Field(default=None, description="Server description")
     project_id: int = Field(description="project id")
     flavor_id: str = Field(description="flavor openstack id")
-    image_id: str = Field(description="Image OpenStack ID")
+    image_id: str | None = Field(description="Image OpenStack ID")
     status: ServerStatus = Field(description="Server status")
     fixed_ip_addresses: list[str] = Field(description="Fixed IP address")
     floating_ips: list[FloatingIpResponse] | None = Field(description="Floating IP info")
@@ -94,7 +94,7 @@ class ServerDetailResponse(BaseModel):
         for network_interface in network_interfaces:
             for security_group in await network_interface.security_groups:
                 security_groups.add(security_group)
-        root_volume: Volume = next(volume for volume in volumes if volume.is_root_volume)
+        root_volume: Volume | None = next((volume for volume in volumes if volume.is_root_volume), None)
         floating_ips: list[FloatingIp] = []
         for network_interface in network_interfaces:
             floating_ip: FloatingIp | None = await network_interface.floating_ip
@@ -107,7 +107,7 @@ class ServerDetailResponse(BaseModel):
             description=server.description,
             project_id=server.project_id,
             flavor_id=server.flavor_openstack_id,
-            image_id=root_volume.image_openstack_id,
+            image_id=root_volume.image_openstack_id if root_volume is not None else None,
             status=server.status,
             fixed_ip_addresses=[network_interface.fixed_ip_address for network_interface in network_interfaces],
             floating_ips=[FloatingIpResponse.from_entity(floating_ip) for floating_ip in floating_ips],
