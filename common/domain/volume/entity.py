@@ -12,7 +12,8 @@ from common.exception.server_exception import VolumeNotAttachedToServerException
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
     VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException, VolumeResizeNotAllowedException,
-    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException, ServerNotMatchedException
+    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException, VolumeAlreadyAttachedException,
+    ServerNotMatchedException
 )
 
 
@@ -61,7 +62,6 @@ class Volume(SoftDeleteBaseEntity):
         cls,
         openstack_id: str,
         project_id: int,
-        server_id: int | None,
         volume_type_openstack_id: str,
         image_openstack_id: str | None,
         name: str,
@@ -69,6 +69,7 @@ class Volume(SoftDeleteBaseEntity):
         status: VolumeStatus,
         size: int,
         is_root_volume: bool,
+        server_id: int | None = None,
     ) -> "Volume":
         return cls(
             id=None,
@@ -113,6 +114,10 @@ class Volume(SoftDeleteBaseEntity):
         if size <= self.size:
             raise VolumeResizeNotAllowedException(size=size)
 
+    def validate_not_attached(self):
+        if self.status == VolumeStatus.IN_USE or self._server is not None:
+            raise VolumeAlreadyAttachedException(volume_id=self.id)
+
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
@@ -130,8 +135,25 @@ class Volume(SoftDeleteBaseEntity):
         else:
             self.status = VolumeStatus.AVAILABLE
 
+    def prepare_for_attachment(self):
+        self.validate_not_attached()
+        self.status = VolumeStatus.ATTACHING
+
     def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR
+
+    def fail_attachment(self):
+        self.status = VolumeStatus.ERROR
+
+    def attach_to_server(self, server):
+        self.validate_not_attached()
+        self.status = VolumeStatus.IN_USE
+        self._server = server
+
+    def detach_from_server(self):
+        self._server = None
+        self.server_id = None
+        self.status = VolumeStatus.AVAILABLE
 
     def validate_server_match(self, server_id=server_id):
         if self.server_id != server_id:
@@ -140,11 +162,6 @@ class Volume(SoftDeleteBaseEntity):
     def validate_attached(self):
         if self.status != VolumeStatus.IN_USE or self.server_id is None:
             raise VolumeNotAttachedToServerException()
-
-    def detach_from_server(self):
-        self.status = VolumeStatus.AVAILABLE
-        self._server = None
-        self.server_id = None
 
     def validate_detachable(self):
         self.validate_attached()

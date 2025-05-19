@@ -3,11 +3,11 @@ from datetime import datetime, timezone
 import pytest
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
+from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus, VolumeSortOption
-from common.exception.openstack_exception import OpenStackException
 from common.exception.volume_exception import (
     VolumeNameDuplicateException, VolumeNotFoundException, VolumeDeletePermissionDeniedException,
     VolumeAlreadyDeletedException, VolumeStatusInvalidForDeletionException, AttachedVolumeDeletionException,
@@ -173,6 +173,8 @@ async def test_sync_creating_volume_until_available_success(
     # given
     mock_cinder_client.get_volume_status.return_value = VolumeStatus.AVAILABLE
     mock_volume_repository.find_by_openstack_id.return_value = create_volume()
+    VolumeService.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION = 0
+    VolumeService.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION = 3
 
     # when
     await volume_service.sync_creating_volume_until_available(
@@ -198,6 +200,8 @@ async def test_sync_creating_volume_until_available_fail_when_error_occurred_fro
     # given
     mock_cinder_client.get_volume_status.return_value = VolumeStatus.ERROR
     mock_volume_repository.find_by_openstack_id.return_value = create_volume()
+    VolumeService.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION = 0
+    VolumeService.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION = 3
 
     # when
     await volume_service.sync_creating_volume_until_available(
@@ -221,8 +225,10 @@ async def test_sync_creating_volume_until_available_fail_when_updated_unexpected
     volume_service,
 ):
     # given
-    mock_cinder_client.get_volume_status.return_value = VolumeStatus.DOWNLOADING
+    mock_cinder_client.get_volume_status.return_value = VolumeStatus.BACKING_UP
     mock_volume_repository.find_by_openstack_id.return_value = create_volume()
+    VolumeService.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION = 0
+    VolumeService.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION = 3
 
     # when
     await volume_service.sync_creating_volume_until_available(
@@ -553,7 +559,7 @@ async def test_delete_volume_success(
     volume: Volume = create_volume(project_id=project_id, status=VolumeStatus.AVAILABLE)
     mock_volume_repository.find_by_id.return_value = volume
     mock_cinder_client.delete_volume.return_value = None
-    mock_cinder_client.get_volume.side_effect = OpenStackException(openstack_status_code=404)
+    mock_cinder_client.exists_volume.return_value = False
 
     # when
     await volume_service.delete_volume(
@@ -568,7 +574,7 @@ async def test_delete_volume_success(
     # then
     mock_volume_repository.find_by_id.assert_called_once()
     mock_cinder_client.delete_volume.assert_called_once()
-    mock_cinder_client.get_volume.assert_called_once()
+    mock_cinder_client.exists_volume.assert_called_once()
     assert volume.deleted_at is not None
 
 

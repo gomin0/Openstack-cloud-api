@@ -1,4 +1,4 @@
-from sqlalchemy import select, Select
+from sqlalchemy import select, Select, ScalarResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,3 +24,20 @@ class NetworkInterfaceRepository:
         result: NetworkInterface | None = await session.scalar(query)
 
         return result
+
+    async def find_all_by_ids(
+        self,
+        session: AsyncSession,
+        network_interface_ids: list[int],
+    ) -> list[NetworkInterface]:
+        query: Select = select(NetworkInterface).where(
+            NetworkInterface.id.in_(network_interface_ids),
+            NetworkInterface.deleted_at.is_(None)
+        )
+        result: ScalarResult = await session.scalars(query)
+        return result.all()
+
+    async def create(self, session: AsyncSession, network_interface: NetworkInterface):
+        session.add(network_interface)
+        await session.flush()
+        return network_interface

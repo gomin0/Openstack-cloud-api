@@ -1,20 +1,24 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, BackgroundTasks
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.status import HTTP_204_NO_CONTENT, HTTP_200_OK, HTTP_202_ACCEPTED
+from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
 from common.application.server.response import (
-    ServerResponse, ServerDetailResponse, ServerDetailsResponse, ServerVncUrlResponse
+    ServerResponse, ServerDetailResponse, ServerDetailsResponse, ServerVncUrlResponse, DeleteServerResponse
 )
 from common.application.server.service import ServerService
+from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.exception.server_exception import UnsupportedServerStatusUpdateRequestException
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
+from common.util.background_task_runner import run_background_task
+from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
 
 router = APIRouter(prefix="/servers", tags=["server"])
@@ -86,9 +90,32 @@ async def get_server(
 )
 async def create_server(
     request: CreateServerRequest,
-    _: CurrentUser = Depends(get_current_user),
+    background_tasks: BackgroundTasks,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
 ) -> ServerResponse:
-    raise NotImplementedError()
+    async with compensating_transaction() as compensating_tx:
+        server: ServerResponse = await server_service.create_server(
+            compensating_tx=compensating_tx,
+            session=session,
+            client=client,
+            command=request.to_command(
+                keystone_token=current_user.keystone_token,
+                current_project_id=current_user.project_id,
+                current_project_openstack_id=current_user.project_openstack_id,
+            ),
+        )
+    run_background_task(
+        background_task=background_tasks,
+        task=server_service.finalize_server_creation,
+        keystone_token=current_user.keystone_token,
+        server_openstack_id=server.openstack_id,
+        image_openstack_id=request.root_volume.image_id,
+        root_volume_size=request.root_volume.size,
+    )
+    return server
 
 
 @router.put(
@@ -121,7 +148,7 @@ async def update_server_info(
 
 @router.delete(
     path="/{server_id}",
-    status_code=HTTP_204_NO_CONTENT,
+    status_code=HTTP_202_ACCEPTED,
     summary="서버 삭제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -132,9 +159,36 @@ async def update_server_info(
 )
 async def delete_server(
     server_id: int,
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    background_tasks: BackgroundTasks,
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+    volume_service: VolumeService = Depends()
+) -> DeleteServerResponse:
+    response: DeleteServerResponse = await server_service.delete_server(
+        session=session,
+        client=client,
+        server_id=server_id,
+        project_id=current_user.project_id,
+        keystone_token=current_user.keystone_token,
+    )
+    run_background_task(
+        background_tasks,
+        server_service.check_server_until_deleted_and_remove_resources,
+        keystone_token=current_user.keystone_token,
+        network_interface_ids=response.network_interface_ids,
+        server_id=response.server_id,
+    )
+    run_background_task(
+        background_tasks,
+        volume_service.wait_volume_until_deleted_and_finalize,
+        keystone_token=current_user.keystone_token,
+        volume_id=response.volume_id,
+        project_openstack_id=current_user.project_openstack_id
+    )
+
+    return response
 
 
 @router.put(
@@ -142,19 +196,54 @@ async def delete_server(
     status_code=HTTP_202_ACCEPTED,
     summary="서버 상태 변경",
     responses={
+        400: {"description": "시작/정지가 아닌 다른 서버 상태를 요청한 경우"},
         401: {"description": "인증 정보가 유효하지 않은 경우"},
         403: {"description": "서버에 대한 접근 권한이 없는 경우"},
         404: {"description": "서버를 찾을 수 없는 경우"},
         409: {"description": "서버를 시작/정지할 수 없는 상태인 경우"},
-        422: {"description": "지원하지 않는 서버 상태인 경우"},
     }
 )
 async def update_server_status(
     server_id: int,
+    background_tasks: BackgroundTasks,
     status: Annotated[ServerStatus, Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)")],
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+) -> ServerResponse:
+    if status == ServerStatus.ACTIVE:
+        response: ServerResponse = await server_service.start_server(
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            server_id=server_id,
+        )
+        run_background_task(
+            background_tasks,
+            server_service.wait_until_server_started,
+            keystone_token=current_user.keystone_token,
+            server_openstack_id=response.openstack_id,
+        )
+        return response
+    if status == ServerStatus.SHUTOFF:
+        response: ServerResponse = await server_service.stop_server(
+            session=session,
+            client=client,
+            keystone_token=current_user.keystone_token,
+            project_id=current_user.project_id,
+            server_id=server_id,
+        )
+        run_background_task(
+            background_tasks,
+            server_service.wait_until_server_stopped,
+            keystone_token=current_user.keystone_token,
+            server_openstack_id=response.openstack_id,
+        )
+        return response
+
+    raise UnsupportedServerStatusUpdateRequestException()
 
 
 @router.get(
@@ -201,9 +290,20 @@ async def get_server_vnc_url(
 async def attach_volume_to_server(
     server_id: int,
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+) -> ServerDetailResponse:
+    return await server_service.attach_volume_to_server(
+        session=session,
+        client=client,
+        keystone_token=current_user.keystone_token,
+        current_project_id=current_user.project_id,
+        current_project_openstack_id=current_user.project_openstack_id,
+        server_id=server_id,
+        volume_id=volume_id,
+    )
 
 
 @router.delete(

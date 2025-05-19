@@ -85,16 +85,12 @@ async def test_get_volume_detail_fail_requester_do_not_have_access_permission(cl
 
 
 async def test_create_volume_success(
-    mocker,
     client,
     db_session,
     async_session_maker,
     mock_async_client
 ):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
-
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
     await db_session.commit()
@@ -479,13 +475,28 @@ async def test_delete_volume_fail_when_has_not_permission_to_delete_volume(clien
     assert response.json().get("code") == "VOLUME_DELETE_PERMISSION_DENIED"
 
 
-async def test_delete_volume_fail_volume_is_linked_to_server(client, db_session):
+async def test_delete_volume_fail_volume_is_linked_to_server(client, db_session, mock_async_client):
     # given
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server: Server = await add_to_db(db_session, create_server(project_id=project.id))
-    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, server_id=server.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, server=server))
     await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs) -> Response:
+        if method == "GET" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=404,
+                request=Request(url=url, method=method)
+            )
+        if method == "DELETE" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=204,
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
 
     # when
     access_token: str = create_access_token(project_id=project.id)

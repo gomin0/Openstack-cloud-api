@@ -147,13 +147,21 @@ def floating_ip_service(mock_floating_ip_repository, mock_neutron_client):
 def server_service(
     mock_server_repository,
     mock_volume_repository,
+    mock_network_interface_repository,
+    mock_security_group_repository,
+    mock_network_interface_security_group_repository,
     mock_nova_client,
+    mock_neutron_client,
     mock_cinder_client,
-):
+) -> ServerService:
     return ServerService(
         server_repository=mock_server_repository,
         volume_repository=mock_volume_repository,
+        network_interface_repository=mock_network_interface_repository,
+        network_interface_security_group_repository=mock_network_interface_security_group_repository,
+        security_group_repository=mock_security_group_repository,
         nova_client=mock_nova_client,
+        neutron_client=mock_neutron_client,
         cinder_client=mock_cinder_client
     )
 

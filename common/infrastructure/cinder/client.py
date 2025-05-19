@@ -2,6 +2,7 @@ from httpx import AsyncClient, Response
 
 from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.enum import VolumeStatus
+from common.exception.openstack_exception import OpenStackException
 from common.infrastructure.openstack_client import OpenStackClient
 from common.util.envs import get_envs, Envs
 
@@ -50,6 +51,27 @@ class CinderClient(OpenStackClient):
         )
         status: str = response.json().get("volume").get("status")
         return VolumeStatus.parse(status)
+
+    async def exists_volume(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        project_openstack_id: str,
+        volume_openstack_id: str,
+    ) -> bool:
+        try:
+            await self.request(
+                client,
+                method="GET",
+                url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}",
+                headers={"X-Auth-Token": keystone_token},
+            )
+        except OpenStackException as ex:
+            if ex.openstack_status_code == 404:
+                return False
+            raise ex
+
+        return True
 
     async def create_volume(
         self,

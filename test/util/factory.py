@@ -8,9 +8,11 @@ from common.domain.domain.entity import Domain
 from common.domain.floating_ip.entity import FloatingIp
 from common.domain.floating_ip.enum import FloatingIpStatus
 from common.domain.keystone.model import KeystoneToken
+from common.domain.network_interface.dto import OsNetworkInterfaceDto
 from common.domain.network_interface.entity import NetworkInterface
 from common.domain.project.entity import Project, ProjectUser
 from common.domain.security_group.entity import SecurityGroup
+from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerStatus
 from common.domain.user.entity import User
@@ -145,14 +147,14 @@ def create_project_user(
 
 
 def create_security_group(
-    security_group_id: int | None = None,
+    id_: int | None = None,
     openstack_id: str = random_string(),
     project_id: int = random_int(),
     name: str = random_string(),
     description: str = random_string(),
 ) -> SecurityGroup:
     return SecurityGroup(
-        id=security_group_id,
+        id=id_,
         openstack_id=openstack_id,
         project_id=project_id,
         name=name,
@@ -287,6 +289,7 @@ def create_floating_ip_stub(
 
 
 def create_volume(
+    server: Server | None = None,
     volume_id: int = random_int(),
     openstack_id: str = random_string(),
     project_id: int = random_int(),
@@ -304,7 +307,7 @@ def create_volume(
         id=volume_id,
         openstack_id=openstack_id,
         project_id=project_id,
-        server_id=server_id,
+        server_id=server.id if server is not None else server_id,
         volume_type_openstack_id=volume_type_openstack_id,
         image_openstack_id=image_openstack_id,
         name=name,
@@ -315,6 +318,7 @@ def create_volume(
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
         deleted_at=deleted_at,
+        _server=server
     )
 
 
@@ -355,8 +359,8 @@ def create_volume_stub(
 
 
 def create_network_interface(
-    server_id: int,
-    project_id: int,
+    project_id: int = random_int(),
+    server_id: int | None = None,
     network_interface_id: int = random_int(),
     openstack_id: str = random_string(),
     fixed_ip_address: str = random_string(),
@@ -414,6 +418,54 @@ def create_access_token(
             token=keystone_token,
             expires_at=keystone_token_expires_at
         )
+    )
+
+
+def create_os_volume_dto(
+    openstack_id: str = random_string(),
+    volume_type_name: str = random_string(length=36),
+    image_openstack_id: str | None = None,
+    status: VolumeStatus = VolumeStatus.AVAILABLE,
+    size: int = random_int(),
+) -> OsVolumeDto:
+    return OsVolumeDto(
+        openstack_id=openstack_id,
+        volume_type_name=volume_type_name,
+        image_openstack_id=image_openstack_id,
+        status=status,
+        size=size,
+    )
+
+
+def create_os_network_interface_dto(
+    openstack_id: str = random_string(),
+    name: str = random_string(),
+    network_openstack_id: str = random_string(),
+    project_openstack_id: str = random_string(),
+    status: str = random_string(),
+    fixed_ip_address: str = random_string(),
+) -> OsNetworkInterfaceDto:
+    return OsNetworkInterfaceDto(
+        openstack_id=openstack_id,
+        name=name,
+        network_openstack_id=network_openstack_id,
+        project_openstack_id=project_openstack_id,
+        status=status,
+        fixed_ip_address=fixed_ip_address,
+    )
+
+
+def create_os_server_dto(
+    openstack_id: str = random_string(),
+    project_openstack_id: str = random_string(),
+    status: ServerStatus = ServerStatus.ACTIVE,
+    volume_openstack_ids: list[str] | None = None,
+) -> OsServerDto:
+    return OsServerDto(
+        openstack_id=openstack_id,
+        project_openstack_id=project_openstack_id,
+        status=status,
+        volume_openstack_ids=volume_openstack_ids or [random_string()],
     )
 
 
