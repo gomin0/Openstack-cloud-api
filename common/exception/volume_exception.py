@@ -108,3 +108,12 @@ class VolumeResizingFailedException(CustomException):
             status_code=500,
             message=f"알 수 없는 문제로 볼륨 용량 변경에 실패했습니다. 잠시 후 다시 시도해주세요."
         )
+
+
+class ServerNotMatchedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="SERVER_NOT_MATCHED",
+            status_code=400,
+            message="볼륨이 해당 서버에 연결되어 있지 않습니다."
+        )
