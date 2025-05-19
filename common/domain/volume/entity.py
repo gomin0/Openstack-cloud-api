@@ -11,7 +11,7 @@ from common.domain.volume.enum import VolumeStatus
 from common.exception.volume_exception import (
     AttachedVolumeDeletionException, VolumeStatusInvalidForDeletionException, VolumeAlreadyDeletedException,
     VolumeDeletePermissionDeniedException, VolumeUpdatePermissionDeniedException, VolumeResizeNotAllowedException,
-    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException
+    VolumeStatusInvalidForResizingException, VolumeAccessPermissionDeniedException, VolumeAlreadyAttachedException
 )
 
 
@@ -112,9 +112,16 @@ class Volume(SoftDeleteBaseEntity):
         if size <= self.size:
             raise VolumeResizeNotAllowedException(size=size)
 
+    def validate_not_attached(self):
+        if self.status == VolumeStatus.IN_USE or self._server is not None:
+            raise VolumeAlreadyAttachedException(volume_id=self.id)
+
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
+
+    def update_status(self, status: VolumeStatus):
+        self.status = status
 
     def resize(self, size: int):
         self.validate_resizable(size=size)
@@ -126,8 +133,20 @@ class Volume(SoftDeleteBaseEntity):
         else:
             self.status = VolumeStatus.AVAILABLE
 
+    def prepare_for_attachment(self):
+        self.validate_not_attached()
+        self.status = VolumeStatus.ATTACHING
+
     def fail_creation(self) -> None:
         self.status = VolumeStatus.ERROR
+
+    def fail_attachment(self):
+        self.status = VolumeStatus.ERROR
+
+    def attach_to_server(self, server):
+        self.validate_not_attached()
+        self.status = VolumeStatus.IN_USE
+        self._server = server
 
     def detach_from_server(self):
         self._server = None

@@ -1,7 +1,7 @@
 import pytest
 
 from common.application.server.dto import CreateServerCommand
-from common.application.server.response import ServerResponse, DeleteServerResponse
+from common.application.server.response import ServerResponse, ServerDetailResponse, DeleteServerResponse
 from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
@@ -9,20 +9,23 @@ from common.domain.project.entity import Project
 from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.domain.volume.entity import Volume
+from common.domain.volume.enum import VolumeStatus
 from common.exception.security_group_exception import SecurityGroupAccessDeniedException
-from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException, ServerNameDuplicateException, ServerDeletionFailedException
+from common.exception.server_exception import (
+    ServerNotFoundException, ServerAccessPermissionDeniedException, ServerUpdatePermissionDeniedException,
+    ServerNameDuplicateException, ServerDeletionFailedException
+)
+from common.exception.volume_exception import VolumeAlreadyAttachedException, VolumeAttachmentFailedException
 from test.util.factory import (
-    create_network_interface,
-    create_os_network_interface_dto,
-    create_security_group,
-    create_os_server_dto,
     create_server_stub,
     create_volume,
     create_project,
     create_server,
     create_network_interface_stub,
-    create_volume_stub
+    create_volume_stub,
+    create_network_interface, create_os_network_interface_dto, create_security_group, create_os_server_dto,
+    create_os_volume_dto
 )
 from test.util.random import random_int, random_string
 
@@ -518,6 +521,155 @@ async def test_finalize_server_creation_fail(
     assert mock_nova_client.get_server.call_count == ServerService.MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION
     mock_server_repository.find_by_openstack_id.assert_called_once()
     assert server.status == ServerStatus.ERROR
+
+
+async def test_attach_volume_to_server_success(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id: int = random_int()
+    server: Server = create_server(project_id=project_id)
+    volume: Volume = create_volume(project_id=project_id, is_root_volume=True, image_openstack_id=random_string())
+    mock_server_repository.find_by_id.return_value = server
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_nova_client.attach_volume_to_server.return_value = None
+    mock_cinder_client.get_volume.return_value = create_os_volume_dto(status=VolumeStatus.IN_USE)
+    mock_server_repository.find_by_openstack_id.return_value = server
+    mock_volume_repository.find_by_openstack_id.return_value = volume
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT = 0
+
+    # when
+    result: ServerDetailResponse = await server_service.attach_volume_to_server(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        current_project_id=project_id,
+        current_project_openstack_id=random_string(),
+        server_id=server.id,
+        volume_id=volume.id,
+    )
+
+    # then
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_nova_client.attach_volume_to_server.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+    mock_server_repository.find_by_openstack_id.assert_called_once()
+    mock_volume_repository.find_by_openstack_id.assert_called_once()
+    assert len(result.volumes) == 1
+
+
+async def test_attach_volume_to_server_fail_volume_is_already_attached(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id: int = random_int()
+    server: Server = create_server(project_id=project_id)
+    volume: Volume = \
+        create_volume(project_id=project_id, server=server, is_root_volume=True, image_openstack_id=random_string())
+    mock_server_repository.find_by_id.return_value = server
+    mock_volume_repository.find_by_id.return_value = volume
+
+    # when and then
+    with pytest.raises(VolumeAlreadyAttachedException):
+        await server_service.attach_volume_to_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            server_id=server.id,
+            volume_id=volume.id,
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_volume_repository.find_by_id.assert_called_once()
+
+
+async def test_attach_volume_to_server_fail_when_os_volume_is_changed_to_unexpected_status(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id: int = random_int()
+    unexpected_status: VolumeStatus = VolumeStatus.AVAILABLE
+    server: Server = create_server(project_id=project_id)
+    volume: Volume = create_volume(project_id=project_id, is_root_volume=True, image_openstack_id=random_string())
+    mock_server_repository.find_by_id.return_value = server
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_nova_client.attach_volume_to_server.return_value = None
+    mock_cinder_client.get_volume.return_value = create_os_volume_dto(status=unexpected_status)
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT = 0
+
+    # when and then
+    with pytest.raises(VolumeAttachmentFailedException):
+        await server_service.attach_volume_to_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            server_id=server.id,
+            volume_id=volume.id,
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_nova_client.attach_volume_to_server.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+
+
+async def test_attach_volume_to_server_fail_when_volume_is_not_attached_from_openstack(
+    mock_session,
+    mock_async_client,
+    mock_nova_client,
+    mock_cinder_client,
+    mock_server_repository,
+    mock_volume_repository,
+    server_service
+):
+    # given
+    project_id: int = random_int()
+    unexpected_status: VolumeStatus = VolumeStatus.AVAILABLE
+    server: Server = create_server(project_id=project_id)
+    volume: Volume = create_volume(project_id=project_id, is_root_volume=True, image_openstack_id=random_string())
+    mock_server_repository.find_by_id.return_value = server
+    mock_volume_repository.find_by_id.return_value = volume
+    mock_nova_client.attach_volume_to_server.return_value = None
+    mock_cinder_client.get_volume.return_value = create_os_volume_dto(status=unexpected_status)
+    mock_volume_repository.find_by_openstack_id.return_value = volume
+    ServerService.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT = 3
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT = 0
+
+    # when and then
+    with pytest.raises(VolumeAttachmentFailedException):
+        await server_service.attach_volume_to_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=random_string(),
+            current_project_id=project_id,
+            current_project_openstack_id=random_string(),
+            server_id=server.id,
+            volume_id=volume.id,
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_volume_repository.find_by_id.assert_called_once()
+    mock_nova_client.attach_volume_to_server.assert_called_once()
+    mock_cinder_client.get_volume.assert_called_once()
+    mock_volume_repository.find_by_openstack_id.assert_called_once()
 
 
 async def test_delete_server_success(

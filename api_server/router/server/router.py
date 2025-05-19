@@ -290,9 +290,20 @@ async def get_server_vnc_url(
 async def attach_volume_to_server(
     server_id: int,
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+) -> ServerDetailResponse:
+    return await server_service.attach_volume_to_server(
+        session=session,
+        client=client,
+        keystone_token=current_user.keystone_token,
+        current_project_id=current_user.project_id,
+        current_project_openstack_id=current_user.project_openstack_id,
+        server_id=server_id,
+        volume_id=volume_id,
+    )
 
 
 @router.delete(
