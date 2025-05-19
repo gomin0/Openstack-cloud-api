@@ -31,9 +31,13 @@ class OpenStackClient:
             response.raise_for_status()
         except HTTPStatusError:
             status_code: int = response.status_code
+            try:
+                error_message: str = str(response.json())
+            except Exception:
+                error_message: str = response.text
             logger.error(
                 f"Respond errors from OpenStack API. "
-                f"Status code={status_code}, message={response.json() if response.content else 'Unknown Error'}"
+                f"Status code={status_code}, message={error_message}"
             )
             raise OpenStackException(openstack_status_code=status_code)
 
