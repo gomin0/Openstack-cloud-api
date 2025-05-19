@@ -152,3 +152,41 @@ class NovaClient(OpenStackClient):
                 },
             },
         )
+
+    async def start_server(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str
+    ) -> None:
+        await self.request(
+            client=client,
+            method="POST",
+            url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/action",
+            headers={
+                "Content-Type": "application/json",
+                "X-Auth-Token": keystone_token,
+            },
+            json={
+                "os-start": None
+            }
+        )
+
+    async def stop_server(
+        self,
+        client: AsyncClient,
+        keystone_token: str,
+        server_openstack_id: str
+    ) -> None:
+        await self.request(
+            client=client,
+            method="POST",
+            url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/action",
+            headers={
+                "Content-Type": "application/json",
+                "X-Auth-Token": keystone_token,
+            },
+            json={
+                "os-stop": None
+            }
+        )
