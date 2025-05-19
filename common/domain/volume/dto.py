@@ -4,7 +4,7 @@ from common.domain.volume.enum import VolumeStatus
 
 
 @dataclass
-class VolumeDto:
+class OsVolumeDto:
     openstack_id: str
     volume_type_name: str
     image_openstack_id: str | None
