@@ -8,6 +8,8 @@ from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.server.entity import Server
+from common.domain.volume.entity import Volume
+from common.domain.volume.enum import VolumeStatus
 from common.exception.server_exception import ServerNotFoundException, ServerUpdatePermissionDeniedException
 from test.util.database import add_to_db
 from test.util.factory import (
@@ -25,12 +27,12 @@ async def test_find_servers_success(client, db_session):
     server2 = await add_to_db(db_session, create_server(server_id=2, project_id=project.id))
     await add_to_db(
         db_session, create_volume(
-            volume_id=1, project_id=project.id, server_id=server1.id, is_root_volume=True, image_openstack_id="123"
+            volume_id=1, project_id=project.id, server=server1, is_root_volume=True, image_openstack_id="123"
         )
     )
     await add_to_db(
         db_session, create_volume(
-            volume_id=2, project_id=project.id, server_id=server2.id, is_root_volume=True, image_openstack_id="456"
+            volume_id=2, project_id=project.id, server=server2, is_root_volume=True, image_openstack_id="456"
         )
     )
     await db_session.commit()
@@ -57,7 +59,7 @@ async def test_get_server_success(client, db_session, mock_async_client):
     server = await add_to_db(db_session, create_server(project_id=project.id))
     await add_to_db(
         db_session, create_volume(
-            volume_id=1, project_id=project.id, server_id=server.id, is_root_volume=True, image_openstack_id="123"
+            volume_id=1, project_id=project.id, server=server, is_root_volume=True, image_openstack_id="123"
         )
     )
     await db_session.commit()
@@ -477,6 +479,86 @@ async def test_create_server_fail_security_group_access_denied(
     assert response.json()["code"] == "SECURITY_GROUP_ACCESS_DENIED"
 
 
+async def test_attach_volume_to_server_success(client, db_session, mock_async_client, async_session_maker):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server: Server = await add_to_db(db_session, create_server(project_id=project.id))
+    root_volume: Volume = await add_to_db(
+        db_session,
+        create_volume(
+            volume_id=1,
+            project_id=project.id,
+            server_id=server.id,
+            is_root_volume=True,
+            image_openstack_id=random_string(length=36)
+        )
+    )
+    volume: Volume = await add_to_db(db_session, create_volume(volume_id=2, project_id=project.id))
+    await db_session.commit()
+
+    def mock_client_request_side_effect(method, url, *args, **kwargs) -> Response:
+        if method == "POST" and f"/v2.1/servers/{server.openstack_id}/os-volume_attachments" in url:
+            return Response(
+                status_code=200,
+                request=Request(url=url, method=method)
+            )
+        if method == "GET" and f"/v3/{project.openstack_id}/volumes/{volume.openstack_id}" in url:
+            return Response(
+                status_code=200,
+                json={
+                    "volume": {
+                        "id": volume.openstack_id,
+                        "volume_type": "DEFAULT",
+                        "status": "in-use",
+                        "size": 1
+                    }
+                },
+                request=Request(url=url, method=method)
+            )
+        raise ValueError("Unknown API endpoint")
+
+    mock_async_client.request.side_effect = mock_client_request_side_effect
+
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT = 0
+
+    # when
+    access_token = create_access_token(project_id=project.id, project_openstack_id=project.openstack_id)
+    response: Response = await client.post(
+        url=f"/servers/{server.id}/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    res_data: dict = response.json()
+    assert response.status_code == 200
+    assert res_data["id"] == server.id
+    assert len(res_data["volumes"]) == 1
+
+
+async def test_attach_volume_to_server_fail_when_volume_is_already_attached(
+    client, db_session, mock_async_client, async_session_maker
+):
+    # given
+    domain: Domain = await add_to_db(db_session, create_domain())
+    project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
+    server: Server = await add_to_db(db_session, create_server(project_id=project.id))
+    volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, server_id=server.id,
+                                                               status=VolumeStatus.IN_USE))
+    await db_session.commit()
+
+    # when
+    access_token = create_access_token(project_id=project.id)
+    response: Response = await client.post(
+        url=f"/servers/{server.id}/volumes/{volume.id}",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    # then
+    assert response.status_code == 409
+    assert response.json()["code"] == "VOLUME_ALREADY_ATTACHED"
+
+
 async def test_delete_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
     # given
     mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
@@ -485,7 +567,7 @@ async def test_delete_server_success(mocker, client, db_session, async_session_m
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server = await add_to_db(db_session, create_server(project_id=project.id))
-    volume = await add_to_db(db_session, create_volume(project_id=project.id, server_id=server.id, is_root_volume=True))
+    volume = await add_to_db(db_session, create_volume(project_id=project.id, server=server, is_root_volume=True))
     await db_session.commit()
 
     def mock_client_request_side_effect(method, url, *args, **kwargs):

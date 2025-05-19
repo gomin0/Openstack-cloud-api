@@ -62,13 +62,17 @@ async def mock_async_client():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def app_test(async_session_maker, mock_async_client):
+async def app_test(mocker, async_session_maker, mock_async_client):
     async def override_get_db_session():
         async with async_session_maker() as session:
             yield session
 
     app.dependency_overrides[get_db_session] = override_get_db_session
     app.dependency_overrides[get_async_client] = lambda: mock_async_client
+
+    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
+    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+
     yield app
 
 
