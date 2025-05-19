@@ -156,7 +156,7 @@ class UserService:
         client: AsyncClient,
         current_user_id: int,
         user_id: int,
-    ):
+    ) -> None:
         user: User | None = await self.user_repository.find_by_id(session, user_id=user_id)
         if user is None:
             raise UserNotFoundException()
