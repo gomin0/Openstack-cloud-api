@@ -35,3 +35,21 @@ class UserUpdatePermissionDeniedException(CustomException):
             status_code=403,
             message="유저를 변경할 권한이 없습니다."
         )
+
+
+class UserDeletePermissionDeniedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="USER_DELETE_PERMISSION_DENIED",
+            status_code=403,
+            message="유저를 삭제할 수 있는 권한이 없습니다."
+        )
+
+
+class LastUserDeletionNotAllowedException(CustomException):
+    def __init__(self):
+        super().__init__(
+            code="LAST_USER_DELETION_NOT_ALLOWED",
+            status_code=403,
+            message="도메인의 마지막 유저를 삭제할 수 없습니다."
+        )
