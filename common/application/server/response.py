@@ -127,3 +127,9 @@ class ServerDetailsResponse(BaseModel):
 
 class ServerVncUrlResponse(BaseModel):
     url: str = Field(description="Server VNC URL")
+
+
+class DeleteServerResponse(BaseModel):
+    server_id: int = Field(description="Server ID to delete")
+    volume_id: int = Field(description="Volume ID to delete")
+    network_interface_ids: list[int] = Field(description="Network interface openstack IDs to delete")
