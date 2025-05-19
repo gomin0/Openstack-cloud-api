@@ -21,7 +21,8 @@ class NetworkInterface(SoftDeleteBaseEntity):
     _linked_security_groups: Mapped[list["NetworkInterfaceSecurityGroup"]] = relationship(
         "NetworkInterfaceSecurityGroup",
         lazy="select",
-        back_populates="_network_interface"
+        back_populates="_network_interface",
+        cascade="save-update, merge, delete-orphan",
     )
 
     @async_property
@@ -34,10 +35,44 @@ class NetworkInterface(SoftDeleteBaseEntity):
 
     @async_property
     async def security_groups(self) -> list["SecurityGroup"]:
-        linked_security_groups: list["NetworkInterfaceSecurityGroup"] = \
+        linked_security_groups: list["NetworkInterfaceSecurityGroup"] = (
             await self.awaitable_attrs._linked_security_groups
+        )
         return [await link.security_group for link in linked_security_groups]
+
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        server_id: int | None,
+        fixed_ip_address: str,
+    ) -> "NetworkInterface":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            server_id=server_id,
+            fixed_ip_address=fixed_ip_address,
+        )
 
     def validate_access_permission(self, project_id):
         if self.project_id != project_id:
             raise NetworkInterfaceAccessPermissionDeniedException()
+
+    async def add_security_groups(self, security_groups: list["SecurityGroup"]) -> None:
+        from common.domain.security_group.entity import NetworkInterfaceSecurityGroup
+
+        linked_security_groups: list[NetworkInterfaceSecurityGroup] = await self.awaitable_attrs._linked_security_groups
+        for security_group in security_groups:
+            linked_security_groups.append(
+                NetworkInterfaceSecurityGroup.create(
+                    network_interface=self,
+                    security_group=security_group,
+                )
+            )
+
+    async def delete(self):
+        security_groups: list["SecurityGroup"] = await self.awaitable_attrs._linked_security_groups
+        security_groups.clear()
+        super().delete()

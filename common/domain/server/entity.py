@@ -4,8 +4,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from common.domain.entity import SoftDeleteBaseEntity
 from common.domain.server.enum import ServerStatus
-from common.exception.server_exception import ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException, ServerStatusInvalidToStartException, ServerStatusInvalidToStopException
+from common.exception.server_exception import (
+    ServerAccessPermissionDeniedException,
+    ServerUpdatePermissionDeniedException,
+    ServerStatusInvalidToStartException,
+    ServerStatusInvalidToStopException,
+    ServerDeletePermissionDeniedException
+)
 
 
 class Server(SoftDeleteBaseEntity):
@@ -35,6 +40,25 @@ class Server(SoftDeleteBaseEntity):
     async def network_interfaces(self) -> list["NetworkInterface"]:
         return await self.awaitable_attrs._linked_network_interfaces
 
+    @classmethod
+    def create(
+        cls,
+        openstack_id: str,
+        project_id: int,
+        flavor_openstack_id: str,
+        name: str,
+        description: str,
+    ) -> "Server":
+        return cls(
+            id=None,
+            openstack_id=openstack_id,
+            project_id=project_id,
+            flavor_openstack_id=flavor_openstack_id,
+            name=name,
+            description=description,
+            status=ServerStatus.BUILD,
+        )
+
     def validate_access_permission(self, project_id):
         if self.project_id != project_id:
             raise ServerAccessPermissionDeniedException()
@@ -46,6 +70,20 @@ class Server(SoftDeleteBaseEntity):
     def update_info(self, name: str, description: str):
         self.name = name
         self.description = description
+
+    def validate_delete_permission(self, project_id):
+        if self.project_id != project_id:
+            raise ServerDeletePermissionDeniedException()
+
+    def delete(self) -> None:
+        super().delete()
+        self.status = ServerStatus.DELETED
+
+    def active(self):
+        self.status = ServerStatus.ACTIVE
+
+    def fail_creation(self):
+        self.status = ServerStatus.ERROR
 
     def validate_startable(self):
         if self.status != ServerStatus.SHUTOFF:

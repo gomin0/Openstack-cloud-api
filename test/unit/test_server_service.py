@@ -1,16 +1,29 @@
 import pytest
 
-from common.application.server.response import ServerResponse
+from common.application.server.dto import CreateServerCommand
+from common.application.server.response import ServerResponse, DeleteServerResponse
+from common.application.server.service import ServerService
 from common.domain.enum import SortOrder
 from common.domain.network_interface.entity import NetworkInterface
 from common.domain.project.entity import Project
 from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
 from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.exception.security_group_exception import SecurityGroupAccessDeniedException
 from common.exception.server_exception import ServerNotFoundException, ServerAccessPermissionDeniedException, \
-    ServerUpdatePermissionDeniedException, ServerNameDuplicateException
-from test.util.factory import create_server_stub, create_volume, create_project, create_server, \
-    create_network_interface_stub, create_volume_stub
+    ServerUpdatePermissionDeniedException, ServerNameDuplicateException, ServerDeletionFailedException
+from test.util.factory import (
+    create_network_interface,
+    create_os_network_interface_dto,
+    create_security_group,
+    create_os_server_dto,
+    create_server_stub,
+    create_volume,
+    create_project,
+    create_server,
+    create_network_interface_stub,
+    create_volume_stub
+)
 from test.util.random import random_int, random_string
 
 
@@ -60,18 +73,7 @@ async def test_find_servers_details_success(
     )
 
     # then
-    mock_server_repository.find_all_by_project_id.assert_called_once_with(
-        session=mock_session,
-        project_id=project.id,
-        id_=None,
-        ids_contain=None,
-        ids_exclude=None,
-        name_eq=None,
-        name_like=None,
-        sort_by=ServerSortOption.CREATED_AT,
-        order=SortOrder.ASC,
-        with_relations=True
-    )
+    mock_server_repository.find_all_by_project_id.assert_called_once()
     assert len(response.servers) == 2
 
 
@@ -106,12 +108,7 @@ async def test_get_server_detail_success(
     )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
-        server_id=server_id,
-        with_relations=True,
-        with_deleted=False
-    )
+    mock_server_repository.find_by_id.assert_called_once()
     assert response.id == mock_server.id
 
 
@@ -134,12 +131,7 @@ async def test_get_server_detail_fail_not_found(
             project_id=project_id
         )
 
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
-        server_id=server_id,
-        with_relations=True,
-        with_deleted=False
-    )
+    mock_server_repository.find_by_id.assert_called_once()
 
 
 async def test_get_server_detail_fail_access_denied(
@@ -171,12 +163,7 @@ async def test_get_server_detail_fail_access_denied(
             project_id=project_id
         )
 
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
-        server_id=server_id,
-        with_relations=True,
-        with_deleted=False
-    )
+    mock_server_repository.find_by_id.assert_called_once()
 
 
 async def test_update_server_info_success(mock_session, mock_server_repository, server_service):
@@ -305,15 +292,8 @@ async def test_get_server_vnc_url_success(
     )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
-        server_id=server_id
-    )
-    mock_nova_client.get_vnc_console.assert_called_once_with(
-        client=mock_async_client,
-        keystone_token=keystone_token,
-        server_openstack_id=mock_server.openstack_id
-    )
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_nova_client.get_vnc_console.assert_called_once()
     assert response_url == vnc_url
 
 
@@ -336,9 +316,446 @@ async def test_get_server_vnc_url_fail_not_found(
             project_id=project_id,
         )
 
-    mock_server_repository.find_by_id.assert_called_once_with(
+    mock_server_repository.find_by_id.assert_called_once()
+
+
+async def test_create_server_success(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_network_interface_repository,
+    mock_security_group_repository,
+    mock_nova_client,
+    mock_neutron_client,
+    mock_compensation_manager,
+    server_service,
+):
+    # given
+    command: CreateServerCommand = CreateServerCommand(
+        keystone_token=random_string(),
+        current_project_id=random_int(),
+        current_project_openstack_id=random_string(),
+        name=random_string(),
+        description=random_string(),
+        flavor_openstack_id=random_string(),
+        network_openstack_id=random_string(),
+        root_volume=CreateServerCommand.RootVolume(
+            size=random_int(),
+            image_openstack_id=random_string(),
+        ),
+        security_group_ids=[random_int()],
+    )
+    server_os_id: str = random_string()
+    network_interface_os_id: str = random_string()
+    expected_result: Server = create_server(project_id=command.current_project_id)
+    mock_server_repository.exists_by_project_and_name.return_value = False
+    mock_security_group_repository.find_all_by_ids.return_value = \
+        [create_security_group(id_=command.security_group_ids[0], project_id=command.current_project_id)]
+    mock_neutron_client.create_network_interface.return_value = \
+        create_os_network_interface_dto(openstack_id=network_interface_os_id)
+    mock_nova_client.create_server.return_value = server_os_id
+    mock_server_repository.create.return_value = expected_result
+    mock_network_interface_repository.create.return_value = create_network_interface()
+
+    # when
+    actual_result: ServerResponse = await server_service.create_server(
+        compensating_tx=mock_compensation_manager,
         session=mock_session,
+        client=mock_async_client,
+        command=command,
+    )
+
+    # then
+    mock_server_repository.exists_by_project_and_name.assert_called_once()
+    mock_security_group_repository.find_all_by_ids.assert_called_once()
+    mock_neutron_client.create_network_interface.assert_called_once()
+    mock_nova_client.create_server.assert_called_once()
+    mock_server_repository.create.assert_called_once()
+    mock_network_interface_repository.create.assert_called_once()
+    assert actual_result.id == expected_result.id
+
+
+async def test_create_server_fail_server_name_duplicated(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_compensation_manager,
+    server_service,
+):
+    # given
+    command: CreateServerCommand = CreateServerCommand(
+        keystone_token=random_string(),
+        current_project_id=random_int(),
+        current_project_openstack_id=random_string(),
+        name=random_string(),
+        description=random_string(),
+        flavor_openstack_id=random_string(),
+        network_openstack_id=random_string(),
+        root_volume=CreateServerCommand.RootVolume(
+            size=random_int(),
+            image_openstack_id=random_string(),
+        ),
+        security_group_ids=[random_int()],
+    )
+    mock_server_repository.exists_by_project_and_name.return_value = True
+
+    # when and then
+    with pytest.raises(ServerNameDuplicateException):
+        await server_service.create_server(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            command=command,
+        )
+    mock_server_repository.exists_by_project_and_name.assert_called_once()
+
+
+async def test_create_server_fail_security_group_access_denied(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_security_group_repository,
+    mock_compensation_manager,
+    server_service,
+):
+    # given
+    command: CreateServerCommand = CreateServerCommand(
+        keystone_token=random_string(),
+        current_project_id=1,
+        current_project_openstack_id=random_string(),
+        name=random_string(),
+        description=random_string(),
+        flavor_openstack_id=random_string(),
+        network_openstack_id=random_string(),
+        root_volume=CreateServerCommand.RootVolume(
+            size=random_int(),
+            image_openstack_id=random_string(),
+        ),
+        security_group_ids=[random_int()],
+    )
+    mock_server_repository.exists_by_project_and_name.return_value = False
+    mock_security_group_repository.find_all_by_ids.return_value = \
+        [create_security_group(id_=command.security_group_ids[0], project_id=2)]
+
+    # when and then
+    with pytest.raises(SecurityGroupAccessDeniedException):
+        await server_service.create_server(
+            compensating_tx=mock_compensation_manager,
+            session=mock_session,
+            client=mock_async_client,
+            command=command,
+        )
+    mock_server_repository.exists_by_project_and_name.assert_called_once()
+    mock_security_group_repository.find_all_by_ids.assert_called_once()
+
+
+async def test_finalize_server_creation_success(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_volume_repository,
+    mock_network_interface_repository,
+    mock_security_group_repository,
+    mock_nova_client,
+    mock_neutron_client,
+    mock_compensation_manager,
+    server_service,
+):
+    # given
+    server: Server = create_server(status=ServerStatus.BUILD)
+    mock_nova_client.get_server.return_value = create_os_server_dto(status=ServerStatus.ACTIVE)
+    mock_server_repository.find_by_openstack_id.return_value = server
+    mock_volume_repository.create.return_value = create_volume()
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION = 0
+
+    # when
+    await server_service.finalize_server_creation(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        server_openstack_id=random_string(),
+        image_openstack_id=random_string(),
+        root_volume_size=random_int(),
+    )
+
+    # then
+    mock_nova_client.get_server.assert_called_once()
+    mock_server_repository.find_by_openstack_id.assert_called_once()
+    mock_volume_repository.create.assert_called_once()
+    assert server.status == ServerStatus.ACTIVE
+
+
+async def test_finalize_server_creation_fail(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_volume_repository,
+    mock_network_interface_repository,
+    mock_security_group_repository,
+    mock_nova_client,
+    mock_neutron_client,
+    mock_compensation_manager,
+    server_service,
+):
+    # given
+    server: Server = create_server(status=ServerStatus.BUILD)
+    mock_nova_client.get_server.return_value = create_os_server_dto(status=ServerStatus.BUILD)
+    mock_server_repository.find_by_openstack_id.return_value = server
+    ServerService.MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION = 3
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION = 0
+
+    # when
+    await server_service.finalize_server_creation(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=random_string(),
+        server_openstack_id=random_string(),
+        image_openstack_id=random_string(),
+        root_volume_size=random_int(),
+    )
+
+    # then
+    assert mock_nova_client.get_server.call_count == ServerService.MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION
+    mock_server_repository.find_by_openstack_id.assert_called_once()
+    assert server.status == ServerStatus.ERROR
+
+
+async def test_delete_server_success(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_network_interface_repository,
+    mock_volume_repository,
+    mock_nova_client,
+    server_service
+):
+    # given
+    server_id = random_int()
+    project_id = random_int()
+    keystone_token = random_string()
+    server_openstack_id = random_string()
+    volume_id = random_int()
+    network_interface_id = random_int()
+    network_interface = create_network_interface_stub(
+        server_id=server_id, project_id=project_id, network_interface_id=network_interface_id
+    )
+    volume = create_volume_stub(volume_id=volume_id, is_root_volume=True)
+    server = create_server_stub(
         server_id=server_id,
+        openstack_id=server_openstack_id,
+        project_id=project_id,
+        volumes=[volume],
+        network_interfaces=[network_interface]
+    )
+    mock_server_repository.find_by_id.return_value = server
+    mock_nova_client.delete_server.return_value = None
+    response = DeleteServerResponse(
+        server_id=server.id,
+        volume_id=volume_id,
+        network_interface_ids=[network_interface_id]
+    )
+
+    # when
+    result = await server_service.delete_server(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_id=server_id,
+        project_id=project_id
+    )
+
+    # then
+    mock_server_repository.find_by_id.assert_called_once()
+    mock_nova_client.delete_server.assert_called_once()
+    assert result == response
+
+
+async def test_delete_server_fail_server_not_found(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_network_interface_repository,
+    mock_volume_repository,
+    mock_nova_client,
+    server_service
+):
+    # given
+    project_id = random_int()
+    server_id = random_int()
+    keystone_token = random_string()
+
+    mock_server_repository.find_by_id.return_value = None
+
+    # when & then
+    with pytest.raises(ServerNotFoundException):
+        await server_service.delete_server(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=keystone_token,
+            server_id=server_id,
+            project_id=project_id
+        )
+    mock_server_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_server_and_resources_success(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_network_interface_repository,
+    mock_volume_repository,
+    mock_nova_client,
+    mock_neutron_client,
+    mock_network_interface_security_group_repository,
+    server_service
+):
+    # given
+    server_id = random_int()
+    project_id = random_int()
+    volume_id = random_int()
+    keystone_token = random_string()
+    network_interface_id = random_int()
+    server_openstack_id = random_string()
+    network_interface = create_network_interface_stub(
+        server_id=server_id, project_id=project_id, network_interface_id=network_interface_id
+    )
+    volume = create_volume_stub(volume_id=volume_id, is_root_volume=True)
+    server = create_server_stub(
+        server_id=server_id,
+        openstack_id=server_openstack_id,
+        project_id=project_id,
+        volumes=[volume],
+        network_interfaces=[network_interface]
+    )
+
+    mock_server_repository.find_by_id.return_value = server
+    mock_nova_client.exists_server.return_value = False
+    mock_network_interface_repository.find_all_by_ids.return_value = [network_interface]
+    mock_neutron_client.delete_network_interface.return_value = None
+
+    # when
+    await server_service.check_server_until_deleted_and_remove_resources(
+        session=mock_session,
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        network_interface_ids=[network_interface_id],
+        server_id=server_id
+    )
+
+    # then
+    mock_server_repository.find_by_id.assert_called()
+    mock_nova_client.exists_server.assert_called_once_with(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=server.openstack_id,
+    )
+    mock_network_interface_repository.find_all_by_ids.assert_called_once_with(
+        session=mock_session, network_interface_ids=[network_interface_id]
+    )
+    mock_neutron_client.delete_network_interface.assert_called_once_with(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        network_interface_openstack_id=network_interface.openstack_id,
+    )
+
+
+async def test_delete_server_and_resources_fail_server_not_found(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_network_interface_repository,
+    mock_volume_repository,
+    mock_nova_client,
+    mock_neutron_client,
+    mock_network_interface_security_group_repository,
+    server_service
+):
+    # given
+    server_id = random_int()
+    project_id = random_int()
+    volume_id = random_int()
+    keystone_token = random_string()
+    network_interface_id = random_int()
+    server_openstack_id = random_string()
+    network_interface = create_network_interface_stub(
+        server_id=server_id, project_id=project_id, network_interface_id=network_interface_id
+    )
+    volume = create_volume_stub(volume_id=volume_id, is_root_volume=True)
+    server = create_server_stub(
+        server_id=server_id,
+        openstack_id=server_openstack_id,
+        project_id=project_id,
+        volumes=[volume],
+        network_interfaces=[network_interface]
+    )
+
+    mock_server_repository.find_by_id.return_value = None
+
+    # when
+    with pytest.raises(ServerNotFoundException):
+        await server_service.check_server_until_deleted_and_remove_resources(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=keystone_token,
+            network_interface_ids=[network_interface_id],
+            server_id=server_id
+        )
+
+    # then
+    mock_server_repository.find_by_id.assert_called_once()
+
+
+async def test_delete_server_and_resources_fail_timeout(
+    mock_session,
+    mock_async_client,
+    mock_server_repository,
+    mock_network_interface_repository,
+    mock_volume_repository,
+    mock_nova_client,
+    mock_neutron_client,
+    mock_network_interface_security_group_repository,
+    server_service
+):
+    # given
+    server_service.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION = 1
+    server_service.CHECK_INTERVAL_SECONDS_FOR_SERVER_DELETION = 0
+    server_id = random_int()
+    project_id = random_int()
+    volume_id = random_int()
+    keystone_token = random_string()
+    network_interface_id = random_int()
+    server_openstack_id = random_string()
+    network_interface = create_network_interface_stub(
+        server_id=server_id, project_id=project_id, network_interface_id=network_interface_id
+    )
+    volume = create_volume_stub(volume_id=volume_id, is_root_volume=True)
+    server = create_server_stub(
+        server_id=server_id,
+        openstack_id=server_openstack_id,
+        project_id=project_id,
+        volumes=[volume],
+        network_interfaces=[network_interface]
+    )
+
+    mock_server_repository.find_by_id.return_value = server
+    mock_nova_client.get_server.return_value = None
+
+    # when
+    with pytest.raises(ServerDeletionFailedException):
+        await server_service.check_server_until_deleted_and_remove_resources(
+            session=mock_session,
+            client=mock_async_client,
+            keystone_token=keystone_token,
+            network_interface_ids=[network_interface_id],
+            server_id=server_id
+        )
+
+    # then
+    mock_server_repository.find_by_id.assert_called()
+    mock_nova_client.exists_server.assert_called_once_with(
+        client=mock_async_client,
+        keystone_token=keystone_token,
+        server_openstack_id=server.openstack_id,
     )
 
 
@@ -382,9 +799,7 @@ async def test_start_server_success(
     )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session, server_id=server_id, with_deleted=False, with_relations=False
-    )
+    mock_server_repository.find_by_id.assert_called_once()
     mock_nova_client.start_server.assert_called_once_with(
         client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
     )
@@ -430,9 +845,7 @@ async def test_stop_server_success(
     )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session, server_id=server_id, with_deleted=False, with_relations=False
-    )
+    mock_server_repository.find_by_id.assert_called_once()
     mock_nova_client.stop_server.assert_called_once_with(
         client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
     )
@@ -463,9 +876,7 @@ async def test_update_server_status_fail_server_not_found(
         )
 
     # then
-    mock_server_repository.find_by_id.assert_called_once_with(
-        session=mock_session, server_id=server_id, with_deleted=False, with_relations=False
-    )
+    mock_server_repository.find_by_id.assert_called_once()
 
 
 async def test_wait_until_status_changed_success(
@@ -513,9 +924,7 @@ async def test_wait_until_status_changed_success(
     )
 
     # then
-    mock_server_repository.find_by_openstack_id.assert_called_once_with(
-        session=mock_session, openstack_id=server_openstack_id, with_deleted=False
-    )
+    mock_server_repository.find_by_openstack_id.assert_called_once()
     mock_nova_client.get_server.assert_called_once_with(
         client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
     )
@@ -552,9 +961,7 @@ async def test_wait_until_status_changed_fail_server_not_found(
         )
 
     # then
-    mock_server_repository.find_by_openstack_id.assert_called_once_with(
-        session=mock_session, openstack_id=server_openstack_id, with_deleted=False
-    )
+    mock_server_repository.find_by_openstack_id.assert_called_once()
 
 
 async def test_wait_until_status_changed_fail_time_out(

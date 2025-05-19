@@ -72,7 +72,6 @@ class ServerRepository:
         with_relations: bool = False
     ) -> Server | None:
         query: Select[tuple[Server]] = select(Server).where(Server.id == server_id)
-
         if not with_deleted:
             query = query.where(Server.deleted_at.is_(None))
         if with_relations:
@@ -85,7 +84,17 @@ class ServerRepository:
                 .selectinload(NetworkInterface._linked_security_groups)
                 .joinedload(NetworkInterfaceSecurityGroup._security_group),
             )
+        return await session.scalar(query)
 
+    async def find_by_openstack_id(
+        self,
+        session: AsyncSession,
+        openstack_id: str,
+        with_deleted: bool = False,
+    ) -> Server | None:
+        query: Select = select(Server).where(Server.openstack_id == openstack_id)
+        if not with_deleted:
+            query = query.where(Server.deleted_at.is_(None))
         return await session.scalar(query)
     
     async def find_by_openstack_id(
@@ -110,3 +119,8 @@ class ServerRepository:
                 )
             )
         )
+
+    async def create(self, session: AsyncSession, server: Server) -> Server:
+        session.add(server)
+        await session.flush()
+        return server
