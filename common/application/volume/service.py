@@ -140,7 +140,7 @@ class VolumeService:
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id
             )
-            if status == VolumeStatus.CREATING:
+            if status in [VolumeStatus.CREATING, VolumeStatus.DOWNLOADING]:
                 await asyncio.sleep(self.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION)
                 continue
 
