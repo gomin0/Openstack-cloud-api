@@ -308,7 +308,7 @@ async def attach_volume_to_server(
 
 @router.delete(
     path="/{server_id}/volumes/{volume_id}",
-    status_code=HTTP_202_ACCEPTED,
+    status_code=HTTP_200_OK,
     summary="서버에 볼륨 연결 해제",
     responses={
         401: {"description": "인증 정보가 유효하지 않은 경우"},
@@ -320,6 +320,17 @@ async def attach_volume_to_server(
 async def detach_volume_from_server(
     server_id: int,
     volume_id: int,
-    _: CurrentUser = Depends(get_current_user),
-) -> None:
-    raise NotImplementedError()
+    current_user: CurrentUser = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+    client: AsyncClient = Depends(get_async_client),
+    server_service: ServerService = Depends(),
+) -> ServerDetailResponse:
+    return await server_service.detach_volume_from_server(
+        session=session,
+        client=client,
+        keystone_token=current_user.keystone_token,
+        project_openstack_id=current_user.project_openstack_id,
+        project_id=current_user.project_id,
+        server_id=server_id,
+        volume_id=volume_id,
+    )

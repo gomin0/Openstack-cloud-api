@@ -421,6 +421,22 @@ def create_access_token(
     )
 
 
+def create_os_volume_dto(
+    openstack_id: str = random_string(),
+    volume_type_name: str = random_string(length=36),
+    image_openstack_id: str | None = None,
+    status: VolumeStatus = VolumeStatus.AVAILABLE,
+    size: int = random_int(),
+) -> OsVolumeDto:
+    return OsVolumeDto(
+        openstack_id=openstack_id,
+        volume_type_name=volume_type_name,
+        image_openstack_id=image_openstack_id,
+        status=status,
+        size=size,
+    )
+
+
 def create_os_network_interface_dto(
     openstack_id: str = random_string(),
     name: str = random_string(),

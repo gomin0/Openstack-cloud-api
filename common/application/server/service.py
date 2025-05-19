@@ -1,7 +1,8 @@
 import asyncio
+import logging
 import uuid
+from logging import Logger
 from typing import Coroutine
-from logging import getLogger, Logger
 
 from fastapi import Depends
 from httpx import AsyncClient
@@ -16,13 +17,14 @@ from common.domain.network_interface.entity import NetworkInterface
 from common.domain.security_group.entity import SecurityGroup
 from common.domain.server.dto import OsServerDto
 from common.domain.server.entity import Server
-from common.domain.server.enum import ServerSortOption, ServerStatus
+from common.domain.server.enum import ServerSortOption
+from common.domain.server.enum import ServerStatus
 from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.entity import Volume
 from common.domain.volume.enum import VolumeStatus
-from common.exception.server_exception import ServerDeletionFailedException
-from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException
-from common.exception.volume_exception import VolumeNotFoundException, VolumeAttachmentFailedException
+from common.exception.server_exception import ServerNotFoundException, ServerNameDuplicateException, \
+    VolumeDetachFailedException, ServerDeletionFailedException
+from common.exception.volume_exception import VolumeAttachmentFailedException, VolumeNotFoundException
 from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
 from common.infrastructure.network_interface.repository import NetworkInterfaceRepository
@@ -33,13 +35,16 @@ from common.infrastructure.security_group.repository import SecurityGroupReposit
 from common.infrastructure.server.repository import ServerRepository
 from common.infrastructure.volume.repository import VolumeRepository
 from common.util.compensating_transaction import CompensationManager
-from common.util.envs import get_envs, Envs
+from common.util.envs import Envs, get_envs
 
-logger: Logger = getLogger(__name__)
 envs: Envs = get_envs()
+logger: Logger = logging.getLogger(__name__)
 
 
 class ServerService:
+    MAX_CHECK_ATTEMPTS_FOR_VOLUME_DETACHMENT: int = envs.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DETACHMENT
+    CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT: int = envs.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT
+
     MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE: int = envs.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE
     CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE: int = envs.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE
 
@@ -138,6 +143,7 @@ class ServerService:
             keystone_token=keystone_token,
             server_openstack_id=server_openstack_id
         )
+
         return vnc_url
 
     @transactional()
@@ -253,6 +259,100 @@ class ServerService:
 
         server.update_info(name=name, description=description)
         return ServerResponse.from_entity(server)
+
+    async def detach_volume_from_server(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        project_openstack_id: str,
+        project_id: int,
+        server_id: int,
+        volume_id: int
+    ) -> ServerDetailResponse:
+        server: Server
+        volume: Volume
+        server, volume = await self._initiate_volume_detachment(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            project_id=project_id,
+            server_id=server_id,
+            volume_id=volume_id,
+        )
+        is_success: bool = await self._wait_until_volume_detachment_and_finalize(
+            session=session,
+            client=client,
+            keystone_token=keystone_token,
+            project_openstack_id=project_openstack_id,
+            volume_openstack_id=volume.openstack_id
+        )
+        if not is_success:
+            raise VolumeDetachFailedException()
+        return await ServerDetailResponse.from_entity(server)
+
+    @transactional()
+    async def _initiate_volume_detachment(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        project_id: int,
+        server_id: int,
+        volume_id: int
+    ) -> tuple[Server, Volume]:
+        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        volume.validate_owned_by(project_id=project_id)
+        volume.validate_server_match(server_id=server_id)
+        volume.prepare_for_detachment()
+
+        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        await self.nova_client.detach_volume_from_server(
+            client=client,
+            keystone_token=keystone_token,
+            server_openstack_id=server.openstack_id,
+            volume_openstack_id=volume.openstack_id,
+        )
+
+        return server, volume
+
+    @transactional()
+    async def _wait_until_volume_detachment_and_finalize(
+        self,
+        session: AsyncSession,
+        client: AsyncClient,
+        keystone_token: str,
+        volume_openstack_id: str,
+        project_openstack_id: str
+    ) -> bool:
+        for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DETACHMENT):
+            await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT)
+
+            os_volume: OsVolumeDto = await self.cinder_client.get_volume(
+                client=client,
+                keystone_token=keystone_token,
+                project_openstack_id=project_openstack_id,
+                volume_openstack_id=volume_openstack_id,
+            )
+
+            if os_volume.status in [VolumeStatus.IN_USE, VolumeStatus.DETACHING]:
+                continue
+            if os_volume.status == VolumeStatus.AVAILABLE:
+                volume: Volume = \
+                    await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
+                volume.detach_from_server()
+                return True
+            logger.error(f"볼륨({volume_openstack_id}) 연결 해제 도중 에러가 발생했습니다. status={os_volume.status}")
+            volume: Volume = await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
+            volume.update_status(status=os_volume.status)
+            return False
+
+        logger.error(
+            f"볼륨({volume_openstack_id}) 연결 해제를 시도했으나, "
+            f"{self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DETACHMENT * self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT}초 동안 "
+            f"정상적으로 해제되지 않았습니다."
+        )
+        return False
 
     @transactional()
     async def start_server(
@@ -569,32 +669,6 @@ class ServerService:
         ]
         await asyncio.gather(*delete_network_interface_tasks)
 
-    async def _get_server_by_id(
-        self,
-        session: AsyncSession,
-        id_: int,
-        with_deleted: bool = False,
-        with_relations: bool = False,
-    ) -> Server:
-        if (server := await self.server_repository.find_by_id(session, id_, with_deleted, with_relations)) is None:
-            raise ServerNotFoundException()
-        return server
-
-    async def _get_server_by_openstack_id(self, session: AsyncSession, openstack_id: str):
-        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id)) is None:
-            raise ServerNotFoundException()
-        return server
-
-    async def _get_volume_by_id(self, session: AsyncSession, volume_id: int) -> Volume:
-        if (volume := await self.volume_repository.find_by_id(session, volume_id)) is None:
-            raise VolumeNotFoundException()
-        return volume
-
-    async def _get_volume_by_openstack_id(self, session, openstack_id):
-        if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id)) is None:
-            raise VolumeNotFoundException()
-        return volume
-
     @transactional()
     async def _initiate_volume_attachment(
         self,
@@ -693,3 +767,29 @@ class ServerService:
         )
         volume.fail_attachment()
         return False
+
+    async def _get_server_by_id(
+        self,
+        session: AsyncSession,
+        id_: int,
+        with_deleted: bool = False,
+        with_relations: bool = False,
+    ) -> Server:
+        if (server := await self.server_repository.find_by_id(session, id_, with_deleted, with_relations)) is None:
+            raise ServerNotFoundException()
+        return server
+
+    async def _get_server_by_openstack_id(self, session: AsyncSession, openstack_id: str):
+        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id)) is None:
+            raise ServerNotFoundException()
+        return server
+
+    async def _get_volume_by_id(self, session: AsyncSession, volume_id: int) -> Volume:
+        if (volume := await self.volume_repository.find_by_id(session, volume_id)) is None:
+            raise VolumeNotFoundException()
+        return volume
+
+    async def _get_volume_by_openstack_id(self, session, openstack_id):
+        if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id)) is None:
+            raise VolumeNotFoundException()
+        return volume
