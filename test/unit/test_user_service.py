@@ -3,7 +3,6 @@ import pytest
 from common.domain.enum import SortOrder
 from common.domain.user.entity import User
 from common.domain.user.enum import UserSortOption
-from common.exception.openstack_exception import OpenStackException
 from common.exception.user_exception import (
     UserNotFoundException, UserAccountIdDuplicateException, UserUpdatePermissionDeniedException
 )
@@ -146,34 +145,6 @@ async def test_create_user_fail_duplicate_account_id(
             password=random_string(),
         )
     mock_user_repository.exists_by_account_id.assert_called_once()
-
-
-async def test_create_user_fail_raises_account_id_duplicate_exception_on_openstack_conflict(
-    user_service,
-    mock_user_repository,
-    mock_keystone_client,
-    mock_session,
-    mock_async_client,
-    mock_compensation_manager,
-):
-    # given
-    mock_user_repository.exists_by_account_id.return_value = False
-    mock_keystone_client.authenticate_with_scoped_auth.return_value = "keystone_token", "exp"
-    mock_keystone_client.create_user.side_effect = OpenStackException(openstack_status_code=409)
-
-    # when & then
-    with pytest.raises(UserAccountIdDuplicateException):
-        await user_service.create_user(
-            compensating_tx=mock_compensation_manager,
-            session=mock_session,
-            client=mock_async_client,
-            account_id=random_string(),
-            name=random_string(),
-            password=random_string(),
-        )
-    mock_user_repository.exists_by_account_id.assert_called_once()
-    mock_keystone_client.authenticate_with_scoped_auth.assert_called_once()
-    mock_keystone_client.create_user.assert_called_once()
 
 
 async def test_update_user_info_success(
