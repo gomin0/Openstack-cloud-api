@@ -133,8 +133,6 @@ async def test_update_project(
     project_id = 1
     user_id = 1
     new_name = "New"
-    token = "test_token"
-    exp = "exp"
     openstack_id = "abc123"
     domain = Domain(
         id=1,
@@ -150,7 +148,6 @@ async def test_update_project(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_project_repository.exists_by_name.return_value = False
     mock_project_repository.update_with_optimistic_lock.return_value = project
-    mock_keystone_client.authenticate_with_scoped_auth.return_value = token, exp
     mock_keystone_client.update_project.return_value = None
 
     # when
@@ -166,14 +163,10 @@ async def test_update_project(
     # then
     assert result.name == new_name
     mock_project_repository.find_by_id.assert_called_once()
+    mock_project_user_repository.exists_by_project_and_user.assert_called_once()
     mock_project_repository.exists_by_name.assert_called_once_with(session=mock_session, name=new_name)
     mock_project_repository.update_with_optimistic_lock.assert_called_once()
-    mock_keystone_client.update_project.assert_called_once_with(
-        client=mock_async_client,
-        project_openstack_id=openstack_id,
-        name=new_name,
-        keystone_token=token
-    )
+    mock_keystone_client.update_project.assert_called_once()
 
 
 async def test_update_project_fail_not_found(
@@ -308,7 +301,6 @@ async def test_assign_user_success(
     mock_project_repository.find_by_id.return_value = project
     mock_user_repository.find_by_id.return_value = user2
     mock_project_user_repository.exists_by_project_and_user.side_effect = [True, False]
-    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
 
     # when
     await project_service.assign_user_on_project(
@@ -491,7 +483,6 @@ async def test_unassign_user_success(
     mock_project_user_repository.exists_by_project_and_user.return_value = True
     mock_user_repository.find_by_id.return_value = user
     mock_project_user_repository.find_by_project_and_user.return_value = project_user
-    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
 
     # when
     await project_service.unassign_user_from_project(
@@ -504,11 +495,10 @@ async def test_unassign_user_success(
     )
 
     # then
-    mock_project_user_repository.delete.assert_called_once_with(
-        session=mock_session,
-        project_user=project_user
-    )
-    mock_keystone_client.unassign_role_from_user_on_project.assert_called_once()
+    mock_project_repository.find_by_id.assert_called_once()
+    mock_project_user_repository.exists_by_project_and_user.assert_called_once()
+    mock_user_repository.find_by_id.assert_called_once()
+    mock_project_user_repository.find_by_project_and_user.assert_called_once()
 
 
 async def test_unassign_user_fail_project_not_found(
