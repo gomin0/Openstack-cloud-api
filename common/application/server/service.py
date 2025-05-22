@@ -35,6 +35,7 @@ from common.infrastructure.server.repository import ServerRepository
 from common.infrastructure.volume.repository import VolumeRepository
 from common.util.compensating_transaction import CompensationManager
 from common.util.envs import Envs, get_envs
+from common.util.system_token_manager import get_system_keystone_token
 
 envs: Envs = get_envs()
 logger: Logger = logging.getLogger(__name__)
@@ -162,7 +163,7 @@ class ServerService:
         - 서버에 루트 볼륨 연결
         - 서버에 Network Interface 연결
 
-        서버 생성 작업은 비동기로 동작하기에, `ServerService.finalize_server_creation()`를 통해 후처리 작업을 진행해야 합니다.
+        서버 생성 작업은 비동기로 동작하기에, `ServerService.finalizwe_server_creation()`를 통해 후처리 작업을 진행해야 합니다.
 
         :return: 생성된 서버 정보
         """
@@ -280,7 +281,6 @@ class ServerService:
         is_success: bool = await self._wait_until_volume_detachment_and_finalize(
             session=session,
             client=client,
-            keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
             volume_openstack_id=volume.openstack_id
         )
@@ -318,7 +318,6 @@ class ServerService:
         self,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         volume_openstack_id: str,
         project_openstack_id: str
     ) -> bool:
@@ -327,7 +326,7 @@ class ServerService:
 
             os_volume: OsVolumeDto = await self.cinder_client.get_volume(
                 client=client,
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id,
             )
@@ -392,7 +391,6 @@ class ServerService:
         self,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
@@ -400,7 +398,7 @@ class ServerService:
 
             os_server: OsServerDto = await self.nova_client.get_server(
                 client=client,
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server_openstack_id,
             )
 
@@ -428,7 +426,6 @@ class ServerService:
         self,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
@@ -436,7 +433,7 @@ class ServerService:
 
             os_server: OsServerDto = await self.nova_client.get_server(
                 client=client,
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server_openstack_id,
             )
 
@@ -463,7 +460,6 @@ class ServerService:
         self,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         server_openstack_id: str,
         image_openstack_id: str,
         root_volume_size: int
@@ -481,7 +477,7 @@ class ServerService:
 
             os_server: OsServerDto = await self.nova_client.get_server(
                 client=client,
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server_openstack_id,
             )
 
@@ -546,7 +542,6 @@ class ServerService:
         is_success: bool = await self._wait_until_volume_attachment_and_finalize(
             session=session,
             client=client,
-            keystone_token=keystone_token,
             current_project_openstack_id=current_project_openstack_id,
             server_openstack_id=server.openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -593,26 +588,24 @@ class ServerService:
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
-        await self.remove_server_resources(
+        await self._remove_server_resources(
             session=session,
             client=client,
             keystone_token=keystone_token,
             server_id=server_id,
             network_interface_ids=network_interface_ids,
         )
-        await self.wait_server_until_deleted_and_finalize(
+        await self._wait_server_until_deleted_and_finalize(
             session=session,
             client=client,
-            keystone_token=keystone_token,
             server_id=server_id,
         )
 
     @transactional()
-    async def wait_server_until_deleted_and_finalize(
+    async def _wait_server_until_deleted_and_finalize(
         self,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         server_id: int,
     ) -> None:
         server: Server = await self._get_server_by_id(session=session, id_=server_id)
@@ -620,7 +613,7 @@ class ServerService:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
             is_server_deleted: bool = not await self.nova_client.exists_server(
                 client=client,
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server.openstack_id,
             )
             if is_server_deleted:
@@ -635,7 +628,7 @@ class ServerService:
         raise ServerDeletionFailedException()
 
     @transactional()
-    async def remove_server_resources(
+    async def _remove_server_resources(
         self,
         session: AsyncSession,
         client: AsyncClient,
@@ -709,7 +702,6 @@ class ServerService:
         self,
         session: AsyncSession,
         client: AsyncClient,
-        keystone_token: str,
         current_project_openstack_id: str,
         server_openstack_id: str,
         volume_openstack_id: str,
@@ -727,7 +719,7 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT)
             os_volume: OsVolumeDto = await self.cinder_client.get_volume(
                 client=client,
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=current_project_openstack_id,
                 volume_openstack_id=volume_openstack_id,
             )
