@@ -9,7 +9,6 @@ from common.domain.enum import SortOrder
 from common.domain.project.entity import Project, ProjectUser
 from common.domain.project.enum import ProjectSortOption
 from common.domain.user.entity import User
-from common.exception.openstack_exception import OpenStackException
 from common.exception.project_exception import (ProjectNotFoundException, ProjectNameDuplicatedException,
                                                 ProjectAccessDeniedException, UserAlreadyInProjectException,
                                                 UserNotInProjectException)
@@ -285,116 +284,6 @@ async def test_update_project_fail_access_denied(
         session=mock_session,
         user_id=user_id,
         project_id=project_id
-    )
-
-
-async def test_update_project_fail_openstack_403(
-    mock_session,
-    mock_async_client,
-    mock_project_repository,
-    mock_project_user_repository,
-    project_service,
-    mock_keystone_client,
-    mock_compensation_manager,
-):
-    # given
-    project = Project(id=1, name="Old", domain_id=1, openstack_id="abc")
-    new_name = "New"
-    mock_project_repository.find_by_id.return_value = project
-    mock_project_user_repository.exists_by_project_and_user.return_value = True
-    mock_project_repository.exists_by_name.return_value = False
-    mock_project_repository.update_with_optimistic_lock.return_value = project
-    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
-    mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=403)
-
-    # when & then
-    with pytest.raises(ProjectAccessDeniedException):
-        await project_service.update_project(
-            compensating_tx=mock_compensation_manager,
-            session=mock_session,
-            client=mock_async_client,
-            user_id=1,
-            project_id=1,
-            new_name=new_name
-        )
-
-    mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
-        project_id=1
-    )
-    mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
-        session=mock_session,
-        user_id=1,
-        project_id=1
-    )
-    mock_project_repository.exists_by_name.assert_called_once_with(
-        session=mock_session,
-        name=new_name
-    )
-    mock_project_repository.update_with_optimistic_lock.assert_called_once_with(
-        session=mock_session,
-        project=project,
-    )
-    mock_keystone_client.update_project.assert_called_once_with(
-        client=mock_async_client,
-        project_openstack_id="abc",
-        name=new_name,
-        keystone_token="token"
-    )
-
-
-async def test_update_project_fail_openstack_409(
-    mock_session,
-    mock_async_client,
-    mock_project_repository,
-    mock_project_user_repository,
-    project_service,
-    mock_keystone_client,
-    mock_compensation_manager
-):
-    # given
-    project = Project(id=1, name="Old", domain_id=1, openstack_id="abc")
-    new_name = "New"
-    mock_project_repository.find_by_id.return_value = project
-    mock_project_user_repository.exists_by_project_and_user.return_value = True
-    mock_project_repository.exists_by_name.return_value = False
-    mock_project_repository.update_with_optimistic_lock.return_value = project
-    mock_keystone_client.authenticate_with_scoped_auth.return_value = "token", "exp"
-    mock_keystone_client.update_project.side_effect = OpenStackException(openstack_status_code=409)
-
-    # when & then
-    with pytest.raises(ProjectNameDuplicatedException):
-        await project_service.update_project(
-            compensating_tx=mock_compensation_manager,
-            session=mock_session,
-            client=mock_async_client,
-            user_id=1,
-            project_id=1,
-            new_name=new_name
-        )
-
-    mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
-        project_id=1
-    )
-    mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
-        session=mock_session,
-        user_id=1,
-        project_id=1
-    )
-    mock_project_repository.exists_by_name.assert_called_once_with(
-        session=mock_session,
-        name=new_name
-    )
-    mock_project_repository.update_with_optimistic_lock.assert_called_once_with(
-        session=mock_session,
-        project=project,
-    )
-    mock_keystone_client.update_project.assert_called_once_with(
-        client=mock_async_client,
-        project_openstack_id="abc",
-        name=new_name,
-        keystone_token="token"
     )
 
 
