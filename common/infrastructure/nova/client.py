@@ -1,6 +1,6 @@
 import uuid
 
-from httpx import AsyncClient, Response
+from httpx import Response
 
 from common.domain.server.dto import OsServerDto
 from common.domain.server.enum import ServerStatus
@@ -18,12 +18,10 @@ class NovaClient(OpenStackClient):
 
     async def get_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
     ) -> OsServerDto:
         response: Response = await self.request(
-            client=client,
             method="GET",
             url=f"{self._NOVA_URL}/v2.1/servers/{server_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
@@ -41,12 +39,10 @@ class NovaClient(OpenStackClient):
 
     async def get_vnc_console(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str
     ) -> str:
         response: Response = await self.request(
-            client=client,
             method="POST",
             url=f"{self._NOVA_URL}/v2.1/servers/{server_openstack_id}/action",
             headers={
@@ -63,13 +59,11 @@ class NovaClient(OpenStackClient):
 
     async def exists_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
         try:
             await self.request(
-                client=client,
                 method="GET",
                 url=f"{self._NOVA_URL}/v2.1/servers/{server_openstack_id}",
                 headers={"X-Auth-Token": keystone_token},
@@ -83,7 +77,6 @@ class NovaClient(OpenStackClient):
 
     async def create_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         flavor_openstack_id: str,
         image_openstack_id: str,
@@ -91,7 +84,6 @@ class NovaClient(OpenStackClient):
         root_volume_size: int,
     ) -> str:
         response: Response = await self.request(
-            client=client,
             method="POST",
             url=f"{self._NOVA_URL}/v2.1/servers",
             headers={
@@ -120,12 +112,10 @@ class NovaClient(OpenStackClient):
 
     async def delete_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
     ) -> None:
         await self.request(
-            client=client,
             method="DELETE",
             url=f"{self._NOVA_URL}/v2.1/servers/{server_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
@@ -133,13 +123,11 @@ class NovaClient(OpenStackClient):
 
     async def attach_volume_to_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
         volume_openstack_id: str,
     ) -> None:
         await self.request(
-            client=client,
             method="POST",
             url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/os-volume_attachments",
             headers={
@@ -155,12 +143,10 @@ class NovaClient(OpenStackClient):
 
     async def start_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str
     ) -> None:
         await self.request(
-            client=client,
             method="POST",
             url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/action",
             headers={
@@ -174,12 +160,10 @@ class NovaClient(OpenStackClient):
 
     async def stop_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str
     ) -> None:
         await self.request(
-            client=client,
             method="POST",
             url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/action",
             headers={
@@ -193,13 +177,11 @@ class NovaClient(OpenStackClient):
 
     async def detach_volume_from_server(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
         volume_openstack_id: str
     ) -> None:
         await self.request(
-            client=client,
             method="DELETE",
             url=self._NOVA_URL + f"/v2.1/servers/{server_openstack_id}/os-volume_attachments/{volume_openstack_id}",
             headers={"X-Auth-Token": keystone_token},

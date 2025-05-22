@@ -1,4 +1,4 @@
-from httpx import AsyncClient, Response
+from httpx import Response
 
 from common.domain.volume.dto import OsVolumeDto
 from common.domain.volume.enum import VolumeStatus
@@ -16,13 +16,11 @@ class CinderClient(OpenStackClient):
 
     async def get_volume(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
     ) -> OsVolumeDto:
         response: Response = await self.request(
-            client,
             method="GET",
             url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
@@ -38,13 +36,11 @@ class CinderClient(OpenStackClient):
 
     async def get_volume_status(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
     ) -> VolumeStatus:
         response: Response = await self.request(
-            client,
             method="GET",
             url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}",
             headers={"X-Auth-Token": keystone_token},
@@ -54,14 +50,12 @@ class CinderClient(OpenStackClient):
 
     async def exists_volume(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
     ) -> bool:
         try:
             await self.request(
-                client,
                 method="GET",
                 url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}",
                 headers={"X-Auth-Token": keystone_token},
@@ -75,7 +69,6 @@ class CinderClient(OpenStackClient):
 
     async def create_volume(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_type_openstack_id: str,
@@ -83,7 +76,6 @@ class CinderClient(OpenStackClient):
         size: int,
     ) -> str:
         response: Response = await self.request(
-            client,
             method="POST",
             url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes",
             headers={
@@ -102,14 +94,12 @@ class CinderClient(OpenStackClient):
 
     async def extend_volume_size(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
         new_size: int,
     ) -> None:
         await self.request(
-            client=client,
             method="POST",
             url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}/action",
             headers={
@@ -125,13 +115,11 @@ class CinderClient(OpenStackClient):
 
     async def delete_volume(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
     ) -> None:
         await self.request(
-            client,
             method="DELETE",
             url=self._CINDER_URL + f"/v3/{project_openstack_id}/volumes/{volume_openstack_id}",
             headers={"X-Auth-Token": keystone_token},

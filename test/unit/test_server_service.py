@@ -31,7 +31,6 @@ from test.util.random import random_int, random_string
 
 async def test_find_servers_details_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     server_service
 ):
@@ -81,7 +80,6 @@ async def test_find_servers_details_success(
 
 async def test_get_server_detail_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     server_service
 ):
@@ -116,7 +114,6 @@ async def test_get_server_detail_success(
 
 async def test_get_server_detail_fail_not_found(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     server_service
 ):
@@ -138,7 +135,6 @@ async def test_get_server_detail_fail_not_found(
 
 async def test_get_server_detail_fail_access_denied(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     server_service
 ):
@@ -257,7 +253,6 @@ async def test_update_server_info_fail_new_name_is_duplicated(mock_session, mock
 
 async def test_get_server_vnc_url_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -288,7 +283,6 @@ async def test_get_server_vnc_url_success(
         project_id=project_id,
     )
     response_url = await server_service.get_vnc_console(
-        client=mock_async_client,
         keystone_token=keystone_token,
         server_openstack_id=server.openstack_id
     )
@@ -301,7 +295,6 @@ async def test_get_server_vnc_url_success(
 
 async def test_get_server_vnc_url_fail_not_found(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     server_service
 ):
@@ -323,7 +316,6 @@ async def test_get_server_vnc_url_fail_not_found(
 
 async def test_create_server_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_network_interface_repository,
     mock_security_group_repository,
@@ -363,7 +355,6 @@ async def test_create_server_success(
     actual_result: ServerResponse = await server_service.create_server(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         command=command,
     )
 
@@ -379,7 +370,6 @@ async def test_create_server_success(
 
 async def test_create_server_fail_server_name_duplicated(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_compensation_manager,
     server_service,
@@ -406,7 +396,6 @@ async def test_create_server_fail_server_name_duplicated(
         await server_service.create_server(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             command=command,
         )
     mock_server_repository.exists_by_project_and_name.assert_called_once()
@@ -414,7 +403,6 @@ async def test_create_server_fail_server_name_duplicated(
 
 async def test_create_server_fail_security_group_access_denied(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_security_group_repository,
     mock_compensation_manager,
@@ -444,7 +432,6 @@ async def test_create_server_fail_security_group_access_denied(
         await server_service.create_server(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             command=command,
         )
     mock_server_repository.exists_by_project_and_name.assert_called_once()
@@ -453,7 +440,6 @@ async def test_create_server_fail_security_group_access_denied(
 
 async def test_finalize_server_creation_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_volume_repository,
     mock_network_interface_repository,
@@ -473,7 +459,6 @@ async def test_finalize_server_creation_success(
     # when
     await server_service.finalize_server_creation(
         session=mock_session,
-        client=mock_async_client,
         server_openstack_id=random_string(),
         image_openstack_id=random_string(),
         root_volume_size=random_int(),
@@ -488,7 +473,6 @@ async def test_finalize_server_creation_success(
 
 async def test_finalize_server_creation_fail(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_volume_repository,
     mock_network_interface_repository,
@@ -508,7 +492,6 @@ async def test_finalize_server_creation_fail(
     # when
     await server_service.finalize_server_creation(
         session=mock_session,
-        client=mock_async_client,
         server_openstack_id=random_string(),
         image_openstack_id=random_string(),
         root_volume_size=random_int(),
@@ -522,7 +505,6 @@ async def test_finalize_server_creation_fail(
 
 async def test_attach_volume_to_server_success(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -544,7 +526,6 @@ async def test_attach_volume_to_server_success(
     # when
     result: ServerDetailResponse = await server_service.attach_volume_to_server(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         current_project_id=project_id,
         current_project_openstack_id=random_string(),
@@ -564,7 +545,6 @@ async def test_attach_volume_to_server_success(
 
 async def test_attach_volume_to_server_fail_volume_is_already_attached(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_volume_repository,
     server_service
@@ -581,7 +561,6 @@ async def test_attach_volume_to_server_fail_volume_is_already_attached(
     with pytest.raises(VolumeAlreadyAttachedException):
         await server_service.attach_volume_to_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
@@ -594,7 +573,6 @@ async def test_attach_volume_to_server_fail_volume_is_already_attached(
 
 async def test_attach_volume_to_server_fail_when_os_volume_is_changed_to_unexpected_status(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -616,7 +594,6 @@ async def test_attach_volume_to_server_fail_when_os_volume_is_changed_to_unexpec
     with pytest.raises(VolumeAttachmentFailedException):
         await server_service.attach_volume_to_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
@@ -631,7 +608,6 @@ async def test_attach_volume_to_server_fail_when_os_volume_is_changed_to_unexpec
 
 async def test_attach_volume_to_server_fail_when_volume_is_not_attached_from_openstack(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -655,7 +631,6 @@ async def test_attach_volume_to_server_fail_when_volume_is_not_attached_from_ope
     with pytest.raises(VolumeAttachmentFailedException):
         await server_service.attach_volume_to_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
@@ -671,7 +646,6 @@ async def test_attach_volume_to_server_fail_when_volume_is_not_attached_from_ope
 
 async def test_delete_server_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_network_interface_repository,
     mock_volume_repository,
@@ -707,7 +681,6 @@ async def test_delete_server_success(
     # when
     result = await server_service.delete_server(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=keystone_token,
         server_id=server_id,
         project_id=project_id
@@ -721,7 +694,6 @@ async def test_delete_server_success(
 
 async def test_delete_server_fail_server_not_found(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_network_interface_repository,
     mock_volume_repository,
@@ -739,7 +711,6 @@ async def test_delete_server_fail_server_not_found(
     with pytest.raises(ServerNotFoundException):
         await server_service.delete_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             server_id=server_id,
             project_id=project_id
@@ -749,7 +720,6 @@ async def test_delete_server_fail_server_not_found(
 
 async def test_delete_server_and_resources_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_network_interface_repository,
     mock_volume_repository,
@@ -785,7 +755,6 @@ async def test_delete_server_and_resources_success(
     # when
     await server_service.check_server_until_deleted_and_remove_resources(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=keystone_token,
         network_interface_ids=[network_interface_id],
         server_id=server_id
@@ -800,7 +769,6 @@ async def test_delete_server_and_resources_success(
 
 async def test_delete_server_and_resources_fail_server_not_found(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_network_interface_repository,
     mock_volume_repository,
@@ -834,7 +802,6 @@ async def test_delete_server_and_resources_fail_server_not_found(
     with pytest.raises(ServerNotFoundException):
         await server_service.check_server_until_deleted_and_remove_resources(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             network_interface_ids=[network_interface_id],
             server_id=server_id
@@ -846,7 +813,6 @@ async def test_delete_server_and_resources_fail_server_not_found(
 
 async def test_delete_server_and_resources_fail_timeout(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_network_interface_repository,
     mock_volume_repository,
@@ -883,7 +849,6 @@ async def test_delete_server_and_resources_fail_timeout(
     with pytest.raises(ServerDeletionFailedException):
         await server_service.check_server_until_deleted_and_remove_resources(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             network_interface_ids=[network_interface_id],
             server_id=server_id
@@ -896,7 +861,6 @@ async def test_delete_server_and_resources_fail_timeout(
 
 async def test_start_server_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -927,7 +891,6 @@ async def test_start_server_success(
     # when
     await server_service.start_server(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=keystone_token,
         project_id=project_id,
         server_id=server_id,
@@ -936,13 +899,12 @@ async def test_start_server_success(
     # then
     mock_server_repository.find_by_id.assert_called_once()
     mock_nova_client.start_server.assert_called_once_with(
-        client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
+        keystone_token=keystone_token, server_openstack_id=server_openstack_id
     )
 
 
 async def test_stop_server_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -973,7 +935,6 @@ async def test_stop_server_success(
     # when
     await server_service.stop_server(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=keystone_token,
         project_id=project_id,
         server_id=server_id,
@@ -982,13 +943,12 @@ async def test_stop_server_success(
     # then
     mock_server_repository.find_by_id.assert_called_once()
     mock_nova_client.stop_server.assert_called_once_with(
-        client=mock_async_client, keystone_token=keystone_token, server_openstack_id=server_openstack_id
+        keystone_token=keystone_token, server_openstack_id=server_openstack_id
     )
 
 
 async def test_update_server_status_fail_server_not_found(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -1004,7 +964,6 @@ async def test_update_server_status_fail_server_not_found(
     with pytest.raises(ServerNotFoundException):
         await server_service.start_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             server_id=server_id,
@@ -1016,7 +975,6 @@ async def test_update_server_status_fail_server_not_found(
 
 async def test_wait_until_status_changed_success(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -1053,7 +1011,6 @@ async def test_wait_until_status_changed_success(
     # when
     await server_service.wait_until_server_started(
         session=mock_session,
-        client=mock_async_client,
         server_openstack_id=server_openstack_id,
     )
 
@@ -1064,7 +1021,6 @@ async def test_wait_until_status_changed_success(
 
 async def test_wait_until_status_changed_fail_server_not_found(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -1087,7 +1043,6 @@ async def test_wait_until_status_changed_fail_server_not_found(
     with pytest.raises(ServerNotFoundException):
         await server_service.wait_until_server_started(
             session=mock_session,
-            client=mock_async_client,
             server_openstack_id=server_openstack_id,
         )
 
@@ -1097,7 +1052,6 @@ async def test_wait_until_status_changed_fail_server_not_found(
 
 async def test_wait_until_status_changed_fail_time_out(
     mock_session,
-    mock_async_client,
     mock_server_repository,
     mock_nova_client,
     server_service
@@ -1120,7 +1074,6 @@ async def test_wait_until_status_changed_fail_time_out(
     # when
     await server_service.wait_until_server_started(
         session=mock_session,
-        client=mock_async_client,
         server_openstack_id=server_openstack_id,
     )
 
@@ -1130,7 +1083,6 @@ async def test_wait_until_status_changed_fail_time_out(
 
 async def test_detach_volume_from_server_success(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -1175,7 +1127,6 @@ async def test_detach_volume_from_server_success(
     # when
     result = await server_service.detach_volume_from_server(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         project_openstack_id=project_openstack_id,
         project_id=project_id,
@@ -1193,7 +1144,6 @@ async def test_detach_volume_from_server_success(
 
 async def test_detach_volume_from_server_fail_volume_is_not_attached_to_server(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -1221,7 +1171,6 @@ async def test_detach_volume_from_server_fail_volume_is_not_attached_to_server(
     with pytest.raises(ServerNotMatchedException):
         await server_service.detach_volume_from_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             project_openstack_id=project_openstack_id,
             project_id=project_id,
@@ -1235,7 +1184,6 @@ async def test_detach_volume_from_server_fail_volume_is_not_attached_to_server(
 
 async def test_detach_volume_from_server_fail_cannot_detach_root_volume(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -1260,7 +1208,6 @@ async def test_detach_volume_from_server_fail_cannot_detach_root_volume(
     with pytest.raises(CannotDetachRootVolumeException):
         await server_service.detach_volume_from_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             project_openstack_id=project_openstack_id,
             project_id=project_id,
@@ -1274,7 +1221,6 @@ async def test_detach_volume_from_server_fail_cannot_detach_root_volume(
 
 async def test_detach_volume_from_server_fail_time_out(
     mock_session,
-    mock_async_client,
     mock_nova_client,
     mock_cinder_client,
     mock_server_repository,
@@ -1310,7 +1256,6 @@ async def test_detach_volume_from_server_fail_time_out(
     with pytest.raises(VolumeDetachFailedException):
         await server_service.detach_volume_from_server(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
             project_id=project_id,

@@ -117,7 +117,6 @@ async def test_get_floating_ip_fail_access_denied(mock_session, mock_floating_ip
 
 async def test_create_floating_ip_success(
     mock_session,
-    mock_async_client,
     mock_floating_ip_repository,
     floating_ip_service,
     mock_compensation_manager
@@ -145,7 +144,6 @@ async def test_create_floating_ip_success(
     result = await floating_ip_service.create_floating_ip(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         project_id=project_id,
         keystone_token=keystone_token,
         floating_network_id=floating_network_id
@@ -155,7 +153,6 @@ async def test_create_floating_ip_success(
     assert result.address == floating_ip_address
 
     floating_ip_service.neutron_client.create_floating_ip.assert_called_once_with(
-        client=mock_async_client,
         floating_network_id=floating_network_id,
         keystone_token=keystone_token
     )
@@ -164,7 +161,6 @@ async def test_create_floating_ip_success(
 
 async def test_delete_floating_ip_success(
     mock_session,
-    mock_async_client,
     mock_floating_ip_repository,
     mock_neutron_client,
     floating_ip_service
@@ -181,7 +177,6 @@ async def test_delete_floating_ip_success(
     # when
     await floating_ip_service.delete_floating_ip(
         session=mock_session,
-        client=mock_async_client,
         project_id=project_id,
         keystone_token=keystone_token,
         floating_ip_id=floating_ip_id,
@@ -193,14 +188,13 @@ async def test_delete_floating_ip_success(
         floating_ip_id=floating_ip_id
     )
     mock_neutron_client.delete_floating_ip.assert_called_once_with(
-        client=mock_async_client,
         keystone_token=keystone_token,
         floating_ip_openstack_id=floating_ip.openstack_id
     )
 
 
 async def test_delete_floating_ip_fail_not_found(
-    mock_session, mock_async_client, mock_floating_ip_repository, floating_ip_service
+    mock_session, mock_floating_ip_repository, floating_ip_service
 ):
     # given
     floating_ip_id = 1
@@ -213,7 +207,6 @@ async def test_delete_floating_ip_fail_not_found(
     with pytest.raises(FloatingIpNotFoundException):
         await floating_ip_service.delete_floating_ip(
             session=mock_session,
-            client=mock_async_client,
             project_id=project_id,
             keystone_token=keystone_token,
             floating_ip_id=floating_ip_id,
@@ -226,7 +219,7 @@ async def test_delete_floating_ip_fail_not_found(
 
 
 async def test_delete_floating_ip_fail_permission_denied(
-    mock_session, mock_async_client, mock_floating_ip_repository, floating_ip_service
+    mock_session, mock_floating_ip_repository, floating_ip_service
 ):
     # given
     floating_ip_id = 1
@@ -240,7 +233,6 @@ async def test_delete_floating_ip_fail_permission_denied(
     with pytest.raises(FloatingIpDeletePermissionDeniedException):
         await floating_ip_service.delete_floating_ip(
             session=mock_session,
-            client=mock_async_client,
             project_id=project_id,
             keystone_token=keystone_token,
             floating_ip_id=floating_ip_id,
@@ -253,7 +245,7 @@ async def test_delete_floating_ip_fail_permission_denied(
 
 
 async def test_delete_floating_ip_fail_attached(
-    mock_session, mock_async_client, mock_floating_ip_repository, floating_ip_service
+    mock_session, mock_floating_ip_repository, floating_ip_service
 ):
     # given
     floating_ip_id = 1
@@ -269,7 +261,6 @@ async def test_delete_floating_ip_fail_attached(
     with pytest.raises(AttachedFloatingIpDeletionException):
         await floating_ip_service.delete_floating_ip(
             session=mock_session,
-            client=mock_async_client,
             project_id=project_id,
             keystone_token=keystone_token,
             floating_ip_id=floating_ip_id,

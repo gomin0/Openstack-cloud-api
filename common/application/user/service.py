@@ -2,7 +2,6 @@ import asyncio
 
 import bcrypt
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.user.response import UserDetailResponse, UserResponse
@@ -81,7 +80,6 @@ class UserService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         account_id: str,
         name: str,
         password: str,
@@ -93,14 +91,12 @@ class UserService:
 
         # Create user in OpenStack
         user_openstack_id: str = await self.keystone_client.create_user(
-            client=client,
             domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
             keystone_token=get_system_keystone_token(),
             password=password,
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.delete_user(
-                client=client,
                 keystone_token=get_system_keystone_token(),
                 user_openstack_id=user_openstack_id,
             )
@@ -146,7 +142,6 @@ class UserService:
     async def delete_user(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         current_user_id: int,
         user_id: int,
     ) -> None:
@@ -160,7 +155,6 @@ class UserService:
             raise LastUserDeletionNotAllowedException()
 
         await self.keystone_client.delete_user(
-            client=client,
             keystone_token=get_system_keystone_token(),
             user_openstack_id=user.openstack_id,
         )

@@ -1,6 +1,5 @@
 import backoff
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -90,7 +89,6 @@ class ProjectService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         user_id: int,
         project_id: int,
         new_name: str,
@@ -126,14 +124,12 @@ class ProjectService:
 
         project_openstack_id: str = project.openstack_id
         await self.keystone_client.update_project(
-            client=client,
             project_openstack_id=project_openstack_id,
             name=new_name,
             keystone_token=get_system_keystone_token()
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.update_project(
-                client=client,
                 project_openstack_id=project_openstack_id,
                 name=old_name,
                 keystone_token=get_system_keystone_token()
@@ -147,7 +143,6 @@ class ProjectService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         request_user_id: int,
         project_id: int,
         user_id: int
@@ -191,7 +186,6 @@ class ProjectService:
         project_openstack_id: str = project.openstack_id
         user_openstack_id: str = user.openstack_id
         await self.keystone_client.assign_role_to_user_on_project(
-            client=client,
             project_openstack_id=project_openstack_id,
             user_openstack_id=user_openstack_id,
             role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
@@ -199,7 +193,6 @@ class ProjectService:
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.unassign_role_from_user_on_project(
-                client=client,
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
@@ -212,7 +205,6 @@ class ProjectService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         request_user_id: int,
         project_id: int,
         user_id: int
@@ -254,7 +246,6 @@ class ProjectService:
         project_openstack_id: str = project.openstack_id
         user_openstack_id: str = user.openstack_id
         await self.keystone_client.unassign_role_from_user_on_project(
-            client=client,
             project_openstack_id=project_openstack_id,
             user_openstack_id=user_openstack_id,
             role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
@@ -262,7 +253,6 @@ class ProjectService:
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.assign_role_to_user_on_project(
-                client=client,
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,

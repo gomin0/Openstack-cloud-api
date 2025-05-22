@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query, Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.floating_ip.request import CreateFloatingIpRequest
@@ -8,7 +7,6 @@ from common.application.floating_ip.response import FloatingIpDetailsResponse, F
 from common.application.floating_ip.service import FloatingIpService
 from common.domain.enum import SortOrder
 from common.domain.floating_ip.enum import FloatingIpSortOption
-from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.compensating_transaction import compensating_transaction
@@ -77,14 +75,12 @@ async def create_floating_ip(
     request: CreateFloatingIpRequest,
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
     floating_ip_service: FloatingIpService = Depends(),
 ) -> FloatingIpResponse:
     async with compensating_transaction() as compensating_tx:
         return await floating_ip_service.create_floating_ip(
             compensating_tx=compensating_tx,
             session=session,
-            client=client,
             project_id=current_user.project_id,
             keystone_token=current_user.keystone_token,
             floating_network_id=request.floating_network_id
@@ -107,11 +103,9 @@ async def delete_floating_ip(
     current_user: CurrentUser = Depends(get_current_user),
     floating_ip_service: FloatingIpService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
 ) -> None:
     await floating_ip_service.delete_floating_ip(
         session=session,
-        client=client,
         project_id=current_user.project_id,
         keystone_token=current_user.keystone_token,
         floating_ip_id=floating_ip_id,

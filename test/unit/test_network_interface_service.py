@@ -9,7 +9,6 @@ from test.util.factory import create_floating_ip_stub, create_network_interface_
 
 async def test_attach_floating_ip_to_server_success(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -31,7 +30,6 @@ async def test_attach_floating_ip_to_server_success(
     await network_interface_service.attach_floating_ip_to_network_interface(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         keystone_token=keystone_token,
         project_id=project_id,
         floating_ip_id=floating_ip.id,
@@ -52,7 +50,6 @@ async def test_attach_floating_ip_to_server_success(
         with_deleted=False
     )
     mock_neutron_client.attach_floating_ip_to_network_interface.assert_called_once_with(
-        client=mock_async_client,
         keystone_token=keystone_token,
         floating_ip_openstack_id=floating_ip.openstack_id,
         network_interface_id=network_interface.openstack_id
@@ -61,7 +58,6 @@ async def test_attach_floating_ip_to_server_success(
 
 async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -80,7 +76,6 @@ async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -97,7 +92,6 @@ async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
 
 async def test_attach_floating_ip_to_server_fail_access_permission_denied(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -118,7 +112,6 @@ async def test_attach_floating_ip_to_server_fail_access_permission_denied(
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project2_id,
             floating_ip_id=floating_ip_id,
@@ -135,7 +128,6 @@ async def test_attach_floating_ip_to_server_fail_access_permission_denied(
 
 async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -156,7 +148,6 @@ async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -179,7 +170,6 @@ async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
 
 async def test_attach_floating_ip_to_server_fail_already_attached(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -201,7 +191,6 @@ async def test_attach_floating_ip_to_server_fail_already_attached(
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -224,7 +213,6 @@ async def test_attach_floating_ip_to_server_fail_already_attached(
 
 async def test_detach_floating_ip_from_server_success(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -248,7 +236,6 @@ async def test_detach_floating_ip_from_server_success(
     await network_interface_service.detach_floating_ip_from_network_interface(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         keystone_token=keystone_token,
         project_id=project_id,
         floating_ip_id=floating_ip_id,
@@ -263,7 +250,6 @@ async def test_detach_floating_ip_from_server_success(
         with_deleted=False
     )
     mock_neutron_client.detach_floating_ip_from_network_interface.assert_called_once_with(
-        client=mock_async_client,
         keystone_token=keystone_token,
         floating_ip_openstack_id=floating_ip.openstack_id,
     )
@@ -271,7 +257,6 @@ async def test_detach_floating_ip_from_server_success(
 
 async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -290,7 +275,6 @@ async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
         await network_interface_service.detach_floating_ip_from_network_interface(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -307,7 +291,6 @@ async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
 
 async def test_detach_floating_ip_from_server_fail_not_attached(
     mock_session,
-    mock_async_client,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -328,7 +311,6 @@ async def test_detach_floating_ip_from_server_fail_not_attached(
         await network_interface_service.detach_floating_ip_from_network_interface(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,

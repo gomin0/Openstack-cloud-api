@@ -1,5 +1,4 @@
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.domain.floating_ip.entity import FloatingIp
@@ -33,7 +32,6 @@ class NetworkInterfaceService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         floating_ip_id: int,
@@ -51,14 +49,12 @@ class NetworkInterfaceService:
         floating_ip.attach_to_network_interface(network_interface=network_interface)
 
         await self.neutron_client.attach_floating_ip_to_network_interface(
-            client=client,
             keystone_token=keystone_token,
             floating_ip_openstack_id=floating_ip.openstack_id,
             network_interface_id=network_interface.openstack_id
         )
         compensating_tx.add_task(
             lambda: self.neutron_client.detach_floating_ip_from_network_interface(
-                client=client,
                 keystone_token=keystone_token,
                 floating_ip_openstack_id=floating_ip.openstack_id,
             )
@@ -69,7 +65,6 @@ class NetworkInterfaceService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         floating_ip_id: int,
@@ -86,14 +81,12 @@ class NetworkInterfaceService:
         floating_ip.detach_from_network_interface()
 
         await self.neutron_client.detach_floating_ip_from_network_interface(
-            client=client,
             keystone_token=keystone_token,
             floating_ip_openstack_id=floating_ip.openstack_id,
         )
         network_interface_openstack_id: str = network_interface.openstack_id
         compensating_tx.add_task(
             lambda: self.neutron_client.attach_floating_ip_to_network_interface(
-                client=client,
                 keystone_token=keystone_token,
                 floating_ip_openstack_id=floating_ip.openstack_id,
                 network_interface_id=network_interface_openstack_id,

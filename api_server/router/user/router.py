@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query, Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.user.request import CreateUserRequest, UpdateUserInfoRequest
@@ -7,7 +6,6 @@ from common.application.user.response import UserDetailsResponse, UserResponse, 
 from common.application.user.service import UserService
 from common.domain.enum import SortOrder
 from common.domain.user.enum import UserSortOption
-from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.compensating_transaction import compensating_transaction
@@ -72,13 +70,11 @@ async def create_user(
     request: CreateUserRequest,
     user_service: UserService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
 ) -> UserResponse:
     async with compensating_transaction() as compensating_tx:
         return await user_service.create_user(
             compensating_tx=compensating_tx,
             session=session,
-            client=client,
             account_id=request.account_id,
             name=request.name,
             password=request.password,
@@ -119,12 +115,10 @@ async def delete_user(
     user_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
     user_service: UserService = Depends(),
 ) -> None:
     await user_service.delete_user(
         session=session,
-        client=client,
         current_user_id=current_user.user_id,
         user_id=user_id,
     )
