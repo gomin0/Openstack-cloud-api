@@ -34,3 +34,7 @@ class BaseEntity(AsyncAttrs, DeclarativeBase, TimestampMixin):
 
 class SoftDeleteBaseEntity(BaseEntity, SoftDeleteMixin):
     __abstract__ = True
+
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None

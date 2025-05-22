@@ -36,10 +36,6 @@ class FloatingIp(SoftDeleteBaseEntity):
     async def network_interface(self) -> NetworkInterface | None:
         return await self.awaitable_attrs._network_interface
 
-    @property
-    def is_deleted(self):
-        return self.deleted_at is not None
-
     @classmethod
     def create(
         cls,
