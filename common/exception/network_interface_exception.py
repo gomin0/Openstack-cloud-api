@@ -10,15 +10,6 @@ class NetworkInterfaceNotFoundException(CustomException):
         )
 
 
-class NetworkInterfaceNotAttachedToServerException(CustomException):
-    def __init__(self):
-        super().__init__(
-            code="NETWORK_INTERFACE_NOT_ATTACHED_TO_SERVER",
-            status_code=409,
-            message="해당 서버에 연결되지 않은 네트워크 인터페이스입니다."
-        )
-
-
 class NetworkInterfaceAccessPermissionDeniedException(CustomException):
     def __init__(self):
         super().__init__(
