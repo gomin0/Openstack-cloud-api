@@ -629,10 +629,9 @@ async def test_delete_server_fail_server_not_found(client, db_session, mock_asyn
     assert response.json()["code"] == "SERVER_NOT_FOUND"
 
 
-async def test_start_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
+async def test_start_server_success(client, db_session, async_session_maker, mock_async_client):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE = 0
     domain = await add_to_db(db_session, create_domain())
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
@@ -678,10 +677,9 @@ async def test_start_server_success(mocker, client, db_session, async_session_ma
     assert response.status_code == 202
 
 
-async def test_stop_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
+async def test_stop_server_success(client, db_session, async_session_maker, mock_async_client):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE = 0
     domain = await add_to_db(db_session, create_domain())
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
