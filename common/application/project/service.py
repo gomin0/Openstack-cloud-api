@@ -19,6 +19,7 @@ from common.infrastructure.project_user.repository import ProjectUserRepository
 from common.infrastructure.user.repository import UserRepository
 from common.util.compensating_transaction import CompensationManager
 from common.util.envs import Envs, get_envs
+from common.util.system_token_manager import get_system_keystone_token
 
 envs: Envs = get_envs()
 
@@ -123,20 +124,19 @@ class ProjectService:
             project=project
         )
 
-        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         project_openstack_id: str = project.openstack_id
         await self.keystone_client.update_project(
             client=client,
             project_openstack_id=project_openstack_id,
             name=new_name,
-            keystone_token=cloud_admin_keystone_token
+            keystone_token=get_system_keystone_token()
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.update_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
                 name=old_name,
-                keystone_token=cloud_admin_keystone_token
+                keystone_token=get_system_keystone_token()
             )
         )
 
@@ -188,7 +188,6 @@ class ProjectService:
             )
         )
 
-        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         project_openstack_id: str = project.openstack_id
         user_openstack_id: str = user.openstack_id
         await self.keystone_client.assign_role_to_user_on_project(
@@ -196,7 +195,7 @@ class ProjectService:
             project_openstack_id=project_openstack_id,
             user_openstack_id=user_openstack_id,
             role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-            keystone_token=cloud_admin_keystone_token
+            keystone_token=get_system_keystone_token()
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.unassign_role_from_user_on_project(
@@ -204,7 +203,7 @@ class ProjectService:
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                keystone_token=cloud_admin_keystone_token
+                keystone_token=get_system_keystone_token()
             )
         )
 
@@ -252,7 +251,6 @@ class ProjectService:
             project_user=project_user
         )
 
-        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         project_openstack_id: str = project.openstack_id
         user_openstack_id: str = user.openstack_id
         await self.keystone_client.unassign_role_from_user_on_project(
@@ -260,7 +258,7 @@ class ProjectService:
             project_openstack_id=project_openstack_id,
             user_openstack_id=user_openstack_id,
             role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-            keystone_token=cloud_admin_keystone_token
+            keystone_token=get_system_keystone_token()
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.assign_role_to_user_on_project(
@@ -268,17 +266,6 @@ class ProjectService:
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                keystone_token=cloud_admin_keystone_token
+                keystone_token=get_system_keystone_token()
             )
         )
-
-    async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
-        keystone_token: str
-        keystone_token, _ = await self.keystone_client.authenticate_with_scoped_auth(
-            client=client,
-            domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
-            user_openstack_id=envs.CLOUD_ADMIN_OPENSTACK_ID,
-            password=envs.CLOUD_ADMIN_PASSWORD,
-            project_openstack_id=envs.CLOUD_ADMIN_DEFAULT_PROJECT_OPENSTACK_ID
-        )
-        return keystone_token

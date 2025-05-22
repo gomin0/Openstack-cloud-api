@@ -10,15 +10,15 @@ from common.domain.enum import SortOrder
 from common.domain.user.entity import User
 from common.domain.user.enum import UserSortOption
 from common.exception.user_exception import (
-    UserNotFoundException,
-    UserAccountIdDuplicateException,
-    UserUpdatePermissionDeniedException, LastUserDeletionNotAllowedException
+    UserNotFoundException, UserAccountIdDuplicateException, UserUpdatePermissionDeniedException,
+    LastUserDeletionNotAllowedException
 )
 from common.infrastructure.database import transactional
 from common.infrastructure.keystone.client import KeystoneClient
 from common.infrastructure.user.repository import UserRepository
 from common.util.compensating_transaction import CompensationManager
 from common.util.envs import get_envs, Envs
+from common.util.system_token_manager import get_system_keystone_token
 
 envs: Envs = get_envs()
 
@@ -92,17 +92,16 @@ class UserService:
             raise UserAccountIdDuplicateException(account_id=account_id)
 
         # Create user in OpenStack
-        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         user_openstack_id: str = await self.keystone_client.create_user(
             client=client,
             domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
-            keystone_token=cloud_admin_keystone_token,
+            keystone_token=get_system_keystone_token(),
             password=password,
         )
         compensating_tx.add_task(
             lambda: self.keystone_client.delete_user(
                 client=client,
-                keystone_token=cloud_admin_keystone_token,
+                keystone_token=get_system_keystone_token(),
                 user_openstack_id=user_openstack_id,
             )
         )
@@ -160,22 +159,10 @@ class UserService:
         if num_of_users <= 1:
             raise LastUserDeletionNotAllowedException()
 
-        cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
         await self.keystone_client.delete_user(
             client=client,
-            keystone_token=cloud_admin_keystone_token,
+            keystone_token=get_system_keystone_token(),
             user_openstack_id=user.openstack_id,
         )
 
         await user.delete()
-
-    async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
-        keystone_token: str
-        keystone_token, _ = await self.keystone_client.authenticate_with_scoped_auth(
-            client=client,
-            domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
-            user_openstack_id=envs.CLOUD_ADMIN_OPENSTACK_ID,
-            password=envs.CLOUD_ADMIN_PASSWORD,
-            project_openstack_id=envs.CLOUD_ADMIN_DEFAULT_PROJECT_OPENSTACK_ID
-        )
-        return keystone_token
