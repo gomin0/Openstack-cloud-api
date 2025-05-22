@@ -163,7 +163,7 @@ class ServerService:
         - 서버에 루트 볼륨 연결
         - 서버에 Network Interface 연결
 
-        서버 생성 작업은 비동기로 동작하기에, `ServerService.finalizwe_server_creation()`를 통해 후처리 작업을 진행해야 합니다.
+        서버 생성 작업은 비동기로 동작하기에, `ServerService.finalize_server_creation()`를 통해 후처리 작업을 진행해야 합니다.
 
         :return: 생성된 서버 정보
         """
