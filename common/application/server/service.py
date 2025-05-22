@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Coroutine
 
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.dto import CreateServerCommand
@@ -305,7 +304,6 @@ class ServerService:
     async def _wait_until_volume_detachment_and_finalize(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         volume_openstack_id: str,
         project_openstack_id: str
     ) -> bool:
@@ -440,7 +438,6 @@ class ServerService:
     async def finalize_server_creation(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         server_openstack_id: str,
         image_openstack_id: str,
         root_volume_size: int
