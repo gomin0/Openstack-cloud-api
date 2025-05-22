@@ -309,11 +309,8 @@ async def test_get_server_vnc_url_fail_access_denied(client, db_session, mock_as
     assert response.json()["code"] == "SERVER_ACCESS_PERMISSION_DENIED"
 
 
-async def test_create_server_success(mocker, client, db_session, mock_async_client, async_session_maker):
+async def test_create_server_success(client, db_session, mock_async_client, async_session_maker):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
-
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
     security_group: SecurityGroup = await add_to_db(db_session, create_security_group(project_id=project.id))
@@ -398,12 +395,9 @@ async def test_create_server_success(mocker, client, db_session, mock_async_clie
 
 
 async def test_create_server_fail_server_name_duplicated(
-    mocker, client, db_session, mock_async_client, async_session_maker
+    client, db_session, mock_async_client, async_session_maker
 ):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
-
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server: Server = await add_to_db(db_session, create_server(project_id=project.id))
@@ -438,12 +432,10 @@ async def test_create_server_fail_server_name_duplicated(
 
 
 async def test_create_server_fail_security_group_access_denied(
-    mocker, client, db_session, mock_async_client, async_session_maker
+    client, db_session, mock_async_client, async_session_maker
 ):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
-
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION = 0
     project_id: int = random_int()
     requesting_project_id: int = random_int()
 
@@ -482,6 +474,7 @@ async def test_create_server_fail_security_group_access_denied(
 
 async def test_attach_volume_to_server_success(client, db_session, mock_async_client, async_session_maker):
     # given
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT = 0
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server: Server = await add_to_db(db_session, create_server(project_id=project.id))
@@ -560,10 +553,8 @@ async def test_attach_volume_to_server_fail_when_volume_is_already_attached(
     assert response.json()["code"] == "VOLUME_ALREADY_ATTACHED"
 
 
-async def test_delete_server_success(mocker, client, db_session, async_session_maker, mock_async_client):
+async def test_delete_server_success(client, db_session, async_session_maker, mock_async_client):
     # given
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
     domain = await add_to_db(db_session, create_domain())
     user = await add_to_db(db_session, create_user(domain_id=domain.id))
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
@@ -751,6 +742,7 @@ async def test_update_server_status_fail_not_found(client, db_session, mock_asyn
 
 async def test_detach_volume_from_server_success(client, db_session, mock_async_client, async_session_maker):
     # given
+    ServerService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT = 0
     domain = await add_to_db(db_session, create_domain())
     project = await add_to_db(db_session, create_project(domain_id=domain.id))
     server = await add_to_db(db_session, create_server(project_id=project.id))

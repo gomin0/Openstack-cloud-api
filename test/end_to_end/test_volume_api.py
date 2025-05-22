@@ -1,5 +1,6 @@
 from httpx import Response, Request
 
+from common.application.volume.service import VolumeService
 from common.domain.domain.entity import Domain
 from common.domain.project.entity import Project
 from common.domain.server.entity import Server
@@ -284,6 +285,7 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(client, d
 
 async def test_update_volume_size_success(client, db_session, mock_async_client):
     # given
+    VolumeService.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING = 0
     domain: Domain = await add_to_db(db_session, create_domain())
     project: Project = await add_to_db(db_session, create_project(domain_id=domain.id))
     volume: Volume = await add_to_db(db_session, create_volume(project_id=project.id, size=1))
