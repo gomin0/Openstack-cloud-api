@@ -125,7 +125,7 @@ def security_group_service(
 ):
     return SecurityGroupService(
         security_group_repository=mock_security_group_repository,
-        server_security_group_repository=mock_network_interface_security_group_repository,
+        network_interface_security_group_repository=mock_network_interface_security_group_repository,
         neutron_client=mock_neutron_client
     )
 

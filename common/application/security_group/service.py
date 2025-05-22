@@ -33,11 +33,11 @@ class SecurityGroupService:
     def __init__(
         self,
         security_group_repository: SecurityGroupRepository = Depends(),
-        server_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
+        network_interface_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
         neutron_client: NeutronClient = Depends(),
     ):
         self.security_group_repository = security_group_repository
-        self.server_security_group_repository = server_security_group_repository
+        self.network_interface_security_group_repository = network_interface_security_group_repository
         self.neutron_client = neutron_client
 
     async def find_security_groups_details(
@@ -265,7 +265,7 @@ class SecurityGroupService:
 
         security_group.validate_delete_permission(project_id=project_id)
 
-        if await self.server_security_group_repository.exists_by_security_group(
+        if await self.network_interface_security_group_repository.exists_by_security_group(
             session=session,
             security_group_id=security_group_id,
         ):

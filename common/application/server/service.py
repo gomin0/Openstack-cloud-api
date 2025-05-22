@@ -28,7 +28,6 @@ from common.exception.volume_exception import VolumeAttachmentFailedException, V
 from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
 from common.infrastructure.network_interface.repository import NetworkInterfaceRepository
-from common.infrastructure.network_interface_security_group.repository import NetworkInterfaceSecurityGroupRepository
 from common.infrastructure.neutron.client import NeutronClient
 from common.infrastructure.nova.client import NovaClient
 from common.infrastructure.security_group.repository import SecurityGroupRepository
@@ -62,7 +61,6 @@ class ServerService:
         volume_repository: VolumeRepository = Depends(),
         network_interface_repository: NetworkInterfaceRepository = Depends(),
         security_group_repository: SecurityGroupRepository = Depends(),
-        network_interface_security_group_repository: NetworkInterfaceSecurityGroupRepository = Depends(),
         nova_client: NovaClient = Depends(),
         neutron_client: NeutronClient = Depends(),
         cinder_client: CinderClient = Depends(),
@@ -71,7 +69,6 @@ class ServerService:
         self.volume_repository = volume_repository
         self.network_interface_repository = network_interface_repository
         self.security_group_repository = security_group_repository
-        self.network_interface_security_group_repository = network_interface_security_group_repository
         self.nova_client = nova_client
         self.neutron_client = neutron_client
         self.cinder_client = cinder_client
