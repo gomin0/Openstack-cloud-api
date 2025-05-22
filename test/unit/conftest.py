@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -12,7 +11,6 @@ from common.application.security_group.service import SecurityGroupService
 from common.application.server.service import ServerService
 from common.application.user.service import UserService
 from common.application.volume.service import VolumeService
-from common.domain.keystone.model import KeystoneToken
 
 
 @pytest.fixture(scope="session")
@@ -23,13 +21,12 @@ def mock_compensation_manager():
 
 
 @pytest.fixture(scope="function", autouse=True)
-def fake_system_keystone_token(mocker):
-    system_keystone_token: KeystoneToken = KeystoneToken(
-        token="keystone-token",
-        expires_at=datetime.now() + timedelta(days=1),
-    )
+def set_fake_system_keystone_token(mocker):
+    system_keystone_token: str = "keystone-token"
     mocker.patch("common.application.user.service.get_system_keystone_token", return_value=system_keystone_token)
     mocker.patch("common.application.project.service.get_system_keystone_token", return_value=system_keystone_token)
+    mocker.patch("common.application.server.service.get_system_keystone_token", return_value=system_keystone_token)
+    mocker.patch("common.application.volume.service.get_system_keystone_token", return_value=system_keystone_token)
 
 
 @pytest.fixture(scope='function')

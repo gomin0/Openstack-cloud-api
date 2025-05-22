@@ -5,6 +5,7 @@ from logging import Logger
 from typing import Coroutine
 
 from fastapi import Depends
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.dto import CreateServerCommand
@@ -34,6 +35,7 @@ from common.infrastructure.server.repository import ServerRepository
 from common.infrastructure.volume.repository import VolumeRepository
 from common.util.compensating_transaction import CompensationManager
 from common.util.envs import Envs, get_envs
+from common.util.system_token_manager import get_system_keystone_token
 
 envs: Envs = get_envs()
 logger: Logger = logging.getLogger(__name__)
@@ -269,7 +271,6 @@ class ServerService:
         )
         is_success: bool = await self._wait_until_volume_detachment_and_finalize(
             session=session,
-            keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
             volume_openstack_id=volume.openstack_id
         )
@@ -304,7 +305,7 @@ class ServerService:
     async def _wait_until_volume_detachment_and_finalize(
         self,
         session: AsyncSession,
-        keystone_token: str,
+        client: AsyncClient,
         volume_openstack_id: str,
         project_openstack_id: str
     ) -> bool:
@@ -312,7 +313,7 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT)
 
             os_volume: OsVolumeDto = await self.cinder_client.get_volume(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id,
             )
@@ -374,14 +375,13 @@ class ServerService:
     async def wait_until_server_started(
         self,
         session: AsyncSession,
-        keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
 
             os_server: OsServerDto = await self.nova_client.get_server(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server_openstack_id,
             )
 
@@ -408,14 +408,13 @@ class ServerService:
     async def wait_until_server_stopped(
         self,
         session: AsyncSession,
-        keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
 
             os_server: OsServerDto = await self.nova_client.get_server(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server_openstack_id,
             )
 
@@ -441,7 +440,7 @@ class ServerService:
     async def finalize_server_creation(
         self,
         session: AsyncSession,
-        keystone_token: str,
+        client: AsyncClient,
         server_openstack_id: str,
         image_openstack_id: str,
         root_volume_size: int
@@ -458,7 +457,7 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION)
 
             os_server: OsServerDto = await self.nova_client.get_server(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server_openstack_id,
             )
 
@@ -520,7 +519,6 @@ class ServerService:
         )
         is_success: bool = await self._wait_until_volume_attachment_and_finalize(
             session=session,
-            keystone_token=keystone_token,
             current_project_openstack_id=current_project_openstack_id,
             server_openstack_id=server.openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -564,30 +562,28 @@ class ServerService:
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
-        await self.remove_server_resources(
+        await self._remove_server_resources(
             session=session,
             keystone_token=keystone_token,
             server_id=server_id,
             network_interface_ids=network_interface_ids,
         )
-        await self.wait_server_until_deleted_and_finalize(
+        await self._wait_server_until_deleted_and_finalize(
             session=session,
-            keystone_token=keystone_token,
             server_id=server_id,
         )
 
     @transactional()
-    async def wait_server_until_deleted_and_finalize(
+    async def _wait_server_until_deleted_and_finalize(
         self,
         session: AsyncSession,
-        keystone_token: str,
         server_id: int,
     ) -> None:
         server: Server = await self._get_server_by_id(session=session, id_=server_id)
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
             is_server_deleted: bool = not await self.nova_client.exists_server(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 server_openstack_id=server.openstack_id,
             )
             if is_server_deleted:
@@ -602,7 +598,7 @@ class ServerService:
         raise ServerDeletionFailedException()
 
     @transactional()
-    async def remove_server_resources(
+    async def _remove_server_resources(
         self,
         session: AsyncSession,
         keystone_token: str,
@@ -671,7 +667,6 @@ class ServerService:
     async def _wait_until_volume_attachment_and_finalize(
         self,
         session: AsyncSession,
-        keystone_token: str,
         current_project_openstack_id: str,
         server_openstack_id: str,
         volume_openstack_id: str,
@@ -688,7 +683,7 @@ class ServerService:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT):
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT)
             os_volume: OsVolumeDto = await self.cinder_client.get_volume(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=current_project_openstack_id,
                 volume_openstack_id=volume_openstack_id,
             )

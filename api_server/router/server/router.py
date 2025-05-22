@@ -106,7 +106,6 @@ async def create_server(
     run_background_task(
         background_task=background_tasks,
         task=server_service.finalize_server_creation,
-        keystone_token=current_user.keystone_token,
         server_openstack_id=server.openstack_id,
         image_openstack_id=request.root_volume.image_id,
         root_volume_size=request.root_volume.size,
@@ -177,7 +176,6 @@ async def delete_server(
     run_background_task(
         background_tasks,
         volume_service.wait_volume_until_deleted_and_finalize,
-        keystone_token=current_user.keystone_token,
         volume_id=response.volume_id,
         project_openstack_id=current_user.project_openstack_id
     )
@@ -215,7 +213,6 @@ async def update_server_status(
         run_background_task(
             background_tasks,
             server_service.wait_until_server_started,
-            keystone_token=current_user.keystone_token,
             server_openstack_id=response.openstack_id,
         )
         return response
@@ -229,7 +226,6 @@ async def update_server_status(
         run_background_task(
             background_tasks,
             server_service.wait_until_server_stopped,
-            keystone_token=current_user.keystone_token,
             server_openstack_id=response.openstack_id,
         )
         return response

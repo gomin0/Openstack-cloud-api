@@ -17,6 +17,7 @@ from common.infrastructure.cinder.client import CinderClient
 from common.infrastructure.database import transactional
 from common.infrastructure.volume.repository import VolumeRepository
 from common.util.envs import Envs, get_envs
+from common.util.system_token_manager import get_system_keystone_token
 
 envs: Envs = get_envs()
 logger: Logger = logging.getLogger(__name__)
@@ -115,7 +116,6 @@ class VolumeService:
     async def sync_creating_volume_until_available(
         self,
         session: AsyncSession,
-        keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
     ) -> None:
@@ -131,7 +131,7 @@ class VolumeService:
         """
         for _ in range(self.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION):
             status: VolumeStatus = await self.cinder_client.get_volume_status(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id
             )
@@ -207,7 +207,6 @@ class VolumeService:
         )
 
         await self._wait_for_volume_resize_completion(
-            keystone_token=keystone_token,
             project_openstack_id=current_project_openstack_id,
             volume_openstack_id=volume.openstack_id,
             target_size=new_size,
@@ -242,7 +241,7 @@ class VolumeService:
         # (OpenStack) Check volume is deleted
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
             is_volume_deleted: bool = not await self.cinder_client.exists_volume(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=current_project_openstack_id,
                 volume_openstack_id=volume.openstack_id
             )
@@ -264,7 +263,6 @@ class VolumeService:
     async def wait_volume_until_deleted_and_finalize(
         self,
         session: AsyncSession,
-        keystone_token: str,
         volume_id: int,
         project_openstack_id: str,
     ) -> None:
@@ -274,7 +272,7 @@ class VolumeService:
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
             is_volume_deleted: bool = not await self.cinder_client.exists_volume(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume.openstack_id
             )
@@ -333,7 +331,6 @@ class VolumeService:
 
     async def _wait_for_volume_resize_completion(
         self,
-        keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
         target_size: int,
@@ -342,7 +339,7 @@ class VolumeService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING)
 
             vol: OsVolumeDto = await self.cinder_client.get_volume(
-                keystone_token=keystone_token,
+                keystone_token=get_system_keystone_token(),
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id,
             )

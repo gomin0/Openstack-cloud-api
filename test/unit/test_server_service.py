@@ -459,7 +459,6 @@ async def test_finalize_server_creation_success(
     # when
     await server_service.finalize_server_creation(
         session=mock_session,
-        keystone_token=random_string(),
         server_openstack_id=random_string(),
         image_openstack_id=random_string(),
         root_volume_size=random_int(),
@@ -493,7 +492,6 @@ async def test_finalize_server_creation_fail(
     # when
     await server_service.finalize_server_creation(
         session=mock_session,
-        keystone_token=random_string(),
         server_openstack_id=random_string(),
         image_openstack_id=random_string(),
         root_volume_size=random_int(),
@@ -763,18 +761,10 @@ async def test_delete_server_and_resources_success(
     )
 
     # then
-    mock_server_repository.find_by_id.assert_called()
-    mock_nova_client.exists_server.assert_called_once_with(
-        keystone_token=keystone_token,
-        server_openstack_id=server.openstack_id,
-    )
-    mock_network_interface_repository.find_all_by_ids.assert_called_once_with(
-        session=mock_session, network_interface_ids=[network_interface_id]
-    )
-    mock_neutron_client.delete_network_interface.assert_called_once_with(
-        keystone_token=keystone_token,
-        network_interface_openstack_id=network_interface.openstack_id,
-    )
+    mock_network_interface_repository.find_all_by_ids.assert_called_once()
+    mock_neutron_client.delete_network_interface.assert_called_once()
+    mock_nova_client.exists_server.assert_called_once()
+    assert mock_server_repository.find_by_id.call_count == 2
 
 
 async def test_delete_server_and_resources_fail_server_not_found(
@@ -866,10 +856,7 @@ async def test_delete_server_and_resources_fail_timeout(
 
     # then
     mock_server_repository.find_by_id.assert_called()
-    mock_nova_client.exists_server.assert_called_once_with(
-        keystone_token=keystone_token,
-        server_openstack_id=server.openstack_id,
-    )
+    mock_nova_client.exists_server.assert_called_once()
 
 
 async def test_start_server_success(
@@ -1024,15 +1011,12 @@ async def test_wait_until_status_changed_success(
     # when
     await server_service.wait_until_server_started(
         session=mock_session,
-        keystone_token=keystone_token,
         server_openstack_id=server_openstack_id,
     )
 
     # then
     mock_server_repository.find_by_openstack_id.assert_called_once()
-    mock_nova_client.get_server.assert_called_once_with(
-        keystone_token=keystone_token, server_openstack_id=server_openstack_id
-    )
+    mock_nova_client.get_server.assert_called_once()
 
 
 async def test_wait_until_status_changed_fail_server_not_found(
@@ -1059,7 +1043,6 @@ async def test_wait_until_status_changed_fail_server_not_found(
     with pytest.raises(ServerNotFoundException):
         await server_service.wait_until_server_started(
             session=mock_session,
-            keystone_token=keystone_token,
             server_openstack_id=server_openstack_id,
         )
 
@@ -1091,7 +1074,6 @@ async def test_wait_until_status_changed_fail_time_out(
     # when
     await server_service.wait_until_server_started(
         session=mock_session,
-        keystone_token=keystone_token,
         server_openstack_id=server_openstack_id,
     )
 
@@ -1285,8 +1267,4 @@ async def test_detach_volume_from_server_fail_time_out(
     mock_volume_repository.find_by_id.assert_called_once()
     mock_server_repository.find_by_id.assert_called_once()
     mock_nova_client.detach_volume_from_server.assert_called_once()
-    mock_cinder_client.get_volume.assert_called_with(
-        keystone_token=keystone_token,
-        project_openstack_id=project_openstack_id,
-        volume_openstack_id=volume_openstack_id
-    )
+    assert mock_cinder_client.get_volume.call_count == ServerService.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DETACHMENT

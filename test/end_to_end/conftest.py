@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -10,7 +9,6 @@ from testcontainers.mysql import MySqlContainer
 
 from api_server.main import app
 from common.domain.entity import BaseEntity
-from common.domain.keystone.model import KeystoneToken
 from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 
@@ -72,12 +70,11 @@ async def app_test(mocker, async_session_maker, mock_async_client):
     app.dependency_overrides[get_db_session] = override_get_db_session
     app.dependency_overrides[get_async_client] = lambda: mock_async_client
 
-    system_keystone_token: KeystoneToken = KeystoneToken(
-        token="keystone-token",
-        expires_at=datetime.now() + timedelta(days=1),
-    )
+    system_keystone_token: str = "keystone-token"
     mocker.patch("common.application.user.service.get_system_keystone_token", return_value=system_keystone_token)
     mocker.patch("common.application.project.service.get_system_keystone_token", return_value=system_keystone_token)
+    mocker.patch("common.application.server.service.get_system_keystone_token", return_value=system_keystone_token)
+    mocker.patch("common.application.volume.service.get_system_keystone_token", return_value=system_keystone_token)
 
     mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
     mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
