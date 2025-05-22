@@ -180,7 +180,6 @@ async def test_sync_creating_volume_until_available_success(
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
         client=mock_async_client,
-        keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
     )
@@ -207,7 +206,6 @@ async def test_sync_creating_volume_until_available_fail_when_error_occurred_fro
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
         client=mock_async_client,
-        keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
     )
@@ -234,7 +232,6 @@ async def test_sync_creating_volume_until_available_fail_when_updated_unexpected
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
         client=mock_async_client,
-        keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
     )
@@ -260,7 +257,6 @@ async def test_sync_creating_volume_until_available_fail_timeout(
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
         client=mock_async_client,
-        keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
     )

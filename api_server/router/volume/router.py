@@ -97,7 +97,6 @@ async def create_volume(
     run_background_task(
         background_tasks,
         volume_service.sync_creating_volume_until_available,
-        keystone_token=request_user.keystone_token,
         project_openstack_id=request_user.project_openstack_id,
         volume_openstack_id=volume.openstack_id,
     )
