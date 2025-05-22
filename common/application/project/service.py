@@ -9,7 +9,6 @@ from common.domain.enum import SortOrder
 from common.domain.project.entity import Project, ProjectUser
 from common.domain.project.enum import ProjectSortOption
 from common.domain.user.entity import User
-from common.exception.openstack_exception import OpenStackException
 from common.exception.project_exception import ProjectNotFoundException, UserAlreadyInProjectException, \
     ProjectAccessDeniedException, ProjectNameDuplicatedException, UserNotInProjectException
 from common.exception.user_exception import UserNotFoundException
@@ -125,28 +124,21 @@ class ProjectService:
         )
 
         cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
-        try:
-            project_openstack_id: str = project.openstack_id
-            await self.keystone_client.update_project(
+        project_openstack_id: str = project.openstack_id
+        await self.keystone_client.update_project(
+            client=client,
+            project_openstack_id=project_openstack_id,
+            name=new_name,
+            keystone_token=cloud_admin_keystone_token
+        )
+        compensating_tx.add_task(
+            lambda: self.keystone_client.update_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
-                name=new_name,
+                name=old_name,
                 keystone_token=cloud_admin_keystone_token
             )
-            compensating_tx.add_task(
-                lambda: self.keystone_client.update_project(
-                    client=client,
-                    project_openstack_id=project_openstack_id,
-                    name=old_name,
-                    keystone_token=cloud_admin_keystone_token
-                )
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 403:
-                raise ProjectAccessDeniedException() from ex
-            if ex.openstack_status_code == 409:
-                raise ProjectNameDuplicatedException() from ex
-            raise ex
+        )
 
         return ProjectResponse.from_entity(project)
 
@@ -197,29 +189,24 @@ class ProjectService:
         )
 
         cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
-        try:
-            project_openstack_id: str = project.openstack_id
-            user_openstack_id: str = user.openstack_id
-            await self.keystone_client.assign_role_to_user_on_project(
+        project_openstack_id: str = project.openstack_id
+        user_openstack_id: str = user.openstack_id
+        await self.keystone_client.assign_role_to_user_on_project(
+            client=client,
+            project_openstack_id=project_openstack_id,
+            user_openstack_id=user_openstack_id,
+            role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+            keystone_token=cloud_admin_keystone_token
+        )
+        compensating_tx.add_task(
+            lambda: self.keystone_client.unassign_role_from_user_on_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
                 keystone_token=cloud_admin_keystone_token
             )
-            compensating_tx.add_task(
-                lambda: self.keystone_client.unassign_role_from_user_on_project(
-                    client=client,
-                    project_openstack_id=project_openstack_id,
-                    user_openstack_id=user_openstack_id,
-                    role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                    keystone_token=cloud_admin_keystone_token
-                )
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 403:
-                raise ProjectAccessDeniedException() from ex
-            raise ex
+        )
 
     @transactional()
     async def unassign_user_from_project(
@@ -266,29 +253,24 @@ class ProjectService:
         )
 
         cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
-        try:
-            project_openstack_id: str = project.openstack_id
-            user_openstack_id: str = user.openstack_id
-            await self.keystone_client.unassign_role_from_user_on_project(
+        project_openstack_id: str = project.openstack_id
+        user_openstack_id: str = user.openstack_id
+        await self.keystone_client.unassign_role_from_user_on_project(
+            client=client,
+            project_openstack_id=project_openstack_id,
+            user_openstack_id=user_openstack_id,
+            role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
+            keystone_token=cloud_admin_keystone_token
+        )
+        compensating_tx.add_task(
+            lambda: self.keystone_client.assign_role_to_user_on_project(
                 client=client,
                 project_openstack_id=project_openstack_id,
                 user_openstack_id=user_openstack_id,
                 role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
                 keystone_token=cloud_admin_keystone_token
             )
-            compensating_tx.add_task(
-                lambda: self.keystone_client.assign_role_to_user_on_project(
-                    client=client,
-                    project_openstack_id=project_openstack_id,
-                    user_openstack_id=user_openstack_id,
-                    role_openstack_id=envs.DEFAULT_ROLE_OPENSTACK_ID,
-                    keystone_token=cloud_admin_keystone_token
-                )
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 403:
-                raise ProjectAccessDeniedException() from ex
-            raise ex
+        )
 
     async def _get_cloud_admin_keystone_token(self, client: AsyncClient) -> str:
         keystone_token: str

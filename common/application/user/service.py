@@ -9,7 +9,6 @@ from common.application.user.response import UserDetailResponse, UserResponse
 from common.domain.enum import SortOrder
 from common.domain.user.entity import User
 from common.domain.user.enum import UserSortOption
-from common.exception.openstack_exception import OpenStackException
 from common.exception.user_exception import (
     UserNotFoundException,
     UserAccountIdDuplicateException,
@@ -94,24 +93,19 @@ class UserService:
 
         # Create user in OpenStack
         cloud_admin_keystone_token: str = await self._get_cloud_admin_keystone_token(client=client)
-        try:
-            user_openstack_id: str = await self.keystone_client.create_user(
+        user_openstack_id: str = await self.keystone_client.create_user(
+            client=client,
+            domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
+            keystone_token=cloud_admin_keystone_token,
+            password=password,
+        )
+        compensating_tx.add_task(
+            lambda: self.keystone_client.delete_user(
                 client=client,
-                domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
                 keystone_token=cloud_admin_keystone_token,
-                password=password,
+                user_openstack_id=user_openstack_id,
             )
-            compensating_tx.add_task(
-                lambda: self.keystone_client.delete_user(
-                    client=client,
-                    keystone_token=cloud_admin_keystone_token,
-                    user_openstack_id=user_openstack_id,
-                )
-            )
-        except OpenStackException as ex:
-            if ex.openstack_status_code == 409:
-                raise UserAccountIdDuplicateException(account_id=account_id) from ex
-            raise ex
+        )
 
         # Create user in DB
         hashed_password: bytes = await asyncio.to_thread(
