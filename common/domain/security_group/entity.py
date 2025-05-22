@@ -26,7 +26,7 @@ class SecurityGroup(SoftDeleteBaseEntity):
         "NetworkInterfaceSecurityGroup",
         lazy="select",
         back_populates="_security_group",
-        cascade="save-update, merge, delete-orphan",
+        cascade="save-update, merge, delete, delete-orphan",
     )
 
     @async_property

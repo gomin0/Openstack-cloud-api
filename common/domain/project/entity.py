@@ -17,7 +17,12 @@ class Project(SoftDeleteBaseEntity):
     version: Mapped[int] = mapped_column("version", Integer, nullable=False, default=0)
 
     _domain: Mapped[Domain] = relationship("Domain", lazy="select")
-    _linked_users: Mapped[list["ProjectUser"]] = relationship("ProjectUser", lazy="select", back_populates="_project")
+    _linked_users: Mapped[list["ProjectUser"]] = relationship(
+        "ProjectUser",
+        lazy="select",
+        back_populates="_project",
+        cascade="save-update, merge, delete, delete-orphan",
+    )
 
     @async_property
     async def domain(self) -> Domain:
