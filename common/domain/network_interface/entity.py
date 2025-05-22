@@ -22,7 +22,7 @@ class NetworkInterface(SoftDeleteBaseEntity):
         "NetworkInterfaceSecurityGroup",
         lazy="select",
         back_populates="_network_interface",
-        cascade="save-update, merge, delete-orphan",
+        cascade="save-update, merge, delete, delete-orphan",
     )
 
     @async_property
