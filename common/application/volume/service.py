@@ -3,7 +3,6 @@ import logging
 from logging import Logger
 
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
@@ -74,7 +73,6 @@ class VolumeService:
     async def create_volume(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         project_openstack_id: str,
@@ -91,7 +89,6 @@ class VolumeService:
             raise VolumeNameDuplicateException()
 
         new_volume_openstack_id: str = await self.cinder_client.create_volume(
-            client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
             volume_type_openstack_id=volume_type_openstack_id,
@@ -118,7 +115,6 @@ class VolumeService:
     async def sync_creating_volume_until_available(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
@@ -135,7 +131,6 @@ class VolumeService:
         """
         for _ in range(self.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION):
             status: VolumeStatus = await self.cinder_client.get_volume_status(
-                client,
                 keystone_token=keystone_token,
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id
@@ -191,7 +186,6 @@ class VolumeService:
     async def update_volume_size(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         current_project_id: int,
         current_project_openstack_id: str,
@@ -206,7 +200,6 @@ class VolumeService:
         )
 
         await self.cinder_client.extend_volume_size(
-            client=client,
             keystone_token=keystone_token,
             project_openstack_id=current_project_openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -214,7 +207,6 @@ class VolumeService:
         )
 
         await self._wait_for_volume_resize_completion(
-            client=client,
             keystone_token=keystone_token,
             project_openstack_id=current_project_openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -229,7 +221,6 @@ class VolumeService:
     async def delete_volume(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         current_project_id: int,
         current_project_openstack_id: str,
         keystone_token: str,
@@ -243,7 +234,6 @@ class VolumeService:
 
         # (OpenStack) delete volume
         await self.cinder_client.delete_volume(
-            client=client,
             keystone_token=keystone_token,
             project_openstack_id=current_project_openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -252,7 +242,6 @@ class VolumeService:
         # (OpenStack) Check volume is deleted
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
             is_volume_deleted: bool = not await self.cinder_client.exists_volume(
-                client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=current_project_openstack_id,
                 volume_openstack_id=volume.openstack_id
@@ -275,7 +264,6 @@ class VolumeService:
     async def wait_volume_until_deleted_and_finalize(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         volume_id: int,
         project_openstack_id: str,
@@ -286,7 +274,6 @@ class VolumeService:
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_DELETION):
             is_volume_deleted: bool = not await self.cinder_client.exists_volume(
-                client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume.openstack_id
@@ -346,7 +333,6 @@ class VolumeService:
 
     async def _wait_for_volume_resize_completion(
         self,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         volume_openstack_id: str,
@@ -356,7 +342,6 @@ class VolumeService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_RESIZING)
 
             vol: OsVolumeDto = await self.cinder_client.get_volume(
-                client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id,

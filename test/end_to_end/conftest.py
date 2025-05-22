@@ -82,6 +82,8 @@ async def app_test(mocker, async_session_maker, mock_async_client):
     mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
     mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
 
+    mocker.patch("common.infrastructure.openstack_client.get_async_client", return_value=mock_async_client)
+
     yield app
 
 

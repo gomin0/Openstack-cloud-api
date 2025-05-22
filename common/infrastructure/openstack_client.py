@@ -4,6 +4,7 @@ from typing import Any
 from httpx import AsyncClient, Response, HTTPStatusError
 
 from common.exception.openstack_exception import OpenStackException
+from common.infrastructure.async_client import get_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -11,13 +12,13 @@ logger = logging.getLogger(__name__)
 class OpenStackClient:
     async def request(
         self,
-        client: AsyncClient,
         method: str,
         url: str,
         json: dict[str, Any] | None = None,
         headers: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> Response:
+        client: AsyncClient = get_async_client()
         headers = headers or {"Content-Type": "application/json"}
         response: Response = await client.request(
             method=method,

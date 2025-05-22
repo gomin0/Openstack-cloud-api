@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Coroutine
 
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.dto import CreateServerCommand
@@ -131,12 +130,10 @@ class ServerService:
 
     async def get_vnc_console(
         self,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
     ) -> str:
         vnc_url: str = await self.nova_client.get_vnc_console(
-            client=client,
             keystone_token=keystone_token,
             server_openstack_id=server_openstack_id
         )
@@ -148,7 +145,6 @@ class ServerService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         command: CreateServerCommand,
     ) -> ServerResponse:
         """
@@ -182,21 +178,18 @@ class ServerService:
             sg.validate_accessible_by(project_id=command.current_project_id)
 
         os_network_interface: OsNetworkInterfaceDto = await self.neutron_client.create_network_interface(
-            client=client,
             keystone_token=command.keystone_token,
             network_openstack_id=command.network_openstack_id,
             security_group_openstack_ids=[sg.openstack_id for sg in security_groups],
         )
         compensating_tx.add_task(
             lambda: self.neutron_client.delete_network_interface(
-                client=client,
                 keystone_token=command.keystone_token,
                 network_interface_openstack_id=os_network_interface.openstack_id
             )
         )
 
         server_openstack_id: str = await self.nova_client.create_server(
-            client=client,
             keystone_token=command.keystone_token,
             flavor_openstack_id=command.flavor_openstack_id,
             image_openstack_id=command.root_volume.image_openstack_id,
@@ -205,7 +198,6 @@ class ServerService:
         )
         compensating_tx.add_task(
             lambda: self.nova_client.delete_server(
-                client=client,
                 keystone_token=command.keystone_token,
                 server_openstack_id=server_openstack_id,
             )
@@ -260,7 +252,6 @@ class ServerService:
     async def detach_volume_from_server(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_openstack_id: str,
         project_id: int,
@@ -271,7 +262,6 @@ class ServerService:
         volume: Volume
         server, volume = await self._initiate_volume_detachment(
             session=session,
-            client=client,
             keystone_token=keystone_token,
             project_id=project_id,
             server_id=server_id,
@@ -279,7 +269,6 @@ class ServerService:
         )
         is_success: bool = await self._wait_until_volume_detachment_and_finalize(
             session=session,
-            client=client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
             volume_openstack_id=volume.openstack_id
@@ -292,7 +281,6 @@ class ServerService:
     async def _initiate_volume_detachment(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         server_id: int,
@@ -305,7 +293,6 @@ class ServerService:
 
         server: Server = await self._get_server_by_id(session=session, id_=server_id)
         await self.nova_client.detach_volume_from_server(
-            client=client,
             keystone_token=keystone_token,
             server_openstack_id=server.openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -317,7 +304,6 @@ class ServerService:
     async def _wait_until_volume_detachment_and_finalize(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         volume_openstack_id: str,
         project_openstack_id: str
@@ -326,7 +312,6 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_DETACHMENT)
 
             os_volume: OsVolumeDto = await self.cinder_client.get_volume(
-                client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=project_openstack_id,
                 volume_openstack_id=volume_openstack_id,
@@ -355,7 +340,6 @@ class ServerService:
     async def start_server(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         server_id: int,
@@ -364,7 +348,7 @@ class ServerService:
         server.validate_access_permission(project_id=project_id)
         server.validate_startable()
         await self.nova_client.start_server(
-            client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
+            keystone_token=keystone_token, server_openstack_id=server.openstack_id
         )
 
         return ServerResponse.from_entity(server)
@@ -373,7 +357,6 @@ class ServerService:
     async def stop_server(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         server_id: int,
@@ -382,7 +365,7 @@ class ServerService:
         server.validate_access_permission(project_id=project_id)
         server.validate_stoppable()
         await self.nova_client.stop_server(
-            client=client, keystone_token=keystone_token, server_openstack_id=server.openstack_id
+            keystone_token=keystone_token, server_openstack_id=server.openstack_id
         )
 
         return ServerResponse.from_entity(server)
@@ -391,7 +374,6 @@ class ServerService:
     async def wait_until_server_started(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
@@ -399,7 +381,6 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
 
             os_server: OsServerDto = await self.nova_client.get_server(
-                client=client,
                 keystone_token=keystone_token,
                 server_openstack_id=server_openstack_id,
             )
@@ -427,7 +408,6 @@ class ServerService:
     async def wait_until_server_stopped(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
     ) -> bool:
@@ -435,7 +415,6 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_STATUS_UPDATE)
 
             os_server: OsServerDto = await self.nova_client.get_server(
-                client=client,
                 keystone_token=keystone_token,
                 server_openstack_id=server_openstack_id,
             )
@@ -462,7 +441,6 @@ class ServerService:
     async def finalize_server_creation(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         server_openstack_id: str,
         image_openstack_id: str,
@@ -480,7 +458,6 @@ class ServerService:
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION)
 
             os_server: OsServerDto = await self.nova_client.get_server(
-                client=client,
                 keystone_token=keystone_token,
                 server_openstack_id=server_openstack_id,
             )
@@ -526,7 +503,6 @@ class ServerService:
     async def attach_volume_to_server(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         current_project_id: int,
         current_project_openstack_id: str,
@@ -537,7 +513,6 @@ class ServerService:
         volume: Volume
         server, volume = await self._initiate_volume_attachment(
             session=session,
-            client=client,
             keystone_token=keystone_token,
             current_project_id=current_project_id,
             server_id=server_id,
@@ -545,7 +520,6 @@ class ServerService:
         )
         is_success: bool = await self._wait_until_volume_attachment_and_finalize(
             session=session,
-            client=client,
             keystone_token=keystone_token,
             current_project_openstack_id=current_project_openstack_id,
             server_openstack_id=server.openstack_id,
@@ -559,7 +533,6 @@ class ServerService:
     async def delete_server(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         server_id: int,
         project_id: int
@@ -574,7 +547,6 @@ class ServerService:
         root_volume_id: int | None = next((volume.id for volume in volumes if volume.is_root_volume), None)
 
         await self.nova_client.delete_server(
-            client=client,
             keystone_token=keystone_token,
             server_openstack_id=server.openstack_id,
         )
@@ -588,21 +560,18 @@ class ServerService:
     async def check_server_until_deleted_and_remove_resources(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
         await self.remove_server_resources(
             session=session,
-            client=client,
             keystone_token=keystone_token,
             server_id=server_id,
             network_interface_ids=network_interface_ids,
         )
         await self.wait_server_until_deleted_and_finalize(
             session=session,
-            client=client,
             keystone_token=keystone_token,
             server_id=server_id,
         )
@@ -611,7 +580,6 @@ class ServerService:
     async def wait_server_until_deleted_and_finalize(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         server_id: int,
     ) -> None:
@@ -619,7 +587,6 @@ class ServerService:
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
             is_server_deleted: bool = not await self.nova_client.exists_server(
-                client=client,
                 keystone_token=keystone_token,
                 server_openstack_id=server.openstack_id,
             )
@@ -638,7 +605,6 @@ class ServerService:
     async def remove_server_resources(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         server_id: int,
         network_interface_ids: list[int],
@@ -658,7 +624,6 @@ class ServerService:
 
         delete_network_interface_tasks: list[Coroutine] = [
             self.neutron_client.delete_network_interface(
-                client=client,
                 keystone_token=keystone_token,
                 network_interface_openstack_id=network_interface.openstack_id
             )
@@ -670,7 +635,6 @@ class ServerService:
     async def _initiate_volume_attachment(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         current_project_id: int,
         server_id: int,
@@ -696,7 +660,6 @@ class ServerService:
         volume.prepare_for_attachment()
 
         await self.nova_client.attach_volume_to_server(
-            client=client,
             keystone_token=keystone_token,
             server_openstack_id=server.openstack_id,
             volume_openstack_id=volume.openstack_id,
@@ -708,7 +671,6 @@ class ServerService:
     async def _wait_until_volume_attachment_and_finalize(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         current_project_openstack_id: str,
         server_openstack_id: str,
@@ -726,7 +688,6 @@ class ServerService:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT):
             await asyncio.sleep(self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT)
             os_volume: OsVolumeDto = await self.cinder_client.get_volume(
-                client=client,
                 keystone_token=keystone_token,
                 project_openstack_id=current_project_openstack_id,
                 volume_openstack_id=volume_openstack_id,

@@ -93,7 +93,6 @@ async def test_get_volume_detail_fail_requester_do_not_have_access_permission(mo
 
 async def test_create_volume_success(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -118,7 +117,6 @@ async def test_create_volume_success(
     # when
     actual_result = await volume_service.create_volume(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         project_id=random_int(),
         project_openstack_id=random_string(),
@@ -138,7 +136,6 @@ async def test_create_volume_success(
 
 async def test_create_volume_fail_when_name_already_exists(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -150,7 +147,6 @@ async def test_create_volume_fail_when_name_already_exists(
     with pytest.raises(VolumeNameDuplicateException):
         await volume_service.create_volume(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             project_id=random_int(),
             project_openstack_id=random_string(),
@@ -165,7 +161,6 @@ async def test_create_volume_fail_when_name_already_exists(
 
 async def test_sync_creating_volume_until_available_success(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -179,7 +174,6 @@ async def test_sync_creating_volume_until_available_success(
     # when
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
@@ -192,7 +186,6 @@ async def test_sync_creating_volume_until_available_success(
 
 async def test_sync_creating_volume_until_available_fail_when_error_occurred_from_openstack(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -206,7 +199,6 @@ async def test_sync_creating_volume_until_available_fail_when_error_occurred_fro
     # when
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
@@ -219,7 +211,6 @@ async def test_sync_creating_volume_until_available_fail_when_error_occurred_fro
 
 async def test_sync_creating_volume_until_available_fail_when_updated_unexpected_status(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -233,7 +224,6 @@ async def test_sync_creating_volume_until_available_fail_when_updated_unexpected
     # when
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
@@ -246,7 +236,6 @@ async def test_sync_creating_volume_until_available_fail_when_updated_unexpected
 
 async def test_sync_creating_volume_until_available_fail_timeout(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -259,7 +248,6 @@ async def test_sync_creating_volume_until_available_fail_timeout(
     # when
     await volume_service.sync_creating_volume_until_available(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         project_openstack_id=random_string(),
         volume_openstack_id=random_string(),
@@ -367,7 +355,6 @@ async def test_update_volume_info_fail_when_new_name_is_already_exists(
 
 async def test_update_volume_size_success(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -388,7 +375,6 @@ async def test_update_volume_size_success(
     # when
     result: Volume = await volume_service.update_volume_size(
         session=mock_session,
-        client=mock_async_client,
         keystone_token=random_string(),
         current_project_id=volume.project_id,
         current_project_openstack_id=random_string(),
@@ -407,7 +393,6 @@ async def test_update_volume_size_success(
 
 async def test_update_volume_size_fail_volume_not_found(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -420,7 +405,6 @@ async def test_update_volume_size_fail_volume_not_found(
     with pytest.raises(VolumeNotFoundException):
         await volume_service.update_volume_size(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=random_int(),
             current_project_openstack_id=random_string(),
@@ -432,7 +416,6 @@ async def test_update_volume_size_fail_volume_not_found(
 
 async def test_update_volume_size_fail_update_permission_denied(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -446,7 +429,6 @@ async def test_update_volume_size_fail_update_permission_denied(
     with pytest.raises(VolumeUpdatePermissionDeniedException):
         await volume_service.update_volume_size(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=2,
             current_project_openstack_id=random_string(),
@@ -458,7 +440,6 @@ async def test_update_volume_size_fail_update_permission_denied(
 
 async def test_update_volume_size_fail_when_volume_status_is_not_available(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -472,7 +453,6 @@ async def test_update_volume_size_fail_when_volume_status_is_not_available(
     with pytest.raises(VolumeStatusInvalidForResizingException):
         await volume_service.update_volume_size(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=volume.project_id,
             current_project_openstack_id=random_string(),
@@ -484,7 +464,6 @@ async def test_update_volume_size_fail_when_volume_status_is_not_available(
 
 async def test_update_volume_size_fail_when_given_invalid_size(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -498,7 +477,6 @@ async def test_update_volume_size_fail_when_given_invalid_size(
     with pytest.raises(VolumeResizeNotAllowedException):
         await volume_service.update_volume_size(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=volume.project_id,
             current_project_openstack_id=random_string(),
@@ -510,7 +488,6 @@ async def test_update_volume_size_fail_when_given_invalid_size(
 
 async def test_update_volume_size_fail_resize_from_openstack(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -535,7 +512,6 @@ async def test_update_volume_size_fail_resize_from_openstack(
     with pytest.raises(VolumeResizingFailedException):
         await volume_service.update_volume_size(
             session=mock_session,
-            client=mock_async_client,
             keystone_token=random_string(),
             current_project_id=volume.project_id,
             current_project_openstack_id=random_string(),
@@ -549,7 +525,6 @@ async def test_update_volume_size_fail_resize_from_openstack(
 
 async def test_delete_volume_success(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -564,7 +539,6 @@ async def test_delete_volume_success(
     # when
     await volume_service.delete_volume(
         session=mock_session,
-        client=mock_async_client,
         current_project_id=project_id,
         current_project_openstack_id=random_string(),
         keystone_token=random_string(),
@@ -580,7 +554,6 @@ async def test_delete_volume_success(
 
 async def test_delete_volume_fail_volume_not_found(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     volume_service,
 ):
@@ -591,7 +564,6 @@ async def test_delete_volume_fail_volume_not_found(
     with pytest.raises(VolumeNotFoundException):
         await volume_service.delete_volume(
             session=mock_session,
-            client=mock_async_client,
             current_project_id=random_int(),
             current_project_openstack_id=random_string(),
             keystone_token=random_string(),
@@ -602,7 +574,6 @@ async def test_delete_volume_fail_volume_not_found(
 
 async def test_delete_volume_fail_when_has_not_permission_to_delete_volume(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     volume_service,
 ):
@@ -615,7 +586,6 @@ async def test_delete_volume_fail_when_has_not_permission_to_delete_volume(
     with pytest.raises(VolumeDeletePermissionDeniedException):
         await volume_service.delete_volume(
             session=mock_session,
-            client=mock_async_client,
             current_project_id=requesting_project_id,
             current_project_openstack_id=random_string(),
             keystone_token=random_string(),
@@ -626,7 +596,6 @@ async def test_delete_volume_fail_when_has_not_permission_to_delete_volume(
 
 async def test_delete_volume_fail_volume_is_linked_to_server(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     volume_service,
 ):
@@ -639,7 +608,6 @@ async def test_delete_volume_fail_volume_is_linked_to_server(
     with pytest.raises(AttachedVolumeDeletionException):
         await volume_service.delete_volume(
             session=mock_session,
-            client=mock_async_client,
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
             keystone_token=random_string(),
@@ -650,7 +618,6 @@ async def test_delete_volume_fail_volume_is_linked_to_server(
 
 async def test_delete_volume_fail_volume_status_is_not_deletable(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     volume_service,
 ):
@@ -663,7 +630,6 @@ async def test_delete_volume_fail_volume_status_is_not_deletable(
     with pytest.raises(VolumeStatusInvalidForDeletionException):
         await volume_service.delete_volume(
             session=mock_session,
-            client=mock_async_client,
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
             keystone_token=random_string(),
@@ -674,7 +640,6 @@ async def test_delete_volume_fail_volume_status_is_not_deletable(
 
 async def test_delete_volume_fail_volume_is_already_deleted(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     volume_service,
 ):
@@ -691,7 +656,6 @@ async def test_delete_volume_fail_volume_is_already_deleted(
     with pytest.raises(VolumeAlreadyDeletedException):
         await volume_service.delete_volume(
             session=mock_session,
-            client=mock_async_client,
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
             keystone_token=random_string(),
@@ -702,7 +666,6 @@ async def test_delete_volume_fail_volume_is_already_deleted(
 
 async def test_delete_volume_fail_deletion_not_completed(
     mock_session,
-    mock_async_client,
     mock_volume_repository,
     mock_cinder_client,
     volume_service,
@@ -727,7 +690,6 @@ async def test_delete_volume_fail_deletion_not_completed(
     with pytest.raises(VolumeDeletionFailedException):
         await volume_service.delete_volume(
             session=mock_session,
-            client=mock_async_client,
             current_project_id=project_id,
             current_project_openstack_id=random_string(),
             keystone_token=random_string(),

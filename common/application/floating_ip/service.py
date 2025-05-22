@@ -1,5 +1,4 @@
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, \
@@ -73,13 +72,11 @@ class FloatingIpService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         project_id: int,
         keystone_token: str,
         floating_network_id: str,
     ) -> FloatingIpResponse:
         floating_ip_info: FloatingIpDTO = await self.neutron_client.create_floating_ip(
-            client=client,
             floating_network_id=floating_network_id,
             keystone_token=keystone_token,
         )
@@ -88,7 +85,6 @@ class FloatingIpService:
 
         compensating_tx.add_task(
             lambda: self.neutron_client.delete_floating_ip(
-                client=client,
                 floating_ip_openstack_id=floating_ip_openstack_id,
                 keystone_token=keystone_token,
             )
@@ -107,7 +103,6 @@ class FloatingIpService:
     async def delete_floating_ip(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         project_id: int,
         keystone_token: str,
         floating_ip_id: int
@@ -125,7 +120,6 @@ class FloatingIpService:
         floating_ip.delete()
 
         await self.neutron_client.delete_floating_ip(
-            client=client,
             keystone_token=keystone_token,
             floating_ip_openstack_id=floating_ip.openstack_id
         )
