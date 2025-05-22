@@ -4,7 +4,6 @@ from collections import defaultdict
 
 import backoff
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -43,7 +42,6 @@ class SecurityGroupService:
     async def find_security_groups_details(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         project_id: int,
         project_openstack_id: str,
         keystone_token: str,
@@ -59,7 +57,6 @@ class SecurityGroupService:
             with_deleted=with_deleted,
         )
         rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
-            client=client,
             keystone_token=keystone_token,
             project_openstack_id=project_openstack_id,
         )
@@ -102,7 +99,6 @@ class SecurityGroupService:
     async def get_security_group_detail(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         project_id: int,
         keystone_token: str,
         security_group_id: int,
@@ -121,7 +117,6 @@ class SecurityGroupService:
             raise SecurityGroupAccessDeniedException()
 
         rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
-            client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,
         )
@@ -132,7 +127,6 @@ class SecurityGroupService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         name: str,
@@ -148,14 +142,12 @@ class SecurityGroupService:
 
         # (OpenStack) 보안 그룹 생성
         openstack_security_group: SecurityGroupDTO = await self.neutron_client.create_security_group(
-            client=client,
             keystone_token=keystone_token,
             name=name,
             description=description
         )
         compensating_tx.add_task(
             lambda: self.neutron_client.delete_security_group(
-                client=client,
                 keystone_token=keystone_token,
                 security_group_openstack_id=openstack_security_group.openstack_id
             )
@@ -189,7 +181,6 @@ class SecurityGroupService:
         ]
         if new_rules:
             security_group_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
-                client=client,
                 keystone_token=keystone_token,
                 security_group_rules=new_rules,
                 security_group_openstack_id=security_group.openstack_id,
@@ -204,7 +195,6 @@ class SecurityGroupService:
         self,
         compensating_tx: CompensationManager,
         session: AsyncSession,
-        client: AsyncClient,
         keystone_token: str,
         project_id: int,
         security_group_id: int,
@@ -230,7 +220,6 @@ class SecurityGroupService:
 
         await self._update_security_group_info(
             compensating_tx=compensating_tx,
-            client=client,
             security_group=security_group,
             keystone_token=keystone_token,
             name=name,
@@ -239,7 +228,6 @@ class SecurityGroupService:
 
         security_group_rules: list[SecurityGroupRuleDTO] = await self._update_security_group_rules(
             compensating_tx=compensating_tx,
-            client=client,
             keystone_token=keystone_token,
             security_group=security_group,
             rules=rules,
@@ -251,7 +239,6 @@ class SecurityGroupService:
     async def delete_security_group(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         project_id: int,
         keystone_token: str,
         security_group_id: int,
@@ -274,7 +261,6 @@ class SecurityGroupService:
         security_group.delete()
 
         await self.neutron_client.delete_security_group(
-            client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id
         )
@@ -282,13 +268,11 @@ class SecurityGroupService:
     async def _create_security_group_rules(
         self,
         compensating_tx: CompensationManager,
-        client: AsyncClient,
         security_group_openstack_id: str,
         keystone_token: str,
         rules_to_add: list[CreateSecurityGroupRuleDTO],
     ) -> list[SecurityGroupRuleDTO]:
         created_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.create_security_group_rules(
-            client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group_openstack_id,
             security_group_rules=rules_to_add
@@ -296,7 +280,6 @@ class SecurityGroupService:
         for rule in created_rules:
             compensating_tx.add_task(
                 lambda: self.neutron_client.delete_security_group_rule(
-                    client=client,
                     keystone_token=keystone_token,
                     security_group_rule_openstack_id=rule.openstack_id
                 )
@@ -306,7 +289,6 @@ class SecurityGroupService:
     async def _update_security_group_info(
         self,
         compensating_tx: CompensationManager,
-        client: AsyncClient,
         keystone_token: str,
         security_group: SecurityGroup,
         name: str,
@@ -318,14 +300,12 @@ class SecurityGroupService:
         security_group.update_info(name=name, description=description)
         if name != existing_name:
             await self.neutron_client.update_security_group(
-                client=client,
                 keystone_token=keystone_token,
                 security_group_openstack_id=security_group_openstack_id,
                 name=name
             )
             compensating_tx.add_task(
                 lambda: self.neutron_client.update_security_group(
-                    client=client,
                     keystone_token=keystone_token,
                     security_group_openstack_id=security_group_openstack_id,
                     name=existing_name
@@ -335,13 +315,11 @@ class SecurityGroupService:
     async def _update_security_group_rules(
         self,
         compensating_tx: CompensationManager,
-        client: AsyncClient,
         keystone_token: str,
         security_group: SecurityGroup,
         rules: list[UpdateSecurityGroupRuleDTO]
     ) -> list[SecurityGroupRuleDTO]:
         existing_rules: list[SecurityGroupRuleDTO] = await self.neutron_client.find_security_group_rules(
-            client=client,
             keystone_token=keystone_token,
             security_group_openstack_id=security_group.openstack_id,
         )
@@ -367,7 +345,6 @@ class SecurityGroupService:
 
         if rules_to_delete:
             await self._delete_security_group_rules(
-                client=client,
                 keystone_token=keystone_token,
                 rules_to_delete=rules_to_delete,
                 security_group_openstack_id=security_group.openstack_id,
@@ -378,7 +355,6 @@ class SecurityGroupService:
         if rules_to_add:
             new_rules = [rule.to_create_dto() for rule in rules_to_add]
             created_rules = await self._create_security_group_rules(
-                client=client,
                 keystone_token=keystone_token,
                 rules_to_add=new_rules,
                 security_group_openstack_id=security_group.openstack_id,
@@ -390,7 +366,6 @@ class SecurityGroupService:
     async def _delete_security_group_rules(
         self,
         compensating_tx: CompensationManager,
-        client: AsyncClient,
         security_group_openstack_id: str,
         keystone_token: str,
         rules_to_delete: list[SecurityGroupRuleDTO],
@@ -398,13 +373,11 @@ class SecurityGroupService:
         async def delete_rule(rule: SecurityGroupRuleDTO) -> OpenStackException | None:
             try:
                 await self.neutron_client.delete_security_group_rule(
-                    client=client,
                     keystone_token=keystone_token,
                     security_group_rule_openstack_id=rule.openstack_id
                 )
                 compensating_tx.add_task(
                     lambda: self.neutron_client.create_security_group_rules(
-                        client=client,
                         keystone_token=keystone_token,
                         security_group_openstack_id=security_group_openstack_id,
                         security_group_rules=[CreateSecurityGroupRuleDTO(

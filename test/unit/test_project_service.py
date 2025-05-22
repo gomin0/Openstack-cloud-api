@@ -122,7 +122,6 @@ async def test_get_project_fail_not_found(mock_session, mock_project_repository,
 
 async def test_update_project(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -154,7 +153,6 @@ async def test_update_project(
     result = await project_service.update_project(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         user_id=user_id,
         project_id=project_id,
         new_name=new_name
@@ -171,7 +169,6 @@ async def test_update_project(
 
 async def test_update_project_fail_not_found(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_keystone_client,
     project_service,
@@ -187,7 +184,6 @@ async def test_update_project_fail_not_found(
         await project_service.update_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             user_id=1,
             project_id=project_id,
             new_name=new_name
@@ -198,7 +194,6 @@ async def test_update_project_fail_not_found(
 
 async def test_update_project_fail_duplicate_name(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     mock_keystone_client,
@@ -219,7 +214,6 @@ async def test_update_project_fail_duplicate_name(
         await project_service.update_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             user_id=123,
             project_id=project_id,
             new_name=new_name
@@ -242,7 +236,6 @@ async def test_update_project_fail_duplicate_name(
 
 async def test_update_project_fail_access_denied(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -263,7 +256,6 @@ async def test_update_project_fail_access_denied(
         await project_service.update_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             project_id=project_id,
             new_name=new_name,
             user_id=user_id
@@ -282,7 +274,6 @@ async def test_update_project_fail_access_denied(
 
 async def test_assign_user_success(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -306,7 +297,6 @@ async def test_assign_user_success(
     await project_service.assign_user_on_project(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         request_user_id=user1_id,
         project_id=project_id,
         user_id=user2_id
@@ -333,7 +323,6 @@ async def test_assign_user_success(
 
 async def test_assign_user_fail_project_not_found(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     project_service,
     mock_compensation_manager
@@ -346,7 +335,6 @@ async def test_assign_user_fail_project_not_found(
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=1,
             user_id=1
@@ -360,7 +348,6 @@ async def test_assign_user_fail_project_not_found(
 
 async def test_assign_user_fail_access_denied(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -377,7 +364,6 @@ async def test_assign_user_fail_access_denied(
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=project_id,
             user_id=1
@@ -392,7 +378,6 @@ async def test_assign_user_fail_access_denied(
 
 async def test_assign_user_fail_user_not_found(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -411,7 +396,6 @@ async def test_assign_user_fail_user_not_found(
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=project_id,
             user_id=1
@@ -425,7 +409,6 @@ async def test_assign_user_fail_user_not_found(
 
 async def test_assign_user_fail_already_assigned(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -449,7 +432,6 @@ async def test_assign_user_fail_already_assigned(
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=user1_id,
             project_id=project_id,
             user_id=user2_id
@@ -464,7 +446,6 @@ async def test_assign_user_fail_already_assigned(
 
 async def test_unassign_user_success(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -488,7 +469,6 @@ async def test_unassign_user_success(
     await project_service.unassign_user_from_project(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         request_user_id=user_id,
         project_id=project_id,
         user_id=user_id
@@ -503,7 +483,6 @@ async def test_unassign_user_success(
 
 async def test_unassign_user_fail_project_not_found(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     project_service,
     mock_compensation_manager
@@ -516,7 +495,6 @@ async def test_unassign_user_fail_project_not_found(
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=1,
             user_id=1
@@ -527,7 +505,6 @@ async def test_unassign_user_fail_project_not_found(
 
 async def test_unassign_user_fail_access_denied(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -544,7 +521,6 @@ async def test_unassign_user_fail_access_denied(
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=project_id,
             user_id=1
@@ -559,7 +535,6 @@ async def test_unassign_user_fail_access_denied(
 
 async def test_unassign_user_fail_user_not_found(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     mock_user_repository,
@@ -578,7 +553,6 @@ async def test_unassign_user_fail_user_not_found(
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=project_id,
             user_id=1
@@ -588,7 +562,6 @@ async def test_unassign_user_fail_user_not_found(
 
 async def test_unassign_user_fail_user_not_in_project(
     mock_session,
-    mock_async_client,
     mock_project_repository,
     mock_project_user_repository,
     mock_user_repository,
@@ -611,7 +584,6 @@ async def test_unassign_user_fail_user_not_in_project(
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             request_user_id=1,
             project_id=project_id,
             user_id=user_id

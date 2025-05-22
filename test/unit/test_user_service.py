@@ -97,7 +97,6 @@ async def test_create_user_success(
     mock_user_repository,
     mock_keystone_client,
     mock_session,
-    mock_async_client,
     mock_compensation_manager,
 ):
     # given
@@ -110,7 +109,6 @@ async def test_create_user_success(
     actual_result: User = await user_service.create_user(
         compensating_tx=mock_compensation_manager,
         session=mock_session,
-        client=mock_async_client,
         account_id=random_string(),
         name=random_string(),
         password=random_string(),
@@ -127,7 +125,6 @@ async def test_create_user_fail_duplicate_account_id(
     user_service,
     mock_user_repository,
     mock_session,
-    mock_async_client,
     mock_compensation_manager,
 ):
     # given
@@ -138,7 +135,6 @@ async def test_create_user_fail_duplicate_account_id(
         await user_service.create_user(
             compensating_tx=mock_compensation_manager,
             session=mock_session,
-            client=mock_async_client,
             account_id=random_string(),
             name=random_string(),
             password=random_string(),

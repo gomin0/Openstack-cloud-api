@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Query, Path, Depends, Body
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.project.request import ProjectUpdateRequest
@@ -7,7 +6,6 @@ from common.application.project.response import ProjectDetailsResponse, ProjectR
 from common.application.project.service import ProjectService
 from common.domain.enum import SortOrder
 from common.domain.project.enum import ProjectSortOption
-from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.compensating_transaction import compensating_transaction
@@ -79,13 +77,11 @@ async def update_project(
     current_user: CurrentUser = Depends(get_current_user),
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client)
 ) -> ProjectResponse:
     async with compensating_transaction() as compensating_tx:
         return await project_service.update_project(
             compensating_tx=compensating_tx,
             session=session,
-            client=client,
             user_id=current_user.user_id,
             project_id=project_id,
             new_name=request.name
@@ -106,14 +102,12 @@ async def assign_user_on_project(
     current_user: CurrentUser = Depends(get_current_user),
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client)
 ) -> None:
     async with compensating_transaction() as compensating_tx:
         await project_service.assign_user_on_project(
             compensating_tx=compensating_tx,
             session=session,
             request_user_id=current_user.user_id,
-            client=client,
             project_id=project_id,
             user_id=user_id,
         )
@@ -135,14 +129,12 @@ async def unassign_user_from_project(
     current_user: CurrentUser = Depends(get_current_user),
     project_service: ProjectService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client)
 ) -> None:
     async with compensating_transaction() as compensating_tx:
         await project_service.unassign_user_from_project(
             compensating_tx=compensating_tx,
             session=session,
             request_user_id=current_user.user_id,
-            client=client,
             project_id=project_id,
             user_id=user_id,
         )

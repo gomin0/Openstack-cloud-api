@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
@@ -8,7 +7,6 @@ from common.application.volume.response import VolumeDetailsResponse, VolumeResp
 from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.volume.enum import VolumeSortOption
-from common.infrastructure.async_client import get_async_client
 from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.background_task_runner import run_background_task
@@ -81,10 +79,9 @@ async def create_volume(
     request_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
 ) -> VolumeResponse:
     volume: VolumeResponse = await volume_service.create_volume(
-        session, client,
+        session=session,
         keystone_token=request_user.keystone_token,
         project_id=request_user.project_id,
         project_openstack_id=request_user.project_openstack_id,
@@ -155,11 +152,9 @@ async def update_volume_size(
     current_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
 ) -> VolumeResponse:
     return await volume_service.update_volume_size(
         session=session,
-        client=client,
         keystone_token=current_user.keystone_token,
         current_project_id=current_user.project_id,
         current_project_openstack_id=current_user.project_openstack_id,
@@ -185,11 +180,9 @@ async def delete_volume(
     current_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
     session: AsyncSession = Depends(get_db_session),
-    client: AsyncClient = Depends(get_async_client),
 ) -> None:
     await volume_service.delete_volume(
         session=session,
-        client=client,
         current_project_id=current_user.project_id,
         current_project_openstack_id=current_user.project_openstack_id,
         keystone_token=current_user.keystone_token,

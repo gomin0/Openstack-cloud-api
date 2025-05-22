@@ -2,7 +2,6 @@ import asyncio
 
 import bcrypt
 from fastapi import Depends
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.auth.response import LoginResponse, UserResponse
@@ -35,7 +34,6 @@ class AuthService:
     async def login(
         self,
         session: AsyncSession,
-        client: AsyncClient,
         project_id: int | None,
         account_id: str,
         password: str,
@@ -48,7 +46,6 @@ class AuthService:
 
         # Keystone token 발급
         keystone_token: KeystoneToken = await self._issue_keystone_token(
-            client,
             user_openstack_id=user.openstack_id,
             password=password,
             project_openstack_id=project.openstack_id,
@@ -112,7 +109,6 @@ class AuthService:
 
     async def _issue_keystone_token(
         self,
-        client: AsyncClient,
         user_openstack_id: str,
         password: str,
         project_openstack_id: str,
@@ -120,7 +116,6 @@ class AuthService:
         token: str
         expires_at: str
         token, expires_at = await self.keystone_client.authenticate_with_scoped_auth(
-            client,
             user_openstack_id=user_openstack_id,
             domain_openstack_id=envs.DEFAULT_DOMAIN_OPENSTACK_ID,
             password=password,
