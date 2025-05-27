@@ -4,7 +4,6 @@ from collections import defaultdict
 
 import backoff
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
@@ -41,7 +40,6 @@ class SecurityGroupService:
 
     async def find_security_groups_details(
         self,
-        session: AsyncSession,
         project_id: int,
         project_openstack_id: str,
         keystone_token: str,
@@ -50,7 +48,6 @@ class SecurityGroupService:
         with_deleted: bool = False,
     ) -> SecurityGroupDetailsResponse:
         security_groups: list[SecurityGroup] = await self._find_security_groups_by_project_id(
-            session=session,
             project_id=project_id,
             sort_by=sort_by,
             sort_order=sort_order,
@@ -75,17 +72,15 @@ class SecurityGroupService:
 
         return SecurityGroupDetailsResponse(security_groups=response_items)
 
-    @transactional()
+    @transactional
     async def _find_security_groups_by_project_id(
         self,
-        session: AsyncSession,
         project_id: int,
         sort_by: SecurityGroupSortOption,
         sort_order: SortOrder,
         with_deleted: bool
     ) -> list[SecurityGroup]:
         security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_project_id(
-            session=session,
             project_id=project_id,
             sort_by=sort_by,
             order=sort_order,
@@ -95,17 +90,15 @@ class SecurityGroupService:
 
         return security_groups
 
-    @transactional()
+    @transactional
     async def get_security_group_detail(
         self,
-        session: AsyncSession,
         project_id: int,
         keystone_token: str,
         security_group_id: int,
         with_deleted: bool = False,
     ) -> SecurityGroupDetailResponse:
         security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
-            session=session,
             security_group_id=security_group_id,
             with_deleted=with_deleted,
             with_relations=True
@@ -122,22 +115,17 @@ class SecurityGroupService:
         )
         return await SecurityGroupDetailResponse.from_entity(security_group, rules)
 
-    @transactional()
+    @transactional
     async def create_security_group(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         keystone_token: str,
         project_id: int,
         name: str,
         description: str | None,
         rules: list[CreateSecurityGroupRuleDTO]
     ) -> SecurityGroupDetailResponse:
-        if await self.security_group_repository.exists_by_project_and_name(
-            session=session,
-            project_id=project_id,
-            name=name
-        ):
+        if await self.security_group_repository.exists_by_project_and_name(project_id=project_id, name=name):
             raise SecurityGroupNameDuplicatedException()
 
         # (OpenStack) 보안 그룹 생성
@@ -154,15 +142,13 @@ class SecurityGroupService:
         )
 
         # (DB) 보안 그룹 생성
-        security_group: SecurityGroup = SecurityGroup.create(
-            openstack_id=openstack_security_group.openstack_id,
-            project_id=project_id,
-            name=name,
-            description=description,
-        )
         security_group: SecurityGroup = await self.security_group_repository.create(
-            session=session,
-            security_group=security_group
+            security_group=SecurityGroup.create(
+                openstack_id=openstack_security_group.openstack_id,
+                project_id=project_id,
+                name=name,
+                description=description,
+            )
         )
 
         # 보안 그룹 rule 생성(default rule 과 다른 룰만)
@@ -190,11 +176,10 @@ class SecurityGroupService:
         return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
 
     @backoff.on_exception(backoff.expo, StaleDataError, max_tries=3)
-    @transactional()
+    @transactional
     async def update_security_group_detail(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         keystone_token: str,
         project_id: int,
         security_group_id: int,
@@ -202,19 +187,16 @@ class SecurityGroupService:
         description: str | None,
         rules: list[UpdateSecurityGroupRuleDTO]
     ) -> SecurityGroupDetailResponse:
-        security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
-            session=session,
-            security_group_id=security_group_id,
-        )
+        security_group: SecurityGroup | None = \
+            await self.security_group_repository.find_by_id(security_group_id=security_group_id)
         if not security_group:
             raise SecurityGroupNotFoundException()
 
         security_group.validate_update_permission(project_id=project_id)
 
-        if security_group.name != name and await self.security_group_repository.exists_by_project_and_name(
-            session=session,
-            project_id=project_id,
-            name=name
+        if (
+            security_group.name != name
+            and await self.security_group_repository.exists_by_project_and_name(project_id=project_id, name=name)
         ):
             raise SecurityGroupNameDuplicatedException()
 
@@ -235,26 +217,22 @@ class SecurityGroupService:
 
         return await SecurityGroupDetailResponse.from_entity(security_group, security_group_rules)
 
-    @transactional()
+    @transactional
     async def delete_security_group(
         self,
-        session: AsyncSession,
         project_id: int,
         keystone_token: str,
         security_group_id: int,
     ) -> None:
-        security_group: SecurityGroup | None = await self.security_group_repository.find_by_id(
-            session=session,
-            security_group_id=security_group_id,
-        )
+        security_group: SecurityGroup | None = \
+            await self.security_group_repository.find_by_id(security_group_id=security_group_id)
         if not security_group:
             raise SecurityGroupNotFoundException()
 
         security_group.validate_delete_permission(project_id=project_id)
 
         if await self.network_interface_security_group_repository.exists_by_security_group(
-            session=session,
-            security_group_id=security_group_id,
+            security_group_id=security_group_id
         ):
             raise AttachedSecurityGroupDeletionException()
 

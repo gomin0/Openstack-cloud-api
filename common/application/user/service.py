@@ -2,7 +2,6 @@ import asyncio
 
 import bcrypt
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.user.response import UserDetailResponse, UserResponse
 from common.domain.enum import SortOrder
@@ -31,10 +30,9 @@ class UserService:
         self.user_repository = user_repository
         self.keystone_client = keystone_client
 
-    @transactional()
+    @transactional
     async def find_user_details(
         self,
-        session: AsyncSession,
         user_id: int | None = None,
         account_id: str | None = None,
         name: str | None = None,
@@ -44,7 +42,6 @@ class UserService:
         with_relations: bool = False,
     ) -> list[UserDetailResponse]:
         users: list[User] = await self.user_repository.find_all(
-            session=session,
             user_id=user_id,
             account_id=account_id,
             name=name,
@@ -55,16 +52,14 @@ class UserService:
         )
         return [await UserDetailResponse.from_entity(user) for user in users]
 
-    @transactional()
+    @transactional
     async def get_user_detail(
         self,
-        session: AsyncSession,
         user_id: int,
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> UserDetailResponse:
         user: User | None = await self.user_repository.find_by_id(
-            session=session,
             user_id=user_id,
             with_deleted=with_deleted,
             with_relations=with_relations,
@@ -75,17 +70,16 @@ class UserService:
 
         return await UserDetailResponse.from_entity(user)
 
-    @transactional()
+    @transactional
     async def create_user(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         account_id: str,
         name: str,
         password: str,
     ) -> UserResponse:
         # Check duplication
-        is_account_id_exists: bool = await self.user_repository.exists_by_account_id(session, account_id=account_id)
+        is_account_id_exists: bool = await self.user_repository.exists_by_account_id(account_id=account_id)
         if is_account_id_exists:
             raise UserAccountIdDuplicateException(account_id=account_id)
 
@@ -109,7 +103,6 @@ class UserService:
             bcrypt.gensalt()
         )
         user: User = await self.user_repository.create(
-            session=session,
             user=User.create(
                 openstack_id=user_openstack_id,
                 domain_id=envs.DEFAULT_DOMAIN_ID,
@@ -120,10 +113,9 @@ class UserService:
         )
         return UserResponse.from_entity(user)
 
-    @transactional()
+    @transactional
     async def update_user_info(
         self,
-        session: AsyncSession,
         request_user_id: int,
         user_id: int,
         name: str,
@@ -131,26 +123,25 @@ class UserService:
         if request_user_id != user_id:
             raise UserUpdatePermissionDeniedException()
 
-        user: User | None = await self.user_repository.find_by_id(session, user_id=user_id)
+        user: User | None = await self.user_repository.find_by_id(user_id=user_id)
         if user is None:
             raise UserNotFoundException()
 
         user.update_info(name=name)
         return UserResponse.from_entity(user)
 
-    @transactional()
+    @transactional
     async def delete_user(
         self,
-        session: AsyncSession,
         current_user_id: int,
         user_id: int,
     ) -> None:
-        user: User | None = await self.user_repository.find_by_id(session, user_id=user_id)
+        user: User | None = await self.user_repository.find_by_id(user_id=user_id)
         if user is None:
             raise UserNotFoundException()
         user.validate_delete_permission(req_user_id=current_user_id)
 
-        num_of_users: int = await self.user_repository.count_by_domain(session=session, domain_id=user.domain_id)
+        num_of_users: int = await self.user_repository.count_by_domain(domain_id=user.domain_id)
         if num_of_users <= 1:
             raise LastUserDeletionNotAllowedException()
 

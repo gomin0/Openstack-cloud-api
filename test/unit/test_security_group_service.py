@@ -18,7 +18,6 @@ from test.util.factory import create_security_group_stub
 
 
 async def test_find_security_groups_success(
-    mock_session,
     mock_security_group_repository,
     mock_neutron_client,
     security_group_service
@@ -43,7 +42,6 @@ async def test_find_security_groups_success(
 
     # when
     result = await security_group_service.find_security_groups_details(
-        session=mock_session,
         project_id=project.id,
         project_openstack_id=project.openstack_id,
         keystone_token="token",
@@ -57,7 +55,6 @@ async def test_find_security_groups_success(
 
 
 async def test_get_security_group_success(
-    mock_session,
     mock_security_group_repository,
     mock_neutron_client,
     security_group_service
@@ -87,7 +84,6 @@ async def test_get_security_group_success(
 
     # when
     result = await security_group_service.get_security_group_detail(
-        session=mock_session,
         project_id=1,
         security_group_id=1,
         keystone_token=token
@@ -105,7 +101,6 @@ async def test_get_security_group_success(
 
 
 async def test_get_security_group_not_found(
-    mock_session,
     mock_security_group_repository,
     security_group_service
 ):
@@ -115,7 +110,6 @@ async def test_get_security_group_not_found(
     # when & then
     with pytest.raises(SecurityGroupNotFoundException):
         await security_group_service.get_security_group_detail(
-            session=mock_session,
             project_id=1,
             security_group_id=1,
             keystone_token="token"
@@ -125,7 +119,6 @@ async def test_get_security_group_not_found(
 
 
 async def test_get_security_group_fail_access_denied(
-    mock_session,
     mock_security_group_repository,
     security_group_service
 ):
@@ -139,7 +132,6 @@ async def test_get_security_group_fail_access_denied(
     # when & then
     with pytest.raises(SecurityGroupAccessDeniedException):
         await security_group_service.get_security_group_detail(
-            session=mock_session,
             project_id=1,
             security_group_id=1,
             keystone_token="token"
@@ -149,7 +141,6 @@ async def test_get_security_group_fail_access_denied(
 
 
 async def test_create_security_group_success(
-    mock_session,
     mock_security_group_repository,
     mock_project_repository,
     mock_neutron_client,
@@ -189,7 +180,6 @@ async def test_create_security_group_success(
     # when
     result = await security_group_service.create_security_group(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         keystone_token="token",
         project_id=project_id,
         name=security_group.name,
@@ -207,7 +197,6 @@ async def test_create_security_group_success(
 
 
 async def test_create_security_group_fail_name_duplicated(
-    mock_session,
     mock_security_group_repository,
     security_group_service,
     mock_compensation_manager
@@ -219,7 +208,6 @@ async def test_create_security_group_fail_name_duplicated(
     with pytest.raises(SecurityGroupNameDuplicatedException):
         await security_group_service.create_security_group(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token="token",
             project_id=1,
             name="sg",
@@ -228,14 +216,12 @@ async def test_create_security_group_fail_name_duplicated(
         )
 
     mock_security_group_repository.exists_by_project_and_name.assert_called_once_with(
-        session=mock_session,
         project_id=1,
         name="sg"
     )
 
 
 async def test_update_security_group_success(
-    mock_session,
     mock_security_group_repository,
     mock_neutron_client,
     security_group_service,
@@ -280,7 +266,6 @@ async def test_update_security_group_success(
     # when
     result = await security_group_service.update_security_group_detail(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         keystone_token="token",
         project_id=1,
         security_group_id=1,
@@ -296,7 +281,6 @@ async def test_update_security_group_success(
 
 
 async def test_update_security_group_fail_not_found(
-    mock_session,
     mock_security_group_repository,
     security_group_service,
     mock_compensation_manager
@@ -308,7 +292,6 @@ async def test_update_security_group_fail_not_found(
     with pytest.raises(SecurityGroupNotFoundException):
         await security_group_service.update_security_group_detail(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token="token",
             project_id=1,
             security_group_id=1,
@@ -319,7 +302,6 @@ async def test_update_security_group_fail_not_found(
 
 
 async def test_update_security_group_fail_access_denied(
-    mock_session,
     mock_security_group_repository,
     security_group_service,
     mock_compensation_manager
@@ -332,7 +314,6 @@ async def test_update_security_group_fail_access_denied(
     with pytest.raises(SecurityGroupUpdatePermissionDeniedException):
         await security_group_service.update_security_group_detail(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token="token",
             project_id=1,
             security_group_id=1,
@@ -343,7 +324,6 @@ async def test_update_security_group_fail_access_denied(
 
 
 async def test_delete_security_group_success(
-    mock_session,
     mock_security_group_repository,
     mock_network_interface_security_group_repository,
     mock_neutron_client,
@@ -360,7 +340,6 @@ async def test_delete_security_group_success(
 
     # when
     await security_group_service.delete_security_group(
-        session=mock_session,
         project_id=project_id,
         keystone_token=keystone_token,
         security_group_id=security_group_id,
@@ -368,11 +347,9 @@ async def test_delete_security_group_success(
 
     # then
     mock_security_group_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         security_group_id=security_group_id
     )
     mock_network_interface_security_group_repository.exists_by_security_group.assert_called_once_with(
-        session=mock_session,
         security_group_id=security_group_id
     )
     mock_neutron_client.delete_security_group.assert_called_once_with(
@@ -381,7 +358,6 @@ async def test_delete_security_group_success(
 
 
 async def test_delete_security_group_fail_not_found(
-    mock_session,
     mock_security_group_repository,
     security_group_service
 ):
@@ -392,20 +368,17 @@ async def test_delete_security_group_fail_not_found(
     # when & then
     with pytest.raises(SecurityGroupNotFoundException):
         await security_group_service.delete_security_group(
-            session=mock_session,
             project_id=1,
             keystone_token="token",
             security_group_id=security_group_id,
         )
 
     mock_security_group_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         security_group_id=security_group_id
     )
 
 
 async def test_delete_security_group_fail_permission_denied(
-    mock_session,
     mock_security_group_repository,
     security_group_service
 ):
@@ -417,20 +390,17 @@ async def test_delete_security_group_fail_permission_denied(
     # when & then
     with pytest.raises(SecurityGroupDeletePermissionDeniedException):
         await security_group_service.delete_security_group(
-            session=mock_session,
             project_id=1,
             keystone_token="token",
             security_group_id=security_group_id,
         )
 
     mock_security_group_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         security_group_id=security_group_id
     )
 
 
 async def test_delete_security_group_fail_server_attached(
-    mock_session,
     mock_security_group_repository,
     mock_network_interface_security_group_repository,
     security_group_service
@@ -445,17 +415,14 @@ async def test_delete_security_group_fail_server_attached(
     # when & then
     with pytest.raises(AttachedSecurityGroupDeletionException):
         await security_group_service.delete_security_group(
-            session=mock_session,
             project_id=project_id,
             keystone_token="token",
             security_group_id=security_group_id,
         )
 
     mock_network_interface_security_group_repository.exists_by_security_group.assert_called_once_with(
-        session=mock_session,
         security_group_id=security_group_id
     )
     mock_security_group_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         security_group_id=security_group_id
     )

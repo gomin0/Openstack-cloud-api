@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED, HTTP_204_NO_CONTENT
 
 from api_server.router.volume.request import CreateVolumeRequest, UpdateVolumeInfoRequest, UpdateVolumeSizeRequest
@@ -7,9 +6,7 @@ from common.application.volume.response import VolumeDetailsResponse, VolumeResp
 from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.volume.enum import VolumeSortOption
-from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
-from common.util.background_task_runner import run_background_task
 from common.util.context import CurrentUser
 
 router = APIRouter(prefix="/volumes", tags=["volume"])
@@ -28,11 +25,9 @@ async def find_volumes_detail(
     sort_by: VolumeSortOption = VolumeSortOption.CREATED_AT,
     sort_order: SortOrder = SortOrder.ASC,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     volume_service: VolumeService = Depends(),
 ) -> VolumeDetailsResponse:
     volume_details: list[VolumeDetailResponse] = await volume_service.find_volume_details(
-        session=session,
         current_project_id=current_user.project_id,
         sort_by=sort_by,
         sort_order=sort_order,
@@ -52,12 +47,10 @@ async def find_volumes_detail(
 )
 async def get_volume_detail(
     volume_id: int,
-    session: AsyncSession = Depends(get_db_session),
     current_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends()
 ) -> VolumeDetailResponse:
     return await volume_service.get_volume_detail(
-        session=session,
         current_project_id=current_user.project_id,
         volume_id=volume_id,
     )
@@ -78,10 +71,8 @@ async def create_volume(
     background_tasks: BackgroundTasks,
     request_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> VolumeResponse:
     volume: VolumeResponse = await volume_service.create_volume(
-        session=session,
         keystone_token=request_user.keystone_token,
         project_id=request_user.project_id,
         project_openstack_id=request_user.project_openstack_id,
@@ -91,9 +82,8 @@ async def create_volume(
         volume_type_openstack_id=request.volume_type_id,
         image_openstack_id=request.image_id,
     )
-    run_background_task(
-        background_tasks,
-        volume_service.sync_creating_volume_until_available,
+    background_tasks.add_task(
+        func=volume_service.sync_creating_volume_until_available,
         project_openstack_id=request_user.project_openstack_id,
         volume_openstack_id=volume.openstack_id,
     )
@@ -117,10 +107,8 @@ async def update_volume_info(
     request: UpdateVolumeInfoRequest,
     request_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> VolumeResponse:
     return await volume_service.update_volume_info(
-        session,
         current_project_id=request_user.project_id,
         volume_id=volume_id,
         name=request.name,
@@ -151,10 +139,8 @@ async def update_volume_size(
     request: UpdateVolumeSizeRequest,
     current_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> VolumeResponse:
     return await volume_service.update_volume_size(
-        session=session,
         keystone_token=current_user.keystone_token,
         current_project_id=current_user.project_id,
         current_project_openstack_id=current_user.project_openstack_id,
@@ -179,10 +165,8 @@ async def delete_volume(
     volume_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     volume_service: VolumeService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> None:
     await volume_service.delete_volume(
-        session=session,
         current_project_id=current_user.project_id,
         current_project_openstack_id=current_user.project_openstack_id,
         keystone_token=current_user.keystone_token,

@@ -61,23 +61,19 @@ async def mock_async_client():
     return AsyncMock(spec=AsyncClient)
 
 
+async def fake_session_factory():
+    return None
+
+
 @pytest_asyncio.fixture(scope="function")
 async def app_test(mocker, async_session_maker, mock_async_client):
-    async def override_get_db_session():
-        async with async_session_maker() as session:
-            yield session
-
-    app.dependency_overrides[get_db_session] = override_get_db_session
-    app.dependency_overrides[get_async_client] = lambda: mock_async_client
-
     system_keystone_token: str = "keystone-token"
     mocker.patch("common.application.user.service.get_system_keystone_token", return_value=system_keystone_token)
     mocker.patch("common.application.project.service.get_system_keystone_token", return_value=system_keystone_token)
     mocker.patch("common.application.server.service.get_system_keystone_token", return_value=system_keystone_token)
     mocker.patch("common.application.volume.service.get_system_keystone_token", return_value=system_keystone_token)
 
-    mocker.patch("common.util.background_task_runner.get_async_client", return_value=mock_async_client)
-    mocker.patch("common.util.background_task_runner.session_factory", new_callable=lambda: async_session_maker)
+    mocker.patch("common.infrastructure.database.session_maker", new_callable=lambda: async_session_maker)
 
     mocker.patch("common.infrastructure.openstack_client.get_async_client", return_value=mock_async_client)
 

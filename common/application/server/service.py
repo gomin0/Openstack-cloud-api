@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Coroutine
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.server.dto import CreateServerCommand
 from common.application.server.response import ServerDetailsResponse, ServerDetailResponse, ServerResponse, \
@@ -73,10 +72,9 @@ class ServerService:
         self.neutron_client = neutron_client
         self.cinder_client = cinder_client
 
-    @transactional()
+    @transactional
     async def find_servers_details(
         self,
-        session: AsyncSession,
         id_: int | None,
         ids_contain: list[int] | None,
         ids_exclude: list[int] | None,
@@ -87,7 +85,6 @@ class ServerService:
         project_id: int,
     ) -> ServerDetailsResponse:
         servers: list[Server] = await self.server_repository.find_all_by_project_id(
-            session=session,
             id_=id_,
             ids_contain=ids_contain,
             ids_exclude=ids_exclude,
@@ -100,27 +97,24 @@ class ServerService:
         )
         return ServerDetailsResponse(servers=[await ServerDetailResponse.from_entity(server) for server in servers])
 
-    @transactional()
+    @transactional
     async def get_server_detail(
         self,
-        session: AsyncSession,
         server_id: int,
         project_id: int,
     ) -> ServerDetailResponse:
-        server: Server | None = await self._get_server_by_id(session=session, id_=server_id, with_relations=True)
+        server: Server | None = await self._get_server_by_id(id_=server_id, with_relations=True)
         server.validate_access_permission(project_id=project_id)
 
         return await ServerDetailResponse.from_entity(server)
 
-    @transactional()
+    @transactional
     async def get_server(
         self,
-        session: AsyncSession,
         server_id: int,
         project_id: int,
     ) -> ServerResponse:
         server: Server = await self.server_repository.find_by_id(
-            session=session,
             server_id=server_id,
         )
         if server is None:
@@ -141,11 +135,10 @@ class ServerService:
 
         return vnc_url
 
-    @transactional()
+    @transactional
     async def create_server(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         command: CreateServerCommand,
     ) -> ServerResponse:
         """
@@ -164,7 +157,6 @@ class ServerService:
         :return: 생성된 서버 정보
         """
         is_exists_name: bool = await self.server_repository.exists_by_project_and_name(
-            session=session,
             project_id=command.current_project_id,
             name=command.name,
         )
@@ -172,7 +164,6 @@ class ServerService:
             raise ServerNameDuplicateException()
 
         security_groups: list[SecurityGroup] = await self.security_group_repository.find_all_by_ids(
-            session=session,
             ids=command.security_group_ids
         )
         for sg in security_groups:
@@ -205,7 +196,6 @@ class ServerService:
         )
 
         server: Server = await self.server_repository.create(
-            session=session,
             server=Server.create(
                 openstack_id=server_openstack_id,
                 project_id=command.current_project_id,
@@ -215,7 +205,6 @@ class ServerService:
             )
         )
         network_interface: NetworkInterface = await self.network_interface_repository.create(
-            session=session,
             network_interface=NetworkInterface.create(
                 openstack_id=os_network_interface.openstack_id,
                 project_id=command.current_project_id,
@@ -227,21 +216,19 @@ class ServerService:
 
         return ServerResponse.from_entity(server)
 
-    @transactional()
+    @transactional
     async def update_server_info(
         self,
-        session: AsyncSession,
         current_project_id: int,
         server_id: int,
         name: str,
         description: str,
     ) -> ServerResponse:
-        server: Server | None = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server | None = await self._get_server_by_id(id_=server_id)
         server.validate_update_permission(project_id=current_project_id)
 
         if name != server.name:
             if await self.server_repository.exists_by_project_and_name(
-                session=session,
                 project_id=current_project_id,
                 name=name
             ):
@@ -250,48 +237,45 @@ class ServerService:
         server.update_info(name=name, description=description)
         return ServerResponse.from_entity(server)
 
+    @transactional
     async def detach_volume_from_server(
         self,
-        session: AsyncSession,
         keystone_token: str,
         project_openstack_id: str,
         project_id: int,
         server_id: int,
         volume_id: int
-    ) -> ServerDetailResponse:
+    ) -> ServerResponse:
         server: Server
         volume: Volume
         server, volume = await self._initiate_volume_detachment(
-            session=session,
             keystone_token=keystone_token,
             project_id=project_id,
             server_id=server_id,
             volume_id=volume_id,
         )
         is_success: bool = await self._wait_until_volume_detachment_and_finalize(
-            session=session,
             project_openstack_id=project_openstack_id,
             volume_openstack_id=volume.openstack_id
         )
         if not is_success:
             raise VolumeDetachFailedException()
-        return await ServerDetailResponse.from_entity(server)
+        return ServerResponse.from_entity(server)
 
-    @transactional()
+    @transactional
     async def _initiate_volume_detachment(
         self,
-        session: AsyncSession,
         keystone_token: str,
         project_id: int,
         server_id: int,
         volume_id: int
     ) -> tuple[Server, Volume]:
-        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        volume: Volume = await self._get_volume_by_id(volume_id=volume_id)
         volume.validate_owned_by(project_id=project_id)
         volume.validate_server_match(server_id=server_id)
         volume.prepare_for_detachment()
 
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
         await self.nova_client.detach_volume_from_server(
             keystone_token=keystone_token,
             server_openstack_id=server.openstack_id,
@@ -300,10 +284,9 @@ class ServerService:
 
         return server, volume
 
-    @transactional()
+    @transactional
     async def _wait_until_volume_detachment_and_finalize(
         self,
-        session: AsyncSession,
         volume_openstack_id: str,
         project_openstack_id: str
     ) -> bool:
@@ -320,11 +303,11 @@ class ServerService:
                 continue
             if os_volume.status == VolumeStatus.AVAILABLE:
                 volume: Volume = \
-                    await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
+                    await self._get_volume_by_openstack_id(openstack_id=volume_openstack_id)
                 volume.detach_from_server()
                 return True
             logger.error(f"볼륨({volume_openstack_id}) 연결 해제 도중 에러가 발생했습니다. status={os_volume.status}")
-            volume: Volume = await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
+            volume: Volume = await self._get_volume_by_openstack_id(openstack_id=volume_openstack_id)
             volume.update_status(status=os_volume.status)
             return False
 
@@ -335,15 +318,14 @@ class ServerService:
         )
         return False
 
-    @transactional()
+    @transactional
     async def start_server(
         self,
-        session: AsyncSession,
         keystone_token: str,
         project_id: int,
         server_id: int,
     ) -> ServerResponse:
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
         server.validate_access_permission(project_id=project_id)
         server.validate_startable()
         await self.nova_client.start_server(
@@ -352,15 +334,14 @@ class ServerService:
 
         return ServerResponse.from_entity(server)
 
-    @transactional()
+    @transactional
     async def stop_server(
         self,
-        session: AsyncSession,
         keystone_token: str,
         project_id: int,
         server_id: int,
     ) -> ServerResponse:
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
         server.validate_access_permission(project_id=project_id)
         server.validate_stoppable()
         await self.nova_client.stop_server(
@@ -369,10 +350,9 @@ class ServerService:
 
         return ServerResponse.from_entity(server)
 
-    @transactional()
+    @transactional
     async def wait_until_server_started(
         self,
-        session: AsyncSession,
         server_openstack_id: str,
     ) -> bool:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
@@ -388,7 +368,7 @@ class ServerService:
 
             if os_server.status == ServerStatus.ACTIVE:
                 server: Server = await self._get_server_by_openstack_id(
-                    session=session, openstack_id=server_openstack_id
+                    openstack_id=server_openstack_id
                 )
                 server.start()
                 return True
@@ -402,10 +382,9 @@ class ServerService:
         )
         return False
 
-    @transactional()
+    @transactional
     async def wait_until_server_stopped(
         self,
-        session: AsyncSession,
         server_openstack_id: str,
     ) -> bool:
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_STATUS_UPDATE):
@@ -420,7 +399,7 @@ class ServerService:
                 continue
             if os_server.status == ServerStatus.SHUTOFF:
                 server: Server = await self._get_server_by_openstack_id(
-                    session=session, openstack_id=server_openstack_id
+                    openstack_id=server_openstack_id
                 )
                 server.stop()
                 return True
@@ -434,10 +413,9 @@ class ServerService:
         )
         return False
 
-    @transactional()
+    @transactional
     async def finalize_server_creation(
         self,
-        session: AsyncSession,
         server_openstack_id: str,
         image_openstack_id: str,
         root_volume_size: int
@@ -465,10 +443,9 @@ class ServerService:
                 root_volume_openstack_id: str = os_server.volume_openstack_ids[0]
 
                 server: Server = \
-                    await self._get_server_by_openstack_id(session=session, openstack_id=server_openstack_id)
+                    await self._get_server_by_openstack_id(openstack_id=server_openstack_id)
                 server.active()
                 await self.volume_repository.create(
-                    session=session,
                     # 서버 생성 시, volume type을 받게 된다면, 하드 코딩된 값 수정 필요
                     volume=Volume.create(
                         openstack_id=root_volume_openstack_id,
@@ -493,46 +470,42 @@ class ServerService:
                 f"{self.MAX_CHECK_ATTEMPTS_FOR_SERVER_CREATION * self.CHECK_INTERVAL_SECONDS_FOR_SERVER_CREATION}초 "
                 f"동안 생성이 완료되기를 기다렸으나, 생성이 완료되지 않았습니다."
             )
-        server: Server = await self._get_server_by_openstack_id(session=session, openstack_id=server_openstack_id)
+        server: Server = await self._get_server_by_openstack_id(openstack_id=server_openstack_id)
         server.fail_creation()
 
     async def attach_volume_to_server(
         self,
-        session: AsyncSession,
         keystone_token: str,
         current_project_id: int,
         current_project_openstack_id: str,
         server_id: int,
         volume_id: int,
-    ) -> ServerDetailResponse:
+    ) -> ServerResponse:
         server: Server
         volume: Volume
         server, volume = await self._initiate_volume_attachment(
-            session=session,
             keystone_token=keystone_token,
             current_project_id=current_project_id,
             server_id=server_id,
             volume_id=volume_id,
         )
         is_success: bool = await self._wait_until_volume_attachment_and_finalize(
-            session=session,
             current_project_openstack_id=current_project_openstack_id,
             server_openstack_id=server.openstack_id,
             volume_openstack_id=volume.openstack_id,
         )
         if not is_success:
             raise VolumeAttachmentFailedException(server_id=server.id, volume_id=volume.id)
-        return await ServerDetailResponse.from_entity(server)
+        return ServerResponse.from_entity(server)
 
-    @transactional()
+    @transactional
     async def delete_server(
         self,
-        session: AsyncSession,
         keystone_token: str,
         server_id: int,
         project_id: int
     ) -> DeleteServerResponse:
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
         server.validate_delete_permission(project_id=project_id)
 
         network_interfaces: list[NetworkInterface] = await server.network_interfaces
@@ -554,29 +527,25 @@ class ServerService:
 
     async def check_server_until_deleted_and_remove_resources(
         self,
-        session: AsyncSession,
         keystone_token: str,
         network_interface_ids: list[int],
         server_id: int,
     ) -> None:
         await self._remove_server_resources(
-            session=session,
             keystone_token=keystone_token,
             server_id=server_id,
             network_interface_ids=network_interface_ids,
         )
         await self._wait_server_until_deleted_and_finalize(
-            session=session,
             server_id=server_id,
         )
 
-    @transactional()
+    @transactional
     async def _wait_server_until_deleted_and_finalize(
         self,
-        session: AsyncSession,
         server_id: int,
     ) -> None:
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
 
         for _ in range(self.MAX_CHECK_ATTEMPTS_FOR_SERVER_DELETION):
             is_server_deleted: bool = not await self.nova_client.exists_server(
@@ -594,21 +563,20 @@ class ServerService:
         )
         raise ServerDeletionFailedException()
 
-    @transactional()
+    @transactional
     async def _remove_server_resources(
         self,
-        session: AsyncSession,
         keystone_token: str,
         server_id: int,
         network_interface_ids: list[int],
     ) -> None:
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
         volumes: list[Volume] = await server.volumes
         for volume in volumes:
             volume.detach_from_server()
 
         network_interfaces: list[NetworkInterface] = await self.network_interface_repository.find_all_by_ids(
-            session=session, network_interface_ids=network_interface_ids
+            network_interface_ids=network_interface_ids
         )
         for network_interface in network_interfaces:
             await network_interface.delete()
@@ -624,10 +592,9 @@ class ServerService:
         ]
         await asyncio.gather(*delete_network_interface_tasks)
 
-    @transactional()
+    @transactional
     async def _initiate_volume_attachment(
         self,
-        session: AsyncSession,
         keystone_token: str,
         current_project_id: int,
         server_id: int,
@@ -644,10 +611,10 @@ class ServerService:
 
         :return: 연결하는 서버와 볼륨 객체
         """
-        server: Server = await self._get_server_by_id(session=session, id_=server_id)
+        server: Server = await self._get_server_by_id(id_=server_id)
         server.validate_update_permission(project_id=current_project_id)
 
-        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        volume: Volume = await self._get_volume_by_id(volume_id=volume_id)
         volume.validate_update_permission(project_id=current_project_id)
 
         volume.prepare_for_attachment()
@@ -660,10 +627,9 @@ class ServerService:
 
         return server, volume
 
-    @transactional()
+    @transactional
     async def _wait_until_volume_attachment_and_finalize(
         self,
-        session: AsyncSession,
         current_project_openstack_id: str,
         server_openstack_id: str,
         volume_openstack_id: str,
@@ -690,9 +656,9 @@ class ServerService:
 
             if os_volume.status == VolumeStatus.IN_USE:
                 server: Server = \
-                    await self._get_server_by_openstack_id(session=session, openstack_id=server_openstack_id)
+                    await self._get_server_by_openstack_id(openstack_id=server_openstack_id)
                 volume: Volume = \
-                    await self._get_volume_by_openstack_id(session=session, openstack_id=volume_openstack_id)
+                    await self._get_volume_by_openstack_id(openstack_id=volume_openstack_id)
                 volume.attach_to_server(server=server)
                 return True
 
@@ -702,7 +668,7 @@ class ServerService:
                 f"Target server id={server_openstack_id}"
             )
             volume: Volume = await self.volume_repository.find_by_openstack_id(
-                session=session, openstack_id=volume_openstack_id
+                openstack_id=volume_openstack_id
             )
             volume.update_status(os_volume.status)
             return False
@@ -712,34 +678,31 @@ class ServerService:
             f"{self.MAX_CHECK_ATTEMPTS_FOR_VOLUME_ATTACHMENT * self.CHECK_INTERVAL_SECONDS_FOR_VOLUME_ATTACHMENT}초 "
             f"동안 기다렸으나, 볼륨 연결이 완료되지 않았습니다."
         )
-        volume: Volume = await self.volume_repository.find_by_openstack_id(
-            session=session, openstack_id=volume_openstack_id
-        )
+        volume: Volume = await self.volume_repository.find_by_openstack_id(openstack_id=volume_openstack_id)
         volume.fail_attachment()
         return False
 
     async def _get_server_by_id(
         self,
-        session: AsyncSession,
         id_: int,
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> Server:
-        if (server := await self.server_repository.find_by_id(session, id_, with_deleted, with_relations)) is None:
+        if (server := await self.server_repository.find_by_id(id_, with_deleted, with_relations)) is None:
             raise ServerNotFoundException()
         return server
 
-    async def _get_server_by_openstack_id(self, session: AsyncSession, openstack_id: str):
-        if (server := await self.server_repository.find_by_openstack_id(session, openstack_id)) is None:
+    async def _get_server_by_openstack_id(self, openstack_id: str):
+        if (server := await self.server_repository.find_by_openstack_id(openstack_id)) is None:
             raise ServerNotFoundException()
         return server
 
-    async def _get_volume_by_id(self, session: AsyncSession, volume_id: int) -> Volume:
-        if (volume := await self.volume_repository.find_by_id(session, volume_id)) is None:
+    async def _get_volume_by_id(self, volume_id: int) -> Volume:
+        if (volume := await self.volume_repository.find_by_id(volume_id)) is None:
             raise VolumeNotFoundException()
         return volume
 
-    async def _get_volume_by_openstack_id(self, session, openstack_id):
-        if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id)) is None:
+    async def _get_volume_by_openstack_id(self, openstack_id):
+        if (volume := await self.volume_repository.find_by_openstack_id(openstack_id)) is None:
             raise VolumeNotFoundException()
         return volume

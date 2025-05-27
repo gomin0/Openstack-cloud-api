@@ -8,7 +8,6 @@ from test.util.factory import create_floating_ip_stub, create_network_interface_
 
 
 async def test_attach_floating_ip_to_server_success(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -29,7 +28,6 @@ async def test_attach_floating_ip_to_server_success(
     # when
     await network_interface_service.attach_floating_ip_to_network_interface(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         keystone_token=keystone_token,
         project_id=project_id,
         floating_ip_id=floating_ip.id,
@@ -38,13 +36,11 @@ async def test_attach_floating_ip_to_server_success(
 
     # then
     mock_network_interface_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         network_interface_id=network_interface_id,
         with_relations=False,
         with_deleted=False
     )
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip.id,
         with_relations=False,
         with_deleted=False
@@ -57,7 +53,6 @@ async def test_attach_floating_ip_to_server_success(
 
 
 async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -75,7 +70,6 @@ async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
     with pytest.raises(NetworkInterfaceNotFoundException):
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -83,7 +77,6 @@ async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
         )
 
     mock_network_interface_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         network_interface_id=network_interface_id,
         with_relations=False,
         with_deleted=False
@@ -91,7 +84,6 @@ async def test_attach_floating_ip_to_server_fail_network_interface_not_found(
 
 
 async def test_attach_floating_ip_to_server_fail_access_permission_denied(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -111,7 +103,6 @@ async def test_attach_floating_ip_to_server_fail_access_permission_denied(
     with pytest.raises(NetworkInterfaceAccessPermissionDeniedException):
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token=keystone_token,
             project_id=project2_id,
             floating_ip_id=floating_ip_id,
@@ -119,7 +110,6 @@ async def test_attach_floating_ip_to_server_fail_access_permission_denied(
         )
 
     mock_network_interface_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         network_interface_id=network_interface_id,
         with_relations=False,
         with_deleted=False
@@ -127,7 +117,6 @@ async def test_attach_floating_ip_to_server_fail_access_permission_denied(
 
 
 async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -147,7 +136,6 @@ async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
     with pytest.raises(FloatingIpNotFoundException):
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -155,13 +143,11 @@ async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
         )
 
     mock_network_interface_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         network_interface_id=network_interface_id,
         with_relations=False,
         with_deleted=False
     )
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id,
         with_relations=False,
         with_deleted=False
@@ -169,7 +155,6 @@ async def test_attach_floating_ip_to_server_fail_floating_ip_not_found(
 
 
 async def test_attach_floating_ip_to_server_fail_already_attached(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -190,7 +175,6 @@ async def test_attach_floating_ip_to_server_fail_already_attached(
     with pytest.raises(FloatingIpAlreadyAttachedToNetworkInterfaceException):
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -198,13 +182,11 @@ async def test_attach_floating_ip_to_server_fail_already_attached(
         )
 
     mock_network_interface_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         network_interface_id=network_interface_id,
         with_relations=False,
         with_deleted=False
     )
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id,
         with_relations=False,
         with_deleted=False
@@ -212,7 +194,6 @@ async def test_attach_floating_ip_to_server_fail_already_attached(
 
 
 async def test_detach_floating_ip_from_server_success(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -235,7 +216,6 @@ async def test_detach_floating_ip_from_server_success(
     # when
     await network_interface_service.detach_floating_ip_from_network_interface(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         keystone_token=keystone_token,
         project_id=project_id,
         floating_ip_id=floating_ip_id,
@@ -244,7 +224,6 @@ async def test_detach_floating_ip_from_server_success(
 
     # then
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id,
         with_relations=False,
         with_deleted=False
@@ -256,7 +235,6 @@ async def test_detach_floating_ip_from_server_success(
 
 
 async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -274,7 +252,6 @@ async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
     with pytest.raises(FloatingIpNotFoundException):
         await network_interface_service.detach_floating_ip_from_network_interface(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -282,7 +259,6 @@ async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id,
         with_relations=False,
         with_deleted=False
@@ -290,7 +266,6 @@ async def test_detach_floating_ip_from_server_fail_floating_ip_not_found(
 
 
 async def test_detach_floating_ip_from_server_fail_not_attached(
-    mock_session,
     network_interface_service,
     mock_floating_ip_repository,
     mock_network_interface_repository,
@@ -310,7 +285,6 @@ async def test_detach_floating_ip_from_server_fail_not_attached(
     with pytest.raises(FloatingIpNotAttachedToNetworkInterfaceException):
         await network_interface_service.detach_floating_ip_from_network_interface(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             keystone_token=keystone_token,
             project_id=project_id,
             floating_ip_id=floating_ip_id,
@@ -318,7 +292,6 @@ async def test_detach_floating_ip_from_server_fail_not_attached(
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id,
         with_relations=False,
         with_deleted=False

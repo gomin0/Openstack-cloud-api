@@ -13,7 +13,7 @@ from common.exception.floating_ip_exception import (
 from test.util.factory import create_floating_ip_stub, create_server, create_network_interface
 
 
-async def test_find_floating_ips_success(mock_session, mock_floating_ip_repository, floating_ip_service):
+async def test_find_floating_ips_success(mock_floating_ip_repository, floating_ip_service):
     # given
     project_id = 1
 
@@ -24,7 +24,6 @@ async def test_find_floating_ips_success(mock_session, mock_floating_ip_reposito
 
     # when
     result = await floating_ip_service.find_floating_ips_details(
-        session=mock_session,
         project_id=project_id,
         sort_by=FloatingIpSortOption.CREATED_AT,
         order=SortOrder.ASC,
@@ -40,7 +39,6 @@ async def test_find_floating_ips_success(mock_session, mock_floating_ip_reposito
     assert result.floating_ips == expected
 
     mock_floating_ip_repository.find_all_by_project_id.assert_called_once_with(
-        session=mock_session,
         project_id=project_id,
         sort_by=FloatingIpSortOption.CREATED_AT,
         order=SortOrder.ASC,
@@ -49,7 +47,7 @@ async def test_find_floating_ips_success(mock_session, mock_floating_ip_reposito
     )
 
 
-async def test_get_floating_ip_success(mock_session, mock_floating_ip_repository, floating_ip_service):
+async def test_get_floating_ip_success(mock_floating_ip_repository, floating_ip_service):
     # given
     project_id = 1
     floating_ip = create_floating_ip_stub(project_id=project_id)
@@ -58,7 +56,6 @@ async def test_get_floating_ip_success(mock_session, mock_floating_ip_repository
 
     # when
     result = await floating_ip_service.get_floating_ip_detail(
-        session=mock_session,
         project_id=project_id,
         floating_ip_id=floating_ip.id
     )
@@ -67,34 +64,31 @@ async def test_get_floating_ip_success(mock_session, mock_floating_ip_repository
     assert result.id == floating_ip.id
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip.id,
         with_deleted=False,
         with_relations=True
     )
 
 
-async def test_get_floating_ip_fail_not_found(mock_session, mock_floating_ip_repository, floating_ip_service):
+async def test_get_floating_ip_fail_not_found(mock_floating_ip_repository, floating_ip_service):
     # given
     mock_floating_ip_repository.find_by_id.return_value = None
 
     # when & then
     with pytest.raises(FloatingIpNotFoundException):
         await floating_ip_service.get_floating_ip_detail(
-            session=mock_session,
             project_id=1,
             floating_ip_id=1
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=1,
         with_deleted=False,
         with_relations=True
     )
 
 
-async def test_get_floating_ip_fail_access_denied(mock_session, mock_floating_ip_repository, floating_ip_service):
+async def test_get_floating_ip_fail_access_denied(mock_floating_ip_repository, floating_ip_service):
     # given
     floating_ip = create_floating_ip_stub(project_id=1)
     mock_floating_ip_repository.find_by_id.return_value = floating_ip
@@ -102,13 +96,11 @@ async def test_get_floating_ip_fail_access_denied(mock_session, mock_floating_ip
     # when & then
     with pytest.raises(FloatingIpAccessDeniedException):
         await floating_ip_service.get_floating_ip_detail(
-            session=mock_session,
             project_id=2,
             floating_ip_id=floating_ip.id
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip.id,
         with_deleted=False,
         with_relations=True
@@ -116,7 +108,6 @@ async def test_get_floating_ip_fail_access_denied(mock_session, mock_floating_ip
 
 
 async def test_create_floating_ip_success(
-    mock_session,
     mock_floating_ip_repository,
     floating_ip_service,
     mock_compensation_manager
@@ -143,7 +134,6 @@ async def test_create_floating_ip_success(
     # when
     result = await floating_ip_service.create_floating_ip(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         project_id=project_id,
         keystone_token=keystone_token,
         floating_network_id=floating_network_id
@@ -160,7 +150,6 @@ async def test_create_floating_ip_success(
 
 
 async def test_delete_floating_ip_success(
-    mock_session,
     mock_floating_ip_repository,
     mock_neutron_client,
     floating_ip_service
@@ -176,7 +165,6 @@ async def test_delete_floating_ip_success(
 
     # when
     await floating_ip_service.delete_floating_ip(
-        session=mock_session,
         project_id=project_id,
         keystone_token=keystone_token,
         floating_ip_id=floating_ip_id,
@@ -184,7 +172,6 @@ async def test_delete_floating_ip_success(
 
     # then
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id
     )
     mock_neutron_client.delete_floating_ip.assert_called_once_with(
@@ -194,7 +181,7 @@ async def test_delete_floating_ip_success(
 
 
 async def test_delete_floating_ip_fail_not_found(
-    mock_session, mock_floating_ip_repository, floating_ip_service
+    mock_floating_ip_repository, floating_ip_service
 ):
     # given
     floating_ip_id = 1
@@ -206,20 +193,18 @@ async def test_delete_floating_ip_fail_not_found(
     # when & then
     with pytest.raises(FloatingIpNotFoundException):
         await floating_ip_service.delete_floating_ip(
-            session=mock_session,
             project_id=project_id,
             keystone_token=keystone_token,
             floating_ip_id=floating_ip_id,
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id
     )
 
 
 async def test_delete_floating_ip_fail_permission_denied(
-    mock_session, mock_floating_ip_repository, floating_ip_service
+    mock_floating_ip_repository, floating_ip_service
 ):
     # given
     floating_ip_id = 1
@@ -232,20 +217,18 @@ async def test_delete_floating_ip_fail_permission_denied(
     # when & then
     with pytest.raises(FloatingIpDeletePermissionDeniedException):
         await floating_ip_service.delete_floating_ip(
-            session=mock_session,
             project_id=project_id,
             keystone_token=keystone_token,
             floating_ip_id=floating_ip_id,
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id
     )
 
 
 async def test_delete_floating_ip_fail_attached(
-    mock_session, mock_floating_ip_repository, floating_ip_service
+    mock_floating_ip_repository, floating_ip_service
 ):
     # given
     floating_ip_id = 1
@@ -260,13 +243,11 @@ async def test_delete_floating_ip_fail_attached(
     # when & then
     with pytest.raises(AttachedFloatingIpDeletionException):
         await floating_ip_service.delete_floating_ip(
-            session=mock_session,
             project_id=project_id,
             keystone_token=keystone_token,
             floating_ip_id=floating_ip_id,
         )
 
     mock_floating_ip_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         floating_ip_id=floating_ip_id
     )

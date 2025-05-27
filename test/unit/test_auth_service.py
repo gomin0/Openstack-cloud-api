@@ -11,7 +11,6 @@ from test.util.random import random_int, random_string
 
 
 async def test_login_success_with_project_id(
-    mock_session,
     mock_user_repository,
     mock_keystone_client,
     auth_service
@@ -36,7 +35,6 @@ async def test_login_success_with_project_id(
 
     # when
     result: LoginResponse = await auth_service.login(
-        session=mock_session,
         project_id=project_id,
         account_id=account_id,
         password=password,
@@ -50,7 +48,6 @@ async def test_login_success_with_project_id(
 
 
 async def test_login_success_without_project_id(
-    mock_session,
     mock_user_repository,
     mock_keystone_client,
     auth_service
@@ -74,7 +71,6 @@ async def test_login_success_without_project_id(
 
     # when
     result: LoginResponse = await auth_service.login(
-        session=mock_session,
         project_id=None,
         account_id=account_id,
         password=password,
@@ -88,7 +84,6 @@ async def test_login_success_without_project_id(
 
 
 async def test_login_fail_using_invalid_account_id(
-    mock_session,
     mock_user_repository,
     mock_keystone_client,
     auth_service
@@ -99,7 +94,6 @@ async def test_login_fail_using_invalid_account_id(
     # when & then
     with pytest.raises(InvalidAuthException):
         await auth_service.login(
-            session=mock_session,
             project_id=None,
             account_id=random_string(),
             password=random_string(),
@@ -108,7 +102,6 @@ async def test_login_fail_using_invalid_account_id(
 
 
 async def test_login_fail_using_invalid_password(
-    mock_session,
     mock_user_repository,
     mock_keystone_client,
     auth_service
@@ -127,7 +120,6 @@ async def test_login_fail_using_invalid_password(
     # when & then
     with pytest.raises(InvalidAuthException):
         await auth_service.login(
-            session=mock_session,
             project_id=None,
             account_id=random_string(),
             password=invalid_password,
@@ -136,7 +128,6 @@ async def test_login_fail_using_invalid_password(
 
 
 async def test_login_fail_user_did_not_join_any_project(
-    mock_session,
     mock_user_repository,
     mock_keystone_client,
     auth_service
@@ -155,7 +146,6 @@ async def test_login_fail_user_did_not_join_any_project(
     # when & then
     with pytest.raises(UserNotJoinedAnyProjectException):
         await auth_service.login(
-            session=mock_session,
             project_id=None,
             account_id=random_string(),
             password=password,
@@ -164,7 +154,6 @@ async def test_login_fail_user_did_not_join_any_project(
 
 
 async def test_login_fail_has_not_project_access_permission(
-    mock_session,
     mock_user_repository,
     mock_keystone_client,
     auth_service
@@ -182,7 +171,6 @@ async def test_login_fail_has_not_project_access_permission(
     # when & then
     with pytest.raises(ProjectAccessDeniedException):
         await auth_service.login(
-            session=mock_session,
             project_id=random_int(),
             account_id=random_string(),
             password=password,

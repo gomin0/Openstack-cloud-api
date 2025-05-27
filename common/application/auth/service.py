@@ -2,7 +2,6 @@ import asyncio
 
 import bcrypt
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.auth.response import LoginResponse, UserResponse
 from common.domain.keystone.model import KeystoneToken
@@ -33,16 +32,15 @@ class AuthService:
 
     async def login(
         self,
-        session: AsyncSession,
         project_id: int | None,
         account_id: str,
         password: str,
     ) -> LoginResponse:
         # account_id, password로 유저 인증 및 조회
-        user: User = await self._authenticate_user(session, account_id=account_id, password=password)
+        user: User = await self._authenticate_user(account_id=account_id, password=password)
 
         # Keystone token 발급을 위한 프로젝트 선택
-        project: Project = await self._choose_project(session, user=user, project_id=project_id)
+        project: Project = await self._choose_project(user=user, project_id=project_id)
 
         # Keystone token 발급
         keystone_token: KeystoneToken = await self._issue_keystone_token(
@@ -62,18 +60,13 @@ class AuthService:
 
         return LoginResponse(user=UserResponse.from_entity(user), token=access_token)
 
-    @transactional()
+    @transactional
     async def _authenticate_user(
         self,
-        session: AsyncSession,
         account_id: str,
         password: str,
     ) -> User:
-        user: User | None = await self.user_repository.find_by_account_id(
-            session=session,
-            account_id=account_id,
-            with_relations=True,
-        )
+        user: User | None = await self.user_repository.find_by_account_id(account_id=account_id, with_relations=True)
         if user is None:
             raise InvalidAuthException()
 
@@ -87,10 +80,9 @@ class AuthService:
 
         return user
 
-    @transactional()
+    @transactional
     async def _choose_project(
         self,
-        _: AsyncSession,
         user: User,
         project_id: int | None
     ) -> Project:

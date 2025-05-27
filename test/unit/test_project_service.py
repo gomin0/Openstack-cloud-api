@@ -19,7 +19,7 @@ from test.util.factory import create_project_stub
 envs: Envs = get_envs()
 
 
-async def test_find_projects(mock_session, mock_project_repository, project_service):
+async def test_find_projects(mock_project_repository, project_service):
     # given
     name_like = "a"
     domain = Domain(
@@ -38,7 +38,6 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
 
     # when
     result = await project_service.find_projects_details(
-        session=mock_session,
         name_like=name_like,
         sort_by=ProjectSortOption.NAME,
         order=SortOrder.ASC,
@@ -54,7 +53,6 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
     assert result.projects == expected
 
     mock_project_repository.find_all.assert_called_once_with(
-        session=mock_session,
         ids=None,
         name=None,
         name_like=name_like,
@@ -65,7 +63,7 @@ async def test_find_projects(mock_session, mock_project_repository, project_serv
     )
 
 
-async def test_get_project(mock_session, mock_project_repository, project_service):
+async def test_get_project(mock_project_repository, project_service):
     # given
     project_id = 1
     domain = Domain(
@@ -82,7 +80,6 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
 
     # when
     result = await project_service.get_project_detail(
-        session=mock_session,
         project_id=project_id,
         with_deleted=False,
         with_relations=True
@@ -91,14 +88,13 @@ async def test_get_project(mock_session, mock_project_repository, project_servic
     # then
     assert result == await ProjectDetailResponse.from_entity(project)
     mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         project_id=project_id,
         with_deleted=False,
         with_relations=True
     )
 
 
-async def test_get_project_fail_not_found(mock_session, mock_project_repository, project_service):
+async def test_get_project_fail_not_found(mock_project_repository, project_service):
     # given
     project_id = 999
     mock_project_repository.find_by_id.return_value = None
@@ -106,14 +102,12 @@ async def test_get_project_fail_not_found(mock_session, mock_project_repository,
     # when & then
     with pytest.raises(ProjectNotFoundException):
         await project_service.get_project_detail(
-            session=mock_session,
             project_id=project_id,
             with_deleted=False,
             with_relations=True
         )
 
     mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         project_id=project_id,
         with_deleted=False,
         with_relations=True
@@ -121,7 +115,6 @@ async def test_get_project_fail_not_found(mock_session, mock_project_repository,
 
 
 async def test_update_project(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -152,7 +145,6 @@ async def test_update_project(
     # when
     result = await project_service.update_project(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         user_id=user_id,
         project_id=project_id,
         new_name=new_name
@@ -162,13 +154,12 @@ async def test_update_project(
     assert result.name == new_name
     mock_project_repository.find_by_id.assert_called_once()
     mock_project_user_repository.exists_by_project_and_user.assert_called_once()
-    mock_project_repository.exists_by_name.assert_called_once_with(session=mock_session, name=new_name)
+    mock_project_repository.exists_by_name.assert_called_once_with(name=new_name)
     mock_project_repository.update_with_optimistic_lock.assert_called_once()
     mock_keystone_client.update_project.assert_called_once()
 
 
 async def test_update_project_fail_not_found(
-    mock_session,
     mock_project_repository,
     mock_keystone_client,
     project_service,
@@ -183,7 +174,6 @@ async def test_update_project_fail_not_found(
     with pytest.raises(ProjectNotFoundException):
         await project_service.update_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             user_id=1,
             project_id=project_id,
             new_name=new_name
@@ -193,7 +183,6 @@ async def test_update_project_fail_not_found(
 
 
 async def test_update_project_fail_duplicate_name(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     mock_keystone_client,
@@ -213,29 +202,24 @@ async def test_update_project_fail_duplicate_name(
     with pytest.raises(ProjectNameDuplicatedException):
         await project_service.update_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             user_id=123,
             project_id=project_id,
             new_name=new_name
         )
 
     mock_project_repository.exists_by_name.assert_called_once_with(
-        session=mock_session,
         name=new_name
     )
     mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         project_id=project_id
     )
     mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
-        session=mock_session,
         user_id=123,
         project_id=project_id
     )
 
 
 async def test_update_project_fail_access_denied(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -255,25 +239,21 @@ async def test_update_project_fail_access_denied(
     with pytest.raises(ProjectAccessDeniedException):
         await project_service.update_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             project_id=project_id,
             new_name=new_name,
             user_id=user_id
         )
 
     mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         project_id=project_id,
     )
     mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
-        session=mock_session,
         user_id=user_id,
         project_id=project_id
     )
 
 
 async def test_assign_user_success(
-    mock_session,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -296,7 +276,6 @@ async def test_assign_user_success(
     # when
     await project_service.assign_user_on_project(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         request_user_id=user1_id,
         project_id=project_id,
         user_id=user2_id
@@ -304,16 +283,14 @@ async def test_assign_user_success(
 
     # then
     mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         project_id=project_id
     )
     mock_user_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         user_id=user2_id
     )
     mock_project_user_repository.exists_by_project_and_user.assert_has_calls([
-        call(session=mock_session, project_id=project_id, user_id=user1_id),
-        call(session=mock_session, project_id=project_id, user_id=user2_id)
+        call(project_id=project_id, user_id=user1_id),
+        call(project_id=project_id, user_id=user2_id)
     ])
     assert mock_project_user_repository.exists_by_project_and_user.call_count == 2
 
@@ -322,7 +299,6 @@ async def test_assign_user_success(
 
 
 async def test_assign_user_fail_project_not_found(
-    mock_session,
     mock_project_repository,
     project_service,
     mock_compensation_manager
@@ -334,20 +310,17 @@ async def test_assign_user_fail_project_not_found(
     with pytest.raises(ProjectNotFoundException):
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=1,
             user_id=1
         )
 
     mock_project_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         project_id=1
     )
 
 
 async def test_assign_user_fail_access_denied(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -363,21 +336,18 @@ async def test_assign_user_fail_access_denied(
     with pytest.raises(ProjectAccessDeniedException):
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=project_id,
             user_id=1
         )
 
     mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
-        session=mock_session,
         project_id=project_id,
         user_id=1
     )
 
 
 async def test_assign_user_fail_user_not_found(
-    mock_session,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -395,20 +365,17 @@ async def test_assign_user_fail_user_not_found(
     with pytest.raises(UserNotFoundException):
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=project_id,
             user_id=1
         )
 
     mock_user_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         user_id=1
     )
 
 
 async def test_assign_user_fail_already_assigned(
-    mock_session,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -431,21 +398,19 @@ async def test_assign_user_fail_already_assigned(
     with pytest.raises(UserAlreadyInProjectException):
         await project_service.assign_user_on_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=user1_id,
             project_id=project_id,
             user_id=user2_id
         )
 
     mock_project_user_repository.exists_by_project_and_user.assert_has_calls([
-        call(session=mock_session, project_id=project_id, user_id=user1_id),
-        call(session=mock_session, project_id=project_id, user_id=user2_id)
+        call(project_id=project_id, user_id=user1_id),
+        call(project_id=project_id, user_id=user2_id)
     ])
     assert mock_project_user_repository.exists_by_project_and_user.call_count == 2
 
 
 async def test_unassign_user_success(
-    mock_session,
     mock_project_repository,
     mock_user_repository,
     mock_project_user_repository,
@@ -468,7 +433,6 @@ async def test_unassign_user_success(
     # when
     await project_service.unassign_user_from_project(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         request_user_id=user_id,
         project_id=project_id,
         user_id=user_id
@@ -482,7 +446,6 @@ async def test_unassign_user_success(
 
 
 async def test_unassign_user_fail_project_not_found(
-    mock_session,
     mock_project_repository,
     project_service,
     mock_compensation_manager
@@ -494,7 +457,6 @@ async def test_unassign_user_fail_project_not_found(
     with pytest.raises(ProjectNotFoundException):
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=1,
             user_id=1
@@ -504,7 +466,6 @@ async def test_unassign_user_fail_project_not_found(
 
 
 async def test_unassign_user_fail_access_denied(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     project_service,
@@ -520,21 +481,18 @@ async def test_unassign_user_fail_access_denied(
     with pytest.raises(ProjectAccessDeniedException):
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=project_id,
             user_id=1
         )
 
     mock_project_user_repository.exists_by_project_and_user.assert_called_once_with(
-        session=mock_session,
         user_id=1,
         project_id=1
     )
 
 
 async def test_unassign_user_fail_user_not_found(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     mock_user_repository,
@@ -552,16 +510,14 @@ async def test_unassign_user_fail_user_not_found(
     with pytest.raises(UserNotFoundException):
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=project_id,
             user_id=1
         )
-    mock_user_repository.find_by_id.assert_called_once_with(session=mock_session, user_id=1)
+    mock_user_repository.find_by_id.assert_called_once_with(user_id=1)
 
 
 async def test_unassign_user_fail_user_not_in_project(
-    mock_session,
     mock_project_repository,
     mock_project_user_repository,
     mock_user_repository,
@@ -583,14 +539,12 @@ async def test_unassign_user_fail_user_not_in_project(
     with pytest.raises(UserNotInProjectException):
         await project_service.unassign_user_from_project(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             request_user_id=1,
             project_id=project_id,
             user_id=user_id
         )
 
     mock_project_user_repository.find_by_project_and_user.assert_called_once_with(
-        session=mock_session,
         project_id=project_id,
         user_id=user_id,
     )
