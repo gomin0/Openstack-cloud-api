@@ -6,13 +6,13 @@ from common.domain.user.enum import UserSortOption
 from common.exception.user_exception import (
     UserNotFoundException, UserAccountIdDuplicateException, UserUpdatePermissionDeniedException
 )
-from test.unit.conftest import mock_session, mock_user_repository, user_service, mock_keystone_client
+from test.unit.conftest import mock_user_repository, user_service, mock_keystone_client
 from test.util.factory import create_user
 from test.util.factory import create_user_stub
 from test.util.random import random_string, random_int
 
 
-async def test_find_users(mock_session, mock_user_repository, user_service):
+async def test_find_users(mock_user_repository, user_service):
     # given
     domain_id: int = random_int()
     account_id: str = random_string()
@@ -22,7 +22,6 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
 
     # when
     result = await user_service.find_user_details(
-        session=mock_session,
         account_id=account_id,
         sort_by=UserSortOption.ACCOUNT_ID,
         sort_order=SortOrder.ASC,
@@ -33,7 +32,6 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
     # then
     assert len(result) == 2
     mock_user_repository.find_all.assert_called_once_with(
-        session=mock_session,
         user_id=None,
         account_id=account_id,
         name=None,
@@ -44,7 +42,7 @@ async def test_find_users(mock_session, mock_user_repository, user_service):
     )
 
 
-async def test_get_user(mock_session, mock_user_repository, user_service):
+async def test_get_user(mock_user_repository, user_service):
     # given
     user_id: int = random_int()
     domain_id: int = random_int()
@@ -54,7 +52,6 @@ async def test_get_user(mock_session, mock_user_repository, user_service):
 
     # when
     result = await user_service.get_user_detail(
-        session=mock_session,
         user_id=user_id,
         with_deleted=False,
         with_relations=True
@@ -63,14 +60,13 @@ async def test_get_user(mock_session, mock_user_repository, user_service):
     # then
     assert result.id == user.id
     mock_user_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         user_id=user_id,
         with_deleted=False,
         with_relations=True
     )
 
 
-async def test_get_user_fail_not_found(mock_session, mock_user_repository, user_service):
+async def test_get_user_fail_not_found(mock_user_repository, user_service):
     # given
     user_id = 999
     mock_user_repository.find_by_id.return_value = None
@@ -78,14 +74,12 @@ async def test_get_user_fail_not_found(mock_session, mock_user_repository, user_
     # when & then
     with pytest.raises(UserNotFoundException):
         await user_service.get_user_detail(
-            session=mock_session,
             user_id=user_id,
             with_deleted=False,
             with_relations=True
         )
 
     mock_user_repository.find_by_id.assert_called_once_with(
-        session=mock_session,
         user_id=user_id,
         with_deleted=False,
         with_relations=True
@@ -96,7 +90,6 @@ async def test_create_user_success(
     user_service,
     mock_user_repository,
     mock_keystone_client,
-    mock_session,
     mock_compensation_manager,
 ):
     # given
@@ -108,7 +101,6 @@ async def test_create_user_success(
     # when
     actual_result: User = await user_service.create_user(
         compensating_tx=mock_compensation_manager,
-        session=mock_session,
         account_id=random_string(),
         name=random_string(),
         password=random_string(),
@@ -124,7 +116,6 @@ async def test_create_user_success(
 async def test_create_user_fail_duplicate_account_id(
     user_service,
     mock_user_repository,
-    mock_session,
     mock_compensation_manager,
 ):
     # given
@@ -134,7 +125,6 @@ async def test_create_user_fail_duplicate_account_id(
     with pytest.raises(UserAccountIdDuplicateException):
         await user_service.create_user(
             compensating_tx=mock_compensation_manager,
-            session=mock_session,
             account_id=random_string(),
             name=random_string(),
             password=random_string(),
@@ -145,7 +135,6 @@ async def test_create_user_fail_duplicate_account_id(
 async def test_update_user_info_success(
     user_service,
     mock_user_repository,
-    mock_session,
 ):
     # given
     user_id: int = random_int()
@@ -155,7 +144,6 @@ async def test_update_user_info_success(
 
     # when
     result: User = await user_service.update_user_info(
-        session=mock_session,
         request_user_id=user_id,
         user_id=user.id,
         name=new_name,
@@ -166,10 +154,7 @@ async def test_update_user_info_success(
     assert result.name == new_name
 
 
-async def test_update_user_info_fail_request_user_is_not_equal_to_target_user(
-    user_service,
-    mock_session,
-):
+async def test_update_user_info_fail_request_user_is_not_equal_to_target_user(user_service):
     # given
     request_user_id: int = 1
     target_user_id: int = 2
@@ -177,18 +162,13 @@ async def test_update_user_info_fail_request_user_is_not_equal_to_target_user(
     # when & then
     with pytest.raises(UserUpdatePermissionDeniedException):
         await user_service.update_user_info(
-            session=mock_session,
             request_user_id=request_user_id,
             user_id=target_user_id,
             name=random_string(),
         )
 
 
-async def test_update_user_info_fail_when_user_not_found(
-    user_service,
-    mock_user_repository,
-    mock_session,
-):
+async def test_update_user_info_fail_when_user_not_found(user_service, mock_user_repository):
     # given
     user_id: int = random_int()
     mock_user_repository.find_by_id.return_value = None
@@ -196,7 +176,6 @@ async def test_update_user_info_fail_when_user_not_found(
     # when & then
     with pytest.raises(UserNotFoundException):
         await user_service.update_user_info(
-            session=mock_session,
             request_user_id=user_id,
             user_id=user_id,
             name=random_string(),

@@ -1,6 +1,5 @@
 import backoff
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
 from common.application.project.response import ProjectDetailsResponse, ProjectDetailResponse, ProjectResponse
@@ -36,10 +35,9 @@ class ProjectService:
         self.project_user_repository = project_user_repository
         self.keystone_client = keystone_client
 
-    @transactional()
+    @transactional
     async def find_projects_details(
         self,
-        session: AsyncSession,
         ids: list[int] | None = None,
         name: str | None = None,
         name_like: str | None = None,
@@ -49,7 +47,6 @@ class ProjectService:
         with_relations: bool = False,
     ) -> ProjectDetailsResponse:
         projects: list[Project] = await self.project_repository.find_all(
-            session=session,
             ids=ids,
             name=name,
             name_like=name_like,
@@ -63,16 +60,14 @@ class ProjectService:
             projects=[await ProjectDetailResponse.from_entity(project) for project in projects]
         )
 
-    @transactional()
+    @transactional
     async def get_project_detail(
         self,
-        session: AsyncSession,
         project_id: int,
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> ProjectDetailResponse:
         project: Project | None = await self.project_repository.find_by_id(
-            session=session,
             project_id=project_id,
             with_deleted=with_deleted,
             with_relations=with_relations
@@ -84,43 +79,29 @@ class ProjectService:
         return await ProjectDetailResponse.from_entity(project)
 
     @backoff.on_exception(backoff.expo, StaleDataError, max_tries=3)
-    @transactional()
+    @transactional
     async def update_project(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         user_id: int,
         project_id: int,
         new_name: str,
     ) -> ProjectResponse:
-        project: Project | None = await self.project_repository.find_by_id(
-            session=session,
-            project_id=project_id,
-        )
+        project: Project | None = await self.project_repository.find_by_id(project_id=project_id)
 
         if not project:
             raise ProjectNotFoundException()
 
         old_name: str = project.name
 
-        if not await self.project_user_repository.exists_by_project_and_user(
-            session=session,
-            project_id=project_id,
-            user_id=user_id,
-        ):
+        if not await self.project_user_repository.exists_by_project_and_user(project_id=project_id, user_id=user_id):
             raise ProjectAccessDeniedException()
 
-        if await self.project_repository.exists_by_name(
-            session=session,
-            name=new_name,
-        ):
+        if await self.project_repository.exists_by_name(name=new_name):
             raise ProjectNameDuplicatedException()
 
         project.update_name(new_name)
-        project: Project = await self.project_repository.update_with_optimistic_lock(
-            session=session,
-            project=project
-        )
+        project: Project = await self.project_repository.update_with_optimistic_lock(project=project)
 
         project_openstack_id: str = project.openstack_id
         await self.keystone_client.update_project(
@@ -138,49 +119,32 @@ class ProjectService:
 
         return ProjectResponse.from_entity(project)
 
-    @transactional()
+    @transactional
     async def assign_user_on_project(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         request_user_id: int,
         project_id: int,
         user_id: int
     ) -> None:
-        project: Project | None = await self.project_repository.find_by_id(
-            session=session,
-            project_id=project_id
-        )
+        project: Project | None = await self.project_repository.find_by_id(project_id=project_id)
         if not project:
             raise ProjectNotFoundException()
 
         if not await self.project_user_repository.exists_by_project_and_user(
-            session=session,
-            project_id=project_id,
-            user_id=request_user_id,
+            project_id=project_id, user_id=request_user_id
         ):
             raise ProjectAccessDeniedException()
 
-        user: User | None = await self.user_repository.find_by_id(
-            session=session,
-            user_id=user_id
-        )
+        user: User | None = await self.user_repository.find_by_id(user_id=user_id)
         if not user:
             raise UserNotFoundException()
 
-        if await self.project_user_repository.exists_by_project_and_user(
-            session=session,
-            project_id=project_id,
-            user_id=user_id,
-        ):
+        if await self.project_user_repository.exists_by_project_and_user(project_id=project_id, user_id=user_id):
             raise UserAlreadyInProjectException()
 
         await self.project_user_repository.create(
-            session=session,
-            project_user=ProjectUser(
-                project_id=project_id,
-                user_id=user_id,
-            )
+            project_user=ProjectUser(project_id=project_id, user_id=user_id)
         )
 
         project_openstack_id: str = project.openstack_id
@@ -200,48 +164,34 @@ class ProjectService:
             )
         )
 
-    @transactional()
+    @transactional
     async def unassign_user_from_project(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         request_user_id: int,
         project_id: int,
         user_id: int
     ) -> None:
-        project: Project | None = await self.project_repository.find_by_id(
-            session=session,
-            project_id=project_id
-        )
+        project: Project | None = await self.project_repository.find_by_id(project_id=project_id)
         if not project:
             raise ProjectNotFoundException()
 
         if not await self.project_user_repository.exists_by_project_and_user(
-            session=session,
-            project_id=project_id,
-            user_id=request_user_id,
+            project_id=project_id, user_id=request_user_id
         ):
             raise ProjectAccessDeniedException()
 
-        user: User | None = await self.user_repository.find_by_id(
-            session=session,
-            user_id=user_id
-        )
+        user: User | None = await self.user_repository.find_by_id(user_id=user_id)
         if not user:
             raise UserNotFoundException()
 
         project_user: ProjectUser | None = await self.project_user_repository.find_by_project_and_user(
-            session=session,
-            project_id=project_id,
-            user_id=user_id,
+            project_id=project_id, user_id=user_id
         )
         if not project_user:
             raise UserNotInProjectException()
 
-        await self.project_user_repository.delete(
-            session=session,
-            project_user=project_user
-        )
+        await self.project_user_repository.delete(project_user=project_user)
 
         project_openstack_id: str = project.openstack_id
         user_openstack_id: str = user.openstack_id

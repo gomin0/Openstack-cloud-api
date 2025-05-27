@@ -3,7 +3,6 @@ import logging
 from logging import Logger
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.volume.response import VolumeResponse, VolumeDetailResponse
 from common.domain.enum import SortOrder
@@ -43,37 +42,33 @@ class VolumeService:
         self.volume_repository = volume_repository
         self.cinder_client = cinder_client
 
-    @transactional()
+    @transactional
     async def find_volume_details(
         self,
-        session: AsyncSession,
         current_project_id: int,
         sort_by: VolumeSortOption,
         sort_order: SortOrder,
     ) -> list[VolumeDetailResponse]:
         volumes: list[Volume] = await self.volume_repository.find_all_by_project(
-            session=session,
             project_id=current_project_id,
             sort_by=sort_by,
             sort_order=sort_order
         )
         return [await VolumeDetailResponse.from_entity(volume) for volume in volumes]
 
-    @transactional()
+    @transactional
     async def get_volume_detail(
         self,
-        session: AsyncSession,
         current_project_id: int,
         volume_id: int,
     ) -> VolumeDetailResponse:
-        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id, with_relations=True)
+        volume: Volume = await self._get_volume_by_id(volume_id=volume_id, with_relations=True)
         volume.validate_owned_by(project_id=current_project_id)
         return await VolumeDetailResponse.from_entity(volume)
 
-    @transactional()
+    @transactional
     async def create_volume(
         self,
-        session: AsyncSession,
         keystone_token: str,
         project_id: int,
         project_openstack_id: str,
@@ -84,7 +79,7 @@ class VolumeService:
         image_openstack_id: str | None,
     ) -> VolumeResponse:
         is_name_exists: bool = await self.volume_repository.exists_by_name_and_project(
-            session, name=name, project_id=project_id
+            name=name, project_id=project_id
         )
         if is_name_exists:
             raise VolumeNameDuplicateException()
@@ -109,13 +104,12 @@ class VolumeService:
             size=size,
             is_root_volume=False,
         )
-        volume: Volume = await self.volume_repository.create(session, volume=volume)
+        volume: Volume = await self.volume_repository.create(volume=volume)
         return VolumeResponse.from_entity(volume)
 
-    @transactional()
+    @transactional
     async def sync_creating_volume_until_available(
         self,
-        session: AsyncSession,
         project_openstack_id: str,
         volume_openstack_id: str,
     ) -> None:
@@ -139,7 +133,7 @@ class VolumeService:
                 await asyncio.sleep(self.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION)
                 continue
 
-            volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
+            volume: Volume = await self._get_volume_by_openstack_id(openstack_id=volume_openstack_id)
             if status == VolumeStatus.AVAILABLE:
                 volume.complete_creation(attached=False)
                 break
@@ -156,25 +150,23 @@ class VolumeService:
                 f"{self.MAX_SYNC_ATTEMPTS_FOR_VOLUME_CREATION * self.SYNC_INTERVAL_SECONDS_FOR_VOLUME_CREATION}초 동안 "
                 f"전환되지 않았습니다."
             )
-            volume: Volume = await self._get_volume_by_openstack_id(session, openstack_id=volume_openstack_id)
+            volume: Volume = await self._get_volume_by_openstack_id(openstack_id=volume_openstack_id)
             volume.fail_creation()
 
-    @transactional()
+    @transactional
     async def update_volume_info(
         self,
-        session: AsyncSession,
         current_project_id: int,
         volume_id: int,
         name: str,
         description: str,
     ) -> VolumeResponse:
-        volume: Volume | None = await self.volume_repository.find_by_id(session=session, volume_id=volume_id)
+        volume: Volume | None = await self.volume_repository.find_by_id(volume_id=volume_id)
         if volume is None:
             raise VolumeNotFoundException()
         volume.validate_update_permission(project_id=current_project_id)
 
         if volume.name != name and await self.volume_repository.exists_by_name_and_project(
-            session=session,
             name=name,
             project_id=current_project_id
         ):
@@ -185,7 +177,6 @@ class VolumeService:
 
     async def update_volume_size(
         self,
-        session: AsyncSession,
         keystone_token: str,
         current_project_id: int,
         current_project_openstack_id: str,
@@ -193,7 +184,6 @@ class VolumeService:
         new_size: int,
     ) -> VolumeResponse:
         volume: Volume = await self._prepare_volume_for_resize(
-            session=session,
             current_project_id=current_project_id,
             volume_id=volume_id,
             new_size=new_size,
@@ -212,20 +202,19 @@ class VolumeService:
             target_size=new_size,
         )
 
-        await self._resize_and_persist_volume(session, volume=volume, new_size=new_size)
+        await self._resize_and_persist_volume(volume=volume, new_size=new_size)
 
         return VolumeResponse.from_entity(volume)
 
-    @transactional()
+    @transactional
     async def delete_volume(
         self,
-        session: AsyncSession,
         current_project_id: int,
         current_project_openstack_id: str,
         keystone_token: str,
         volume_id: int,
     ) -> None:
-        volume: Volume | None = await self.volume_repository.find_by_id(session, volume_id=volume_id)
+        volume: Volume | None = await self.volume_repository.find_by_id(volume_id=volume_id)
         if volume is None:
             raise VolumeNotFoundException()
         volume.validate_delete_permission(project_id=current_project_id)
@@ -259,14 +248,13 @@ class VolumeService:
         # (DB) delete volume
         volume.delete()
 
-    @transactional()
+    @transactional
     async def wait_volume_until_deleted_and_finalize(
         self,
-        session: AsyncSession,
         volume_id: int,
         project_openstack_id: str,
     ) -> None:
-        volume: Volume | None = await self.volume_repository.find_by_id(session=session, volume_id=volume_id)
+        volume: Volume | None = await self.volume_repository.find_by_id(volume_id=volume_id)
         if not volume:
             raise VolumeNotFoundException()
 
@@ -291,14 +279,12 @@ class VolumeService:
 
     async def _get_volume_by_id(
         self,
-        session: AsyncSession,
         volume_id: int,
         with_deleted: bool = False,
         with_relations: bool = False,
     ) -> Volume:
         if (
             volume := await self.volume_repository.find_by_id(
-                session=session,
                 volume_id=volume_id,
                 with_deleted=with_deleted,
                 with_relations=with_relations,
@@ -307,26 +293,25 @@ class VolumeService:
             raise VolumeNotFoundException()
         return volume
 
-    async def _get_volume_by_openstack_id(self, session: AsyncSession, openstack_id: str) -> Volume:
-        if (volume := await self.volume_repository.find_by_openstack_id(session, openstack_id=openstack_id)) is None:
+    async def _get_volume_by_openstack_id(self, openstack_id: str) -> Volume:
+        if (volume := await self.volume_repository.find_by_openstack_id(openstack_id=openstack_id)) is None:
             raise VolumeNotFoundException()
         return volume
 
-    @transactional()
+    @transactional
     async def _prepare_volume_for_resize(
         self,
-        session: AsyncSession,
         current_project_id: int,
         volume_id: int,
         new_size: int,
     ) -> Volume:
-        volume: Volume = await self._get_volume_by_id(session=session, volume_id=volume_id)
+        volume: Volume = await self._get_volume_by_id(volume_id=volume_id)
         volume.validate_update_permission(project_id=current_project_id)
         volume.validate_resizable(size=new_size)
         return volume
 
-    @transactional()
-    async def _resize_and_persist_volume(self, _: AsyncSession, volume: Volume, new_size: int):
+    @transactional
+    async def _resize_and_persist_volume(self, volume: Volume, new_size: int):
         volume.resize(size=new_size)
 
     async def _wait_for_volume_resize_completion(

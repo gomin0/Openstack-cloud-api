@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Depends, BackgroundTasks
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_200_OK, HTTP_202_ACCEPTED
 
 from api_server.router.server.request import UpdateServerInfoRequest, CreateServerRequest
@@ -13,9 +12,7 @@ from common.application.volume.service import VolumeService
 from common.domain.enum import SortOrder
 from common.domain.server.enum import ServerSortOption, ServerStatus
 from common.exception.server_exception import UnsupportedServerStatusUpdateRequestException
-from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
-from common.util.background_task_runner import run_background_task
 from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
 
@@ -39,11 +36,9 @@ async def find_servers(
     sort_by: ServerSortOption = ServerSortOption.CREATED_AT,
     order: SortOrder = SortOrder.DESC,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends()
 ) -> ServerDetailsResponse:
     return await server_service.find_servers_details(
-        session=session,
         id_=id_,
         ids_contain=ids_contain,
         ids_exclude=ids_exclude,
@@ -67,11 +62,9 @@ async def find_servers(
 async def get_server(
     server_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends()
 ) -> ServerDetailResponse:
     return await server_service.get_server_detail(
-        session=session,
         server_id=server_id,
         project_id=current_user.project_id
     )
@@ -90,22 +83,19 @@ async def create_server(
     request: CreateServerRequest,
     background_tasks: BackgroundTasks,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
 ) -> ServerResponse:
     async with compensating_transaction() as compensating_tx:
         server: ServerResponse = await server_service.create_server(
             compensating_tx=compensating_tx,
-            session=session,
             command=request.to_command(
                 keystone_token=current_user.keystone_token,
                 current_project_id=current_user.project_id,
                 current_project_openstack_id=current_user.project_openstack_id,
             ),
         )
-    run_background_task(
-        background_task=background_tasks,
-        task=server_service.finalize_server_creation,
+    background_tasks.add_task(
+        func=server_service.finalize_server_creation,
         server_openstack_id=server.openstack_id,
         image_openstack_id=request.root_volume.image_id,
         root_volume_size=request.root_volume.size,
@@ -129,11 +119,9 @@ async def update_server_info(
     server_id: int,
     request: UpdateServerInfoRequest,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
 ) -> ServerResponse:
     return await server_service.update_server_info(
-        session=session,
         current_project_id=current_user.project_id,
         server_id=server_id,
         name=request.name,
@@ -156,26 +144,22 @@ async def delete_server(
     server_id: int,
     background_tasks: BackgroundTasks,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
     volume_service: VolumeService = Depends()
 ) -> DeleteServerResponse:
     response: DeleteServerResponse = await server_service.delete_server(
-        session=session,
         server_id=server_id,
         project_id=current_user.project_id,
         keystone_token=current_user.keystone_token,
     )
-    run_background_task(
-        background_tasks,
-        server_service.check_server_until_deleted_and_remove_resources,
+    background_tasks.add_task(
+        func=server_service.check_server_until_deleted_and_remove_resources,
         keystone_token=current_user.keystone_token,
         network_interface_ids=response.network_interface_ids,
         server_id=response.server_id,
     )
-    run_background_task(
-        background_tasks,
-        volume_service.wait_volume_until_deleted_and_finalize,
+    background_tasks.add_task(
+        func=volume_service.wait_volume_until_deleted_and_finalize,
         volume_id=response.volume_id,
         project_openstack_id=current_user.project_openstack_id
     )
@@ -200,32 +184,27 @@ async def update_server_status(
     background_tasks: BackgroundTasks,
     status: Annotated[ServerStatus, Query(description="서버 시작(ACTIVE) or 정지(SHUTOFF)")],
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
 ) -> ServerResponse:
     if status == ServerStatus.ACTIVE:
         response: ServerResponse = await server_service.start_server(
-            session=session,
             keystone_token=current_user.keystone_token,
             project_id=current_user.project_id,
             server_id=server_id,
         )
-        run_background_task(
-            background_tasks,
-            server_service.wait_until_server_started,
+        background_tasks.add_task(
+            func=server_service.wait_until_server_started,
             server_openstack_id=response.openstack_id,
         )
         return response
     if status == ServerStatus.SHUTOFF:
         response: ServerResponse = await server_service.stop_server(
-            session=session,
             keystone_token=current_user.keystone_token,
             project_id=current_user.project_id,
             server_id=server_id,
         )
-        run_background_task(
-            background_tasks,
-            server_service.wait_until_server_stopped,
+        background_tasks.add_task(
+            func=server_service.wait_until_server_stopped,
             server_openstack_id=response.openstack_id,
         )
         return response
@@ -246,11 +225,9 @@ async def update_server_status(
 async def get_server_vnc_url(
     server_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
 ) -> ServerVncUrlResponse:
     server: ServerResponse = await server_service.get_server(
-        session=session,
         server_id=server_id,
         project_id=current_user.project_id,
     )
@@ -276,11 +253,9 @@ async def attach_volume_to_server(
     server_id: int,
     volume_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
-) -> ServerDetailResponse:
+) -> ServerResponse:
     return await server_service.attach_volume_to_server(
-        session=session,
         keystone_token=current_user.keystone_token,
         current_project_id=current_user.project_id,
         current_project_openstack_id=current_user.project_openstack_id,
@@ -304,11 +279,9 @@ async def detach_volume_from_server(
     server_id: int,
     volume_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     server_service: ServerService = Depends(),
-) -> ServerDetailResponse:
+) -> ServerResponse:
     return await server_service.detach_volume_from_server(
-        session=session,
         keystone_token=current_user.keystone_token,
         project_openstack_id=current_user.project_openstack_id,
         project_id=current_user.project_id,
