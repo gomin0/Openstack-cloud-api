@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.network_interface.service import NetworkInterfaceService
-from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
@@ -25,13 +23,11 @@ async def attach_floating_ip_to_network_interface(
     network_interface_id: int,
     floating_ip_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     network_interface_service: NetworkInterfaceService = Depends(),
 ) -> None:
     async with compensating_transaction() as compensating_tx:
         await network_interface_service.attach_floating_ip_to_network_interface(
             compensating_tx=compensating_tx,
-            session=session,
             keystone_token=current_user.keystone_token,
             project_id=current_user.project_id,
             floating_ip_id=floating_ip_id,
@@ -55,13 +51,11 @@ async def detach_floating_ip_from_network_interface(
     network_interface_id: int,
     floating_ip_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     network_interface_service: NetworkInterfaceService = Depends(),
 ) -> None:
     async with compensating_transaction() as compensating_tx:
         await network_interface_service.detach_floating_ip_from_network_interface(
             compensating_tx=compensating_tx,
-            session=session,
             keystone_token=current_user.keystone_token,
             project_id=current_user.project_id,
             floating_ip_id=floating_ip_id,

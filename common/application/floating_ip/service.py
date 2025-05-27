@@ -1,5 +1,4 @@
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.application.floating_ip.response import FloatingIpDetailsResponse, FloatingIpDetailResponse, \
     FloatingIpResponse
@@ -23,17 +22,15 @@ class FloatingIpService:
         self.floating_ip_repository = floating_ip_repository
         self.neutron_client = neutron_client
 
-    @transactional()
+    @transactional
     async def find_floating_ips_details(
         self,
-        session: AsyncSession,
         project_id: int,
         sort_by: FloatingIpSortOption = FloatingIpSortOption.CREATED_AT,
         order: SortOrder = SortOrder.ASC,
         with_deleted: bool = False,
     ) -> FloatingIpDetailsResponse:
         floating_ips: list[FloatingIp] = await self.floating_ip_repository.find_all_by_project_id(
-            session=session,
             project_id=project_id,
             sort_by=sort_by,
             order=order,
@@ -45,16 +42,14 @@ class FloatingIpService:
             floating_ips=[await FloatingIpDetailResponse.from_entity(floating_ip) for floating_ip in floating_ips]
         )
 
-    @transactional()
+    @transactional
     async def get_floating_ip_detail(
         self,
-        session: AsyncSession,
         project_id: int,
         floating_ip_id: int,
         with_deleted: bool = False,
     ) -> FloatingIpDetailResponse:
         floating_ip: FloatingIp | None = await self.floating_ip_repository.find_by_id(
-            session=session,
             floating_ip_id=floating_ip_id,
             with_deleted=with_deleted,
             with_relations=True
@@ -67,11 +62,10 @@ class FloatingIpService:
 
         return await FloatingIpDetailResponse.from_entity(floating_ip)
 
-    @transactional()
+    @transactional
     async def create_floating_ip(
         self,
         compensating_tx: CompensationManager,
-        session: AsyncSession,
         project_id: int,
         keystone_token: str,
         floating_network_id: str,
@@ -95,23 +89,19 @@ class FloatingIpService:
             project_id=project_id,
             address=floating_ip_address,
         )
-        floating_ip: FloatingIp = await self.floating_ip_repository.create(session, floating_ip=floating_ip)
+        floating_ip: FloatingIp = await self.floating_ip_repository.create(floating_ip=floating_ip)
 
         return FloatingIpResponse.from_entity(floating_ip)
 
-    @transactional()
+    @transactional
     async def delete_floating_ip(
         self,
-        session: AsyncSession,
         project_id: int,
         keystone_token: str,
         floating_ip_id: int
     ) -> None:
 
-        floating_ip: FloatingIp | None = await self.floating_ip_repository.find_by_id(
-            session=session,
-            floating_ip_id=floating_ip_id,
-        )
+        floating_ip: FloatingIp | None = await self.floating_ip_repository.find_by_id(floating_ip_id=floating_ip_id)
         if not floating_ip:
             raise FloatingIpNotFoundException()
 

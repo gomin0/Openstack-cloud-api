@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Query, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.security_group.request import CreateSecurityGroupRequest, UpdateSecurityGroupRequest
 from common.application.security_group.response import SecurityGroupDetailsResponse, SecurityGroupDetailResponse
 from common.application.security_group.service import SecurityGroupService
 from common.domain.enum import SortOrder
 from common.domain.security_group.enum import SecurityGroupSortOption
-from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
@@ -26,11 +24,9 @@ async def find_security_groups(
     sort_by: SecurityGroupSortOption = Query(default=SecurityGroupSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailsResponse:
     return await security_group_service.find_security_groups_details(
-        session=session,
         project_id=current_user.project_id,
         project_openstack_id=current_user.project_openstack_id,
         keystone_token=current_user.keystone_token,
@@ -52,11 +48,9 @@ async def find_security_groups(
 async def get_security_group(
     security_group_id: int,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
     return await security_group_service.get_security_group_detail(
-        session=session,
         project_id=current_user.project_id,
         keystone_token=current_user.keystone_token,
         security_group_id=security_group_id
@@ -75,13 +69,11 @@ async def get_security_group(
 async def create_security_group(
     request: CreateSecurityGroupRequest,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.create_security_group(
             compensating_tx=compensating_tx,
-            session=session,
             keystone_token=current_user.keystone_token,
             project_id=current_user.project_id,
             name=request.name,
@@ -106,13 +98,11 @@ async def update_security_group(
     security_group_id: int,
     request: UpdateSecurityGroupRequest,
     current_user: CurrentUser = Depends(get_current_user),
-    session: AsyncSession = Depends(get_db_session),
     security_group_service: SecurityGroupService = Depends(),
 ) -> SecurityGroupDetailResponse:
     async with compensating_transaction() as compensating_tx:
         return await security_group_service.update_security_group_detail(
             compensating_tx=compensating_tx,
-            session=session,
             keystone_token=current_user.keystone_token,
             project_id=current_user.project_id,
             security_group_id=security_group_id,
@@ -137,10 +127,8 @@ async def delete_security_group(
     security_group_id: int,
     current_user: CurrentUser = Depends(get_current_user),
     security_group_service: SecurityGroupService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> None:
     return await security_group_service.delete_security_group(
-        session=session,
         project_id=current_user.project_id,
         keystone_token=current_user.keystone_token,
         security_group_id=security_group_id,

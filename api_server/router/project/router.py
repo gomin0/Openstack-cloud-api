@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Query, Path, Depends, Body
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from api_server.router.project.request import ProjectUpdateRequest
 from common.application.project.response import ProjectDetailsResponse, ProjectResponse, ProjectDetailResponse
 from common.application.project.service import ProjectService
 from common.domain.enum import SortOrder
 from common.domain.project.enum import ProjectSortOption
-from common.infrastructure.database import get_db_session
 from common.util.auth_token_manager import get_current_user
 from common.util.compensating_transaction import compensating_transaction
 from common.util.context import CurrentUser
@@ -27,11 +25,9 @@ async def find_projects(
     name_like: str | None = Query(default=None),
     sort_by: ProjectSortOption = Query(default=ProjectSortOption.CREATED_AT),
     order: SortOrder = Query(default=SortOrder.ASC),
-    project_service: ProjectService = Depends(),
-    session: AsyncSession = Depends(get_db_session)
+    project_service: ProjectService = Depends()
 ) -> ProjectDetailsResponse:
     return await project_service.find_projects_details(
-        session=session,
         ids=ids,
         name=name,
         name_like=name_like,
@@ -51,10 +47,8 @@ async def find_projects(
 async def get_project(
     project_id: int = Path(description="프로젝트 ID"),
     project_service: ProjectService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> ProjectDetailResponse:
     return await project_service.get_project_detail(
-        session=session,
         project_id=project_id,
         with_relations=True
     )
@@ -76,12 +70,10 @@ async def update_project(
     project_id: int = Path(description="프로젝트 ID"),
     current_user: CurrentUser = Depends(get_current_user),
     project_service: ProjectService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> ProjectResponse:
     async with compensating_transaction() as compensating_tx:
         return await project_service.update_project(
             compensating_tx=compensating_tx,
-            session=session,
             user_id=current_user.user_id,
             project_id=project_id,
             new_name=request.name
@@ -101,12 +93,10 @@ async def assign_user_on_project(
     user_id: int = Path(description="계정 ID"),
     current_user: CurrentUser = Depends(get_current_user),
     project_service: ProjectService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> None:
     async with compensating_transaction() as compensating_tx:
         await project_service.assign_user_on_project(
             compensating_tx=compensating_tx,
-            session=session,
             request_user_id=current_user.user_id,
             project_id=project_id,
             user_id=user_id,
@@ -128,12 +118,10 @@ async def unassign_user_from_project(
     user_id: int = Path(description="계정 ID"),
     current_user: CurrentUser = Depends(get_current_user),
     project_service: ProjectService = Depends(),
-    session: AsyncSession = Depends(get_db_session),
 ) -> None:
     async with compensating_transaction() as compensating_tx:
         await project_service.unassign_user_from_project(
             compensating_tx=compensating_tx,
-            session=session,
             request_user_id=current_user.user_id,
             project_id=project_id,
             user_id=user_id,

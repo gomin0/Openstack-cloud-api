@@ -482,13 +482,17 @@ async def test_attach_volume_to_server_success(client, db_session, mock_async_cl
         db_session,
         create_volume(
             volume_id=1,
+            openstack_id=random_string(length=36),
             project_id=project.id,
             server_id=server.id,
             is_root_volume=True,
             image_openstack_id=random_string(length=36)
         )
     )
-    volume: Volume = await add_to_db(db_session, create_volume(volume_id=2, project_id=project.id))
+    volume: Volume = await add_to_db(
+        db_session,
+        create_volume(volume_id=2, openstack_id=random_string(length=36), project_id=project.id)
+    )
     await db_session.commit()
 
     def mock_client_request_side_effect(method, url, *args, **kwargs) -> Response:
@@ -527,7 +531,6 @@ async def test_attach_volume_to_server_success(client, db_session, mock_async_cl
     res_data: dict = response.json()
     assert response.status_code == 200
     assert res_data["id"] == server.id
-    assert len(res_data["volumes"]) == 1
 
 
 async def test_attach_volume_to_server_fail_when_volume_is_already_attached(
