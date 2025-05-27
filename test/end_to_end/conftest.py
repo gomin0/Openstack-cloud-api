@@ -9,8 +9,6 @@ from testcontainers.mysql import MySqlContainer
 
 from api_server.main import app
 from common.domain.entity import BaseEntity
-from common.infrastructure.async_client import get_async_client
-from common.infrastructure.database import get_db_session
 
 
 @pytest.fixture(scope="session")
