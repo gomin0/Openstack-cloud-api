@@ -14,7 +14,7 @@
 
 [5. ERD](#-erd)
 
-[6. API 문서](#-api-문서)
+[6. 기능 목록](#-기능-목록)
 
 [7. 기능 요구사항 & Sequence Diagram](#-기능-요구사항--sequence-diagram)
 
