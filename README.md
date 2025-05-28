@@ -230,9 +230,83 @@ erDiagram
     }
 ```
 
-## 📮 API 문서
+## 📮 기능 목록
+### Project API
 
-링크
+| API 명       | HTTP method | Endpoint                                 | 응답 상태 코드 |
+| ----------- | ----------- | ---------------------------------------- | -------- |
+| 프로젝트 목록 조회  | GET         | `/projects`                              | 200      |
+| 프로젝트 단일 조회  | GET         | `/projects/{project_id}`                 | 200      |
+| 프로젝트 변경     | PUT         | `/projects/{project_id}`                 | 200      |
+| 프로젝트에 유저 소속 | POST        | `/projects/{project_id}/users/{user_id}` | 204      |
+| 프로젝트에 유저 제외 | DELETE      | `/projects/{project_id}/users/{user_id}` | 204      |
+
+### User API
+
+| API 명    | HTTP method | Endpoint                | 응답 상태 코드 |
+| -------- | ----------- | ----------------------- | -------- |
+| 유저 목록 조회 | GET         | `/users`                | 200      |
+| 유저 단일 조회 | GET         | `/users/{user_id}`      | 200      |
+| 회원 가입    | POST        | `/users`                | 201      |
+| 유저 삭제    | DELETE      | `/users/{user_id}`      | 204      |
+| 유저 정보 변경 | PUT         | `/users/{user_id}/info` | 200      |
+
+### Auth API
+
+| API 명 | HTTP method | Endpoint      | 응답 상태 코드 |
+| ----- | ----------- | ------------- | -------- |
+| 로그인   | POST        | `/auth/login` | 200      |
+
+### Server API
+
+| API 명        | HTTP method | Endpoint                       | 응답 상태 코드 |
+| ------------ | ----------- | ------------------------------ | -------- |
+| 서버 목록 조회     | GET         | `/servers`                     | 200      |
+| 서버 생성        | POST        | `/servers`                     | 202      |
+| 서버 단일 조회     | GET         | `/servers/{server_id}`         | 200      |
+| 서버 삭제        | DELETE      | `/servers/{server_id}`         | 202      |
+| 서버 정보 변경     | PUT         | `/servers/{server_id}/info`    | 200      |
+| 서버 상태 변경     | PUT         | `/servers/{server_id}/status`  | 202      |
+| 서버 VNC 접속 기능 | GET         | `/servers/{server_id}/vnc-url` | 200      |
+
+### Volume API
+
+| API 명        | HTTP method | Endpoint                                   | 응답 상태 코드 |
+| ------------ | ----------- | ------------------------------------------ | -------- |
+| 볼륨 목록 조회     | GET         | `/volumes`                                 | 200      |
+| 볼륨 단일 조회     | GET         | `/volumes/{volume_id}`                     | 200      |
+| 볼륨 생성        | POST        | `/volumes`                                 | 202      |
+| 볼륨 삭제        | DELETE      | `/volumes/{volume_id}`                     | 204      |
+| 볼륨 정보 변경     | PUT         | `/volumes/{volume_id}/info`                | 200      |
+| 볼륨 용량 변경     | PUT         | `/volumes/{volume_id}/size`                | 200      |
+| 서버에 볼륨 연결    | POST        | `/servers/{server_id}/volumes/{volume_id}` | 200      |
+| 서버에 볼륨 연결 해제 | DELETE      | `/servers/{server_id}/volumes/{volume_id}` | 200      |
+
+### NIC API
+
+| API 명             | HTTP method | Endpoint                                                                   | 응답 상태 코드 |
+| ----------------- | ----------- | -------------------------------------------------------------------------- | -------- |
+| NIC에 플로팅 IP 연결    | POST        | `/network-interfaces/{network_interface_id}/floating-ips/{floating_ip_id}` | 204      |
+| NIC에 플로팅 IP 연결 해제 | DELETE      | `/network-interfaces/{network_interface_id}/floating-ips/{floating_ip_id}` | 204      |
+
+### Floating IP API
+
+| API 명        | HTTP method | Endpoint                         | 응답 상태 코드 |
+| ------------ | ----------- | -------------------------------- | -------- |
+| 플로팅 IP 목록 조회 | GET         | `/floating-ips`                  | 200      |
+| 플로팅 IP 할당    | POST        | `/floating-ips`                  | 201      |
+| 플로팅 IP 단일 조회 | GET         | `/floating-ips/{floating_ip_id}` | 200      |
+| 플로팅 IP 할당 해제 | DELETE      | `/floating-ips/{floating_ip_id}` | 204      |
+
+### Security Group API
+
+| API 명      | HTTP method | Endpoint                               | 응답 상태 코드 |
+| ---------- | ----------- | -------------------------------------- | -------- |
+| 보안그룹 목록 조회 | GET         | `/security-groups`                     | 200      |
+| 보안그룹 생성    | POST        | `/security-groups`                     | 201      |
+| 보안그룹 단일 조회 | GET         | `/security-groups/{security_group_id}` | 200      |
+| 보안그룹 변경    | PUT         | `/security-groups/{security_group_id}` | 200      |
+| 보안그룹 삭제    | DELETE      | `/security-groups/{security_group_id}` | 204      |
 
 ## 🎯 기능 요구사항 & Sequence Diagram
 
