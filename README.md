@@ -309,8 +309,9 @@ erDiagram
 | 보안그룹 삭제    | DELETE      | `/security-groups/{security_group_id}` | 204      |
 
 ## 🎯 기능 요구사항 & Sequence Diagram
+[계정 관리](https://github.com/gomin0/Openstack-cloud-api/blob/main/docs/sequence_diagram_account.md)
 
-링크
+[자원 관리](https://github.com/gomin0/Openstack-cloud-api/blob/main/docs/sequence_diagram_resource.md)
 
 ## 🐛 트러블 슈팅
 
